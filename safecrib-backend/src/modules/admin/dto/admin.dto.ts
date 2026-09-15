@@ -34,6 +34,7 @@ export class OnboardAgentDto {
 
 export class IdentityVerificationDto {
   @ApiProperty({ example: 'user-123' })
+
   @IsString()
   userId: string;
 
