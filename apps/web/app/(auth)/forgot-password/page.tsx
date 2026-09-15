@@ -1,119 +1,105 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { apiClient } from "@/lib/api-client";
+import { authApi } from "@/lib/api/auth";
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordFormValues,
+} from "@/lib/validation/schemas";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+  });
+
+  const onSubmit = async (data: ForgotPasswordFormValues) => {
     try {
-      await apiClient.post("/auth/forgot-password", { email });
-      setSubmitted(true);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+      await authApi.forgotPassword(data.email);
+      setSubmittedEmail(data.email);
+      setSent(true);
+    } catch (err: unknown) {
+      // Don't reveal whether the email exists — generic message
+      const msg =
+        err instanceof Error ? err.message : "Something went wrong. Try again.";
+      setError("root", { message: msg });
     }
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-md text-center"
-    >
-      <div className="mb-8">
-        <div className="relative w-20 h-20 mx-auto mb-6">
-          <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl" />
-          <div className="relative w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.1)_inset]">
-            <Image
-              src="/logo.png"
-              alt="SafeCrib"
-              className="object-contain"
-              width={64}
-              height={64}
-              priority
-            />
-          </div>
-        </div>
-
-        <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">
-          Reset your password
-        </h1>
-        <p className="text-white/40 text-sm leading-relaxed">
-          Enter your email and we&apos;ll send you a reset link.
+  if (sent) {
+    return (
+      <div className="animate-fade-slide-up">
+        <h1 className="font-display text-display-md text-ink mb-4">Check your inbox</h1>
+        <p className="text-sm text-muted mb-8">
+          If <span className="text-ink font-medium">{submittedEmail}</span> is
+          registered, a password reset link has been sent. It expires in 1 hour.
+        </p>
+        <p className="text-sm text-muted">
+          Didn&apos;t receive it?{" "}
+          <button
+            onClick={() => setSent(false)}
+            className="text-ink underline underline-offset-2 hover:opacity-70 transition-opacity"
+          >
+            Try again
+          </button>{" "}
+          or check your spam folder.
         </p>
       </div>
+    );
+  }
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
-        >
-          {error}
-        </motion.div>
+  return (
+    <div className="animate-fade-slide-up">
+      <h1 className="font-display text-display-md text-ink mb-2">Reset password</h1>
+      <p className="text-muted text-sm mb-8">
+        Enter your email and we&apos;ll send you a reset link.
+      </p>
+
+      {errors.root && (
+        <div className="banner-error mb-6">{errors.root.message}</div>
       )}
 
-      {submitted ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm"
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        <div>
+          <label htmlFor="email" className="label">Email</label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className="input"
+            placeholder="you@university.edu"
+            {...register("email")}
+          />
+          {errors.email && <p className="field-error">{errors.email.message}</p>}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="btn-primary w-full justify-center py-3"
         >
-          If an account with that email exists, a reset link has been sent.
-          Check your inbox (and spam folder).
-        </motion.div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-white/70 mb-2"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="glass-input w-full px-4 py-2.5 text-base text-white placeholder-white/20"
-              placeholder="you@university.edu"
-              required
-              disabled={loading}
-            />
-          </div>
+          {isSubmitting ? "Sending…" : "Send reset link"}
+        </button>
+      </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-primary justify-center"
-          >
-            {loading ? "Sending…" : "Send reset link"}
-          </button>
-        </form>
-      )}
-
-      <div className="mt-6">
+      <p className="mt-6 text-sm">
         <Link
           href="/auth/login"
-          className="text-sm text-white/60 hover:text-white transition-colors underline"
+          className="text-muted hover:text-ink transition-colors"
         >
-          Back to sign in
+          ← Back to sign in
         </Link>
-      </div>
-    </motion.div>
+      </p>
+    </div>
   );
 }

@@ -1,162 +1,120 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
+import { Suspense } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useAuth } from "@/lib/auth-context";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/lib/auth/useAuth";
+import { loginSchema, type LoginFormValues } from "@/lib/validation/schemas";
 
 function LoginForm() {
+  const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const registered = searchParams?.get("registered") === "true";
-  const [showSuccess, setShowSuccess] = useState(!!registered || false);
+  const verified = searchParams?.get("verified") === "true";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials");
-    } finally {
-      setLoading(false);
+      await login(data.email, data.password);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid credentials";
+      setError("root", { message: msg });
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-md"
-    >
-      <div className="mb-8">
-        <div className="relative w-20 h-20 mx-auto mb-6">
-          <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl" />
-          <div className="relative w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.1)_inset]">
-            <Image
-              src="/logo.png"
-              alt="SafeCrib"
-              className="object-contain"
-              width={64}
-              height={64}
-              priority
-            />
-          </div>
+    <div className="animate-fade-slide-up">
+      <h1 className="font-display text-display-md text-ink mb-2">Sign in</h1>
+      <p className="text-muted text-sm mb-8">
+        New to SafeCrib?{" "}
+        <Link href="/auth/register" className="text-ink underline underline-offset-2 hover:opacity-70 transition-opacity">
+          Create an account
+        </Link>
+      </p>
+
+      {registered && (
+        <div className="banner-success mb-6">
+          Account created — check your email to verify before signing in.
         </div>
-
-        <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">
-          Welcome to SafeCrib
-        </h1>
-        <p className="text-white/40 text-sm leading-relaxed">
-          Find trusted student housing. No scams, no double-bookings, no surprises.
-        </p>
-      </div>
-
-      {showSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm"
-        >
-          Account created. Please check your email to verify before logging in.
-        </motion.div>
       )}
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
-        >
-          {error}
-        </motion.div>
+      {verified && (
+        <div className="banner-success mb-6">
+          Email verified. You can now sign in.
+        </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {errors.root && (
+        <div className="banner-error mb-6">{errors.root.message}</div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-white/70 mb-2"
-          >
-            Email
-          </label>
+          <label htmlFor="email" className="label">Email</label>
           <input
             id="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="glass-input w-full px-4 py-2.5 text-base text-white placeholder-white/20"
+            autoComplete="email"
+            className="input"
             placeholder="you@university.edu"
-            required
-            disabled={loading}
+            {...register("email")}
           />
+          {errors.email && <p className="field-error">{errors.email.message}</p>}
         </div>
 
         <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-white/70 mb-2"
-          >
-            Password
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label htmlFor="password" className="label mb-0">Password</label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-xs text-muted hover:text-ink transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="glass-input w-full px-4 py-2.5 text-base text-white placeholder-white/20"
+            autoComplete="current-password"
+            className="input"
             placeholder="••••••••"
-            required
-            disabled={loading}
+            {...register("password")}
           />
+          {errors.password && <p className="field-error">{errors.password.message}</p>}
         </div>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full btn-primary justify-center"
+          disabled={isSubmitting}
+          className="btn-primary w-full justify-center py-3"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {isSubmitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <div className="mt-6 flex items-center justify-between text-sm">
-        <Link
-          href="/auth/forgot-password"
-          className="text-white/60 hover:text-white transition-colors"
-        >
-          Forgot password?
-        </Link>
-        <Link
-          href="/auth/register"
-          className="text-white/60 hover:text-white transition-colors"
-        >
-          Don&apos;t have an account? Sign up
-        </Link>
-      </div>
-
-      <p className="mt-8 text-white/25 text-xs text-center">
-        By signing in, you agree to our{" "}
-        <Link href="/terms" className="underline text-white/60 hover:text-white">
-          Terms of Service
+      <p className="mt-8 text-xs text-muted">
+        By signing in you agree to our{" "}
+        <Link href="/terms" className="text-ink underline underline-offset-2 hover:opacity-70 transition-opacity">
+          Terms
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="underline text-white/60 hover:text-white">
+        <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70 transition-opacity">
           Privacy Policy
         </Link>
         .
       </p>
-    </motion.div>
+    </div>
   );
 }
 

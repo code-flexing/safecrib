@@ -11,12 +11,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
     "@tanstack/react-query": "^5.0.0",
     "framer-motion": "^13.1.1",
+    "lucide-react": "^0.468.0",
     "next": "^14.2.0",
     "next-auth": "^4.24.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.54.2",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.13",

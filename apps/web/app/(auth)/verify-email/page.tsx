@@ -1,106 +1,96 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { apiClient } from "@/lib/api-client";
+import { useSearchParams } from "next/navigation";
+import { authApi } from "@/lib/api/auth";
+
+type State = "idle" | "verifying" | "success" | "error" | "missing";
 
 function VerifyEmailContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams?.get("token") ?? "";
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const token = searchParams?.get("token");
+  const [state, setState] = useState<State>(token ? "verifying" : "missing");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleVerify = async () => {
+  useEffect(() => {
     if (!token) {
-      setError("Missing verification token");
+      setState("missing");
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      await apiClient.post("/auth/verify-email", { token });
-      setSuccess(true);
-      setTimeout(() => router.push("/auth/login"), 3000);
-    } catch (err: any) {
-      setError(err.message || "Verification failed");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-md text-center"
-    >
-      <div className="mb-8">
-        <div className="relative w-20 h-20 mx-auto mb-6">
-          <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl" />
-          <div className="relative w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.1)_inset]">
-            <Image
-              src="/logo.png"
-              alt="SafeCrib"
-              className="object-contain"
-              width={64}
-              height={64}
-              priority
-            />
-          </div>
+    let cancelled = false;
+    (async () => {
+      try {
+        await authApi.verifyEmail(token);
+        if (!cancelled) setState("success");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : "Verification failed";
+          setErrorMsg(msg);
+          setState("error");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  if (state === "verifying") {
+    return (
+      <div className="animate-fade-in">
+        <h1 className="font-display text-display-md text-ink mb-4">Verifying…</h1>
+        <div className="flex gap-1.5 items-center text-muted text-sm">
+          <span className="w-4 h-4 border-2 border-muted border-t-ink rounded-full animate-spin inline-block" />
+          Checking your verification link
         </div>
-
-        <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">
-          Verify your email
-        </h1>
-        <p className="text-white/40 text-sm leading-relaxed">
-          We sent a verification link to your email. Click below to verify your
-          account.
-        </p>
       </div>
+    );
+  }
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
-        >
-          {error}
-        </motion.div>
-      )}
-
-      {success ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm"
-        >
-          Email verified! Redirecting to login…
-        </motion.div>
-      ) : (
-        <button
-          onClick={handleVerify}
-          disabled={loading || !token}
-          className="btn-primary justify-center mx-auto"
-        >
-          {loading ? "Verifying…" : "Verify email"}
-        </button>
-      )}
-
-      <div className="mt-6 text-center">
-        <Link
-          href="/auth/resend-verification"
-          className="text-sm text-white/60 hover:text-white transition-colors underline"
-        >
-          Didn&apos;t receive the email? Resend
+  if (state === "success") {
+    return (
+      <div className="animate-fade-slide-up">
+        <h1 className="font-display text-display-md text-ink mb-4">Email verified</h1>
+        <p className="text-muted text-sm mb-8">
+          Your email address has been confirmed. You can now sign in to SafeCrib.
+        </p>
+        <Link href="/auth/login?verified=true" className="btn-primary inline-flex">
+          Sign in
         </Link>
       </div>
-    </motion.div>
+    );
+  }
+
+  if (state === "missing") {
+    return (
+      <div className="animate-fade-slide-up">
+        <h1 className="font-display text-display-md text-ink mb-4">Invalid link</h1>
+        <p className="text-muted text-sm mb-8">
+          This verification link is missing a token. Check your email for the
+          original link, or request a new one.
+        </p>
+        <Link href="/auth/resend-verification" className="btn-secondary inline-flex">
+          Resend verification email
+        </Link>
+      </div>
+    );
+  }
+
+  // error
+  return (
+    <div className="animate-fade-slide-up">
+      <h1 className="font-display text-display-md text-ink mb-4">Verification failed</h1>
+      <div className="banner-error mb-6">{errorMsg ?? "The link may have expired or already been used."}</div>
+      <p className="text-muted text-sm mb-8">
+        Verification links expire after 24 hours. Request a new one below.
+      </p>
+      <Link href="/auth/resend-verification" className="btn-secondary inline-flex">
+        Resend verification email
+      </Link>
+    </div>
   );
 }
 
