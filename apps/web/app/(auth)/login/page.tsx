@@ -1,20 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const registered = router?.searchParams?.get?.("registered") === "true";
+  const registered = searchParams?.get("registered") === "true";
   const [showSuccess, setShowSuccess] = useState(!!registered || false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,10 +43,12 @@ export default function LoginPage() {
         <div className="relative w-20 h-20 mx-auto mb-6">
           <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl" />
           <div className="relative w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.1)_inset]">
-            <img
+            <Image
               src="/logo.png"
               alt="SafeCrib"
-              className="object-contain w-16 h-16"
+              className="object-contain"
+              width={64}
+              height={64}
               priority
             />
           </div>
@@ -153,5 +157,13 @@ export default function LoginPage() {
         .
       </p>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

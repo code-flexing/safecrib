@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshAccessToken = async (): Promise<boolean> => {
-    const ok = await apiClient.refreshAccessToken();
+    const ok = await apiClient.refreshToken();
     if (ok) {
       await fetchCurrentUser();
       return true;

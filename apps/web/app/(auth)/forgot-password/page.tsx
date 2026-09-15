@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
@@ -36,10 +37,12 @@ export default function ForgotPasswordPage() {
         <div className="relative w-20 h-20 mx-auto mb-6">
           <div className="absolute inset-0 rounded-2xl bg-white/10 blur-2xl" />
           <div className="relative w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.1)_inset]">
-            <img
+            <Image
               src="/logo.png"
               alt="SafeCrib"
-              className="object-contain w-16 h-16"
+              className="object-contain"
+              width={64}
+              height={64}
               priority
             />
           </div>

@@ -1,22 +1,9 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
 import Navbar from "@/components/marketing/Navbar";
 import LandingHero from "@/components/marketing/LandingHero";
 
-export default async function Home() {
-  let session = null;
-
-  try {
-    session = await getServerSession(authOptions);
-  } catch {
-    session = null;
-  }
-
-  if (session) {
-    redirect("/projects");
-  }
-
+// Redirect for authenticated users is handled by middleware via the
+// safecrib_access_token cookie — no server-side session check needed here.
+export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
