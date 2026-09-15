@@ -1,5 +1,7 @@
+"use client";
+
 import Sidebar from "@/components/layout/Sidebar";
-import ProjectSwitcher from "@/components/layout/ProjectSwitcher";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 export default function DashboardLayout({
   children,
@@ -7,16 +9,15 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen flex">
-      <Sidebar />
-      <main className="flex-1 ml-[calc(224px+12px)] p-6 min-h-screen">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-6">
-            <ProjectSwitcher />
+    <RequireAuth>
+      <div className="min-h-screen flex">
+        <Sidebar />
+        <main className="flex-1 ml-[calc(224px+12px)] p-6 min-h-screen">
+          <div className="max-w-5xl mx-auto">
+            {children}
           </div>
-          {children}
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </RequireAuth>
   );
 }

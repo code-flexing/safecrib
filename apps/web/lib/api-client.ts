@@ -34,9 +34,9 @@ class ApiClient {
 
       const data = await response.json();
       if (data.accessToken) {
-        localStorage.setItem("pible_access_token", data.accessToken);
+        localStorage.setItem("safecrib_access_token", data.accessToken);
         if (data.refreshToken) {
-          localStorage.setItem("pible_refresh_token", data.refreshToken);
+          localStorage.setItem("safecrib_refresh_token", data.refreshToken);
         }
         return data.accessToken;
       }
@@ -48,12 +48,12 @@ class ApiClient {
 
   private getAccessToken(): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("pible_access_token");
+    return localStorage.getItem("safecrib_access_token");
   }
 
   private getRefreshToken(): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("pible_refresh_token");
+    return localStorage.getItem("safecrib_refresh_token");
   }
 
   async request<T>(
@@ -100,6 +100,11 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  async refreshToken(): Promise<boolean> {
+    const ok = await this.refreshAccessToken();
+    return ok !== null;
   }
 
   get<T>(endpoint: string): Promise<ApiResponse<T>> {

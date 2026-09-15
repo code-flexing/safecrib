@@ -1,4 +1,4 @@
-# Design Tokens — Pible Frontend
+# Design Tokens — SafeCrib Frontend
 
 ## Base
 

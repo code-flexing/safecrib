@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Pible",
-  description: "Pible privacy policy",
+  title: "Privacy Policy — SafeCrib",
+  description: "SafeCrib privacy policy",
 };
 
 export default function MarketingLayout({

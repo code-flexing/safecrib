@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  displayName   String?   @map("display_name")
+  role          Role      @default(STUDENT)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  trustScore    Float?    @map("trust_score")
+  trustScoreUpdatedAt DateTime? @map("trust_score_updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  listings      Listing[]
+  bookings      Booking[]  @relation("StudentBookings")
+  trustEvents   TrustEvent[]
+  reviewsGiven  Review[]   @relation("ReviewerReviews")
+  reviewsRecvd  Review[]   @relation("RevieweeReviews")
+  refreshTokens RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  fraudReportsFiled FraudReport[] @relation("FraudReporter")
+  fraudReportsAssigned FraudReport[] @relation("FraudTargetUser")
+  identityVerified Boolean  @default(false) @map("identity_verified")
+
+  @@index([role])
+  @@map("users")
+}
+
+enum Role {
+  STUDENT
+  AGENT
+  LANDLORD
+  ADMIN
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  revoked   Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([tokenHash])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([tokenHash])
+  @@map("password_reset_tokens")
+}
+
+model Listing {
+  id        String    @id @default(uuid())
+  ownerId   String    @map("owner_id")
+  title     String
+  description String?
+  price     Int
+  lat       Float
+  lng       Float
+  campus    String?
+  address   String?
+  status    ListingStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   User           @relation(fields: [ownerId], references: [id])
+  photos  ListingPhoto[]
+  bookings Booking[]
+  fraudReports FraudReport[]
+  duplicateFlagsA DuplicateFlag[] @relation("DuplicateFlagsA")
+  duplicateFlagsB DuplicateFlag[] @relation("DuplicateFlagsB")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([lat, lng])
+  @@map("listings")
+}
+
+enum ListingStatus {
+  ACTIVE
+  INACTIVE
+  SOLD
+  FLAGGED
+}
+
+model ListingPhoto {
+  id        String   @id @default(uuid())
+  listingId String   @map("listing_id")
+  url       String
+  phash     String   @map("phash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([phash])
+  @@map("listing_photos")
+}
+
+model Booking {
+  id            String         @id @default(uuid())
+  listingId     String         @map("listing_id")
+  studentId     String         @map("student_id")
+  status        BookingStatus  @default(HELD)
+  depositAmount Int            @map("deposit_amount")
+  holdExpiresAt DateTime?      @map("hold_expires_at")
+  bookedAt      DateTime?      @map("booked_at")
+  completedAt   DateTime?      @map("completed_at")
+  cancelledAt   DateTime?      @map("cancelled_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  listing  Listing @relation(fields: [listingId], references: [id])
+  student  User    @relation("StudentBookings", fields: [studentId], references: [id])
+  review   Review?
+
+  @@index([listingId])
+  @@index([studentId])
+  @@index([status])
+  @@map("bookings")
+}
+
+enum BookingStatus {
+  HELD
+  BOOKED
+  CANCELLED
+  COMPLETED
+  DISPUTED
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique @map("booking_id")
+  reviewerId  String   @map("reviewer_id")
+  revieweeId  String   @map("reviewee_id")
+  rating      Int
+  text        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  reviewer User    @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  reviewee User    @relation("RevieweeReviews", fields: [revieweeId], references: [id])
+
+  @@index([revieweeId])
+  @@index([reviewerId])
+  @@map("reviews")
+}
+
+model TrustEvent {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  eventType   String   @map("event_type")
+  weight      Float
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+  payload     Json?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([occurredAt])
+  @@map("trust_events")
+}
+
+model FraudReport {
+  id          String   @id @default(uuid())
+  reporterId  String   @map("reporter_id")
+  targetUserId String? @map("target_user_id")
+  targetListingId String? @map("target_listing_id")
+  type        FraudReportType
+  description String
+  status      FraudReportStatus @default(PENDING)
+  resolution  String?
+  resolvedBy  String? @map("resolved_by")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  reporter  User?     @relation("FraudReporter", fields: [reporterId], references: [id])
+  targetUser User?     @relation("FraudTargetUser", fields: [targetUserId], references: [id])
+  targetListing Listing? @relation(fields: [targetListingId], references: [id])
+
+  @@index([status])
+  @@index([targetUserId])
+  @@index([targetListingId])
+  @@map("fraud_reports")
+}
+
+enum FraudReportType {
+  FAKE_LISTING
+  MISREPRESENTED
+  DOUBLE_BOOKING
+  SCAM_AGENT
+  OTHER
+}
+
+enum FraudReportStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
+}
+
+model DuplicateFlag {
+  id          String       @id @default(uuid())
+  listingIdA  String       @map("listing_id_a")
+  listingIdB  String       @map("listing_id_b")
+  matchType   DuplicateMatchType
+  similarity  Float
+  status      DuplicateFlagStatus @default(PENDING)
+  reviewedBy  String? @map("reviewed_by")
+  reviewedAt  DateTime? @map("reviewed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  listingA Listing @relation("DuplicateFlagsA", fields: [listingIdA], references: [id])
+  listingB Listing @relation("DuplicateFlagsB", fields: [listingIdB], references: [id])
+
+  @@unique([listingIdA, listingIdB, matchType])
+  @@index([status])
+  @@map("duplicate_flags")
+}
+
+enum DuplicateMatchType {
+  IMAGE_PHASH
+  TEXT_SIMILARITY
+  GEO_PRICE
+}
+
+enum DuplicateFlagStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
+}

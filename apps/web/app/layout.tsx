@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata = {
-  title: "Pible",
-  description: "AI-powered project intelligence platform",
+  title: "SafeCrib",
+  description: "SafeCrib — Student Lodge Platform",
   icons: {
     icon: "/favicon.ico",
     apple: "/logo.png",

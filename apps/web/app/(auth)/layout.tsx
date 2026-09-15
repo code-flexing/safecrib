@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in — Pible",
-  description: "Sign in to Pible",
+  title: "Sign in — SafeCrib",
+  description: "Sign in to your SafeCrib account",
 };
 
 export default function AuthLayout({
