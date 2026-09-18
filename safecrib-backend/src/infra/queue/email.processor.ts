@@ -35,6 +35,10 @@ export interface StudentRejectionEmailJobData {
   reason: string;
 }
 
+
+
+
+
 export interface LandlordApprovalEmailJobData {
   type: 'landlord-approval';
   to: string;
