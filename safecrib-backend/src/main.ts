@@ -122,7 +122,7 @@ async function bootstrap(): Promise<void> {
   );
 
   const enableSwagger =
-    process.env.ENABLE_SWAGGER === 'true' && !isProduction;
+    process.env.ENABLE_SWAGGER === 'true';
 
   if (enableSwagger) {
     const swaggerConfig = new DocumentBuilder()
