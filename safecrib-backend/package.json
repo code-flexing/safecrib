@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "nest build",
     "start": "NODE_OPTIONS=--dns-result-order=ipv4first nest start",
     "start:dev": "NODE_OPTIONS=--dns-result-order=ipv4first nest start --watch",
