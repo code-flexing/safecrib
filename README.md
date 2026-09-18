@@ -1,4 +1,5 @@
-<img width="1245" height="1263" alt="ChatGPT Image Aug 28, 2026, 08_41_50 PM" src="https://github.com/user-attachments/assets/caed59b3-7f1d-4894-988e-cfa963d482b2" />
+<img width="1536" height="1024" alt="ChatGPT Image Sep 17, 2026, 12_50_57 AM" src="https://github.com/user-attachments/assets/60b10e6a-5045-42f0-ab56-f4ae23c9518d" />
+
 
 
 **SafeCrib — The trust layer for student housing.**
