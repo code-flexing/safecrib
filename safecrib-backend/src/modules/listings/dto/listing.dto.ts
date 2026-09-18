@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEnum,
   IsInt,
   IsLatitude,
   IsLongitude,
@@ -77,11 +76,6 @@ export class UpdateListingDto {
   @ApiPropertyOptional({ example: 7.3986 })
   @IsOptional()
   lng?: number;
-
-  @ApiPropertyOptional({ example: 'ACTIVE' })
-  @IsOptional()
-  @IsEnum(['ACTIVE', 'INACTIVE', 'SOLD', 'FLAGGED'])
-  status?: 'ACTIVE' | 'INACTIVE' | 'SOLD' | 'FLAGGED';
 
   @ApiPropertyOptional({ example: 'University of Abuja' })
   @IsOptional()

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import {
   BOOKING_HOLD_EXPIRY_QUEUE,
   DUPLICATE_SWEEP_QUEUE,
@@ -8,26 +8,15 @@ import {
   IMAGE_HASH_QUEUE,
   TRUST_RECOMPUTE_QUEUE,
 } from './queue.constants.js';
-
-function parseRedisUrl(url: string): { host: string; port: number } {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : 6379,
-  };
-}
+import { parseRedisConnection } from './redis-connection.util.js';
 
 @Module({
   imports: [
     BullModule.forRootAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379';
-        const { host, port } = parseRedisUrl(redisUrl);
-        return {
-          connection: { host, port },
-        };
+        return { connection: parseRedisConnection(redisUrl) };
       },
     }),
     BullModule.registerQueue(

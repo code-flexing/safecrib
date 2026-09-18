@@ -20,8 +20,9 @@ never sees a Prisma model or an HTTP request.
 
 **Flow:**
 1. `POST /auth/register` — validates input (class-validator), hashes password
-   with **argon2id**, creates user with `emailVerified: false`, queues
-   verification email through BullMQ (don't block on email delivery).
+   with **argon2id**, creates an active account, returns the user plus access and
+   refresh tokens, and queues a welcome email through BullMQ. Mail delivery is
+   never an account-access gate.
 2. `POST /auth/verify-email` — consumes a SHA-256 hashed token stored in DB.
 3. `POST /auth/login` — verifies password with argon2, issues short-lived
    **access token** (JWT, 15 min) + longer-lived **refresh token** (7 days,
@@ -36,7 +37,8 @@ never sees a Prisma model or an HTTP request.
   per IP + per account.
 - Same generic error message for "email not found" and "wrong password"
   (prevents user enumeration).
-- `emailVerified` gates listing creation and booking.
+- Password authentication and server-side authorization gate protected actions;
+  welcome-email delivery never blocks a user.
 - Helmet + CORS locked to configured frontend origins.
 
 **DTOs:** `RegisterDto`, `LoginDto`, `RefreshDto`, `VerifyEmailDto`,
@@ -103,12 +105,37 @@ Concurrent holds are prevented by:
 | `trust` | Exposes `trust_events` → cached score via background job |
 | `fraud` | Fraud report intake, wraps `duplicate-detector.engine`, admin queue |
 | `admin` | Manual agent onboarding, identity verification, dispute resolution |
+| `provider-pages` | Provider Page creation, submission, verification, and publishing entitlement |
+| `reviews` | Completed-booking-only review creation and admin moderation |
+
+## 3.1 Server-authoritative capability contract
+
+The client may render hints from these states, but it must never be treated as
+the authority. Every operation below re-reads the relevant record on the
+server. A client-supplied `verified=true`, role, listing status, or Page ID
+does not grant a capability.
+
+| Server state | Client capability | Server enforcement |
+|---|---|---|
+| Authenticated and email verified | Enter dashboard and discover homes | All marketplace routes require JWT authentication and resolve the user from the database. |
+| `role ∈ {AGENT, LANDLORD}` | Create one provider Page | `POST /provider-pages` rejects student/admin roles. |
+| Page `DRAFT` / `REJECTED` | Submit provider details | `POST /provider-pages/me/submit` transitions only these states to `SUBMITTED`. |
+| Page `VERIFIED` | Upload Home / create draft listing | `POST /listings` calls `requireVerifiedPage`; role alone is insufficient. |
+| Listing `DRAFT` / `REJECTED` with photo | Submit home for review | `POST /listings/:id/submit` checks ownership and photos. |
+| Listing `VERIFIED` | Appear in authenticated marketplace / be bookable | Search filters to `VERIFIED`; booking rejects every other state. |
+| Booking `COMPLETED` and owned by student | Write one review | `POST /reviews` checks both booking ownership and completed state. |
+| `ADMIN` | Verify/reject Pages and homes; moderate reviews | Admin-only endpoints make state transitions and write audit records. |
+
+Listing lifecycle: `DRAFT → SUBMITTED → VERIFIED | REJECTED`. Verification and
+visibility are separate from the provider Page lifecycle: `DRAFT → SUBMITTED →
+VERIFIED | REJECTED`. A verified Page is required to create a listing, but a
+verified Page never publishes a listing by itself.
 
 ## 4. Background Jobs (BullMQ)
 
 | Queue | Trigger | Job |
 |---|---|---|
-| `email` | Any transactional email | Send via Gmail SMTP, retry with backoff |
+| `email` | Welcome and password-reset email | Send through the Brevo Transactional Email API, retry five times with exponential backoff |
 | `image-hash` | Photo uploaded | Compute pHash, run duplicate check, write flags |
 | `trust-recompute` | New `trust_events` row | Recompute + cache score for affected user |
 | `booking-hold-expiry` | Booking enters HELD | Delayed job, releases hold if not confirmed |
@@ -144,6 +171,6 @@ Concurrent holds are prevented by:
 | `REDIS_URL` | Redis for BullMQ |
 | `JWT_ACCESS_SECRET` | Access token signing key |
 | `JWT_REFRESH_SECRET` | Refresh token signing key |
-| `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` | Gmail SMTP for emails |
-| `SMTP_FROM` | Sender email address |
+| `BREVO_API_KEY` | Brevo Transactional Email API key |
+| `BREVO_SENDER_EMAIL`/`BREVO_SENDER_NAME` | Brevo-verified sender identity |
 | `FRONTEND_URL_TESTING` | Frontend origin for CORS + email links |

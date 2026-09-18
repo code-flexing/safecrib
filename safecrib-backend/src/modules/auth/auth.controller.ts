@@ -30,10 +30,10 @@ export class AuthController {
 
   @Post('register')
   @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: 200, description: 'Registration successful, check email' })
-  @ApiResponse({ status: 409, description: 'Email already registered' })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Submit a basic profile for admin review' })
+  @ApiResponse({ status: 201, description: 'Signup submitted for review' })
+  @ApiResponse({ status: 409, description: 'A pending or approved signup already exists' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -71,8 +71,8 @@ export class AuthController {
   @Post('resend-verification')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resend email verification' })
-  @ApiResponse({ status: 200, description: 'If account exists, email sent' })
+  @ApiOperation({ summary: 'Legacy endpoint: email verification is no longer required' })
+  @ApiResponse({ status: 200, description: 'Account access does not require email verification' })
   resendVerification(@Body('email') email: string) {
     return this.authService.resendVerificationEmail(email);
   }

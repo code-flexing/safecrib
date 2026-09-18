@@ -4,16 +4,18 @@ All endpoints are under `/api/v1/`.
 
 ## Authentication
 
-Requires JWT Bearer token (obtained from `/auth/login`).
+JWT Bearer tokens are required for protected routes. `POST /auth/register` submits the basic Tier 1 profile for admin review; it does not issue tokens until approval. `POST /auth/login` issues tokens only for an approved account.
 
-## Student Endpoints
+## Student / Basic Account
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/auth/register` | Register with email + password |
-| POST | `/auth/verify-email` | Verify email with token |
-| POST | `/auth/login` | Login, get tokens |
-| POST | `/auth/refresh` | Refresh access token |
+| POST | `/auth/register` | Submit the basic profile with Tier 1 documents for review |
+| POST | `/student-profiles/signup` | Submit the same basic profile for review |
+| GET | `/student-profiles/me` | Get the current user's basic submission |
+| GET | `/student-profiles/submissions/:id` | Get a submission by review queue ID |
+| POST | `/auth/login` | Log in after approval |
+| POST | `/auth/refresh` | Refresh an access token |
 | POST | `/auth/forgot-password` | Send reset email |
 | POST | `/auth/reset-password` | Reset password |
 | POST | `/auth/logout` | Revoke refresh token |
@@ -34,23 +36,28 @@ Requires JWT Bearer token (obtained from `/auth/login`).
 | GET | `/trust/users/:userId` | Public trust score |
 | POST | `/fraud/reports` | Submit fraud report |
 
-## Agent/Landlord Endpoints
-
-All student endpoints plus:
+## Agent / Landlord Pages
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/listings` | Create a listing |
-| PATCH | `/listings/:id` | Update listing |
-| DELETE | `/listings/:id` | Delete listing |
-| POST | `/listings/:id/photos` | Upload photo (pHash check) |
-| GET | `/listings/my` | Get your listings |
+| GET | `/provider-pages/me` | Get the current provider Page |
+| POST | `/provider-pages` | Create a Page or replace a rejected Page |
+| PATCH | `/provider-pages/me` | Update a draft or rejected Page |
+| POST | `/provider-pages/me/submit` | Submit Tier 2 Page verification |
+| GET | `/provider-pages/admin/pending` | List pending Tier 2 Pages |
+| PATCH | `/provider-pages/:id/verify` | Approve a Tier 2 Page |
+| PATCH | `/provider-pages/:id/reject` | Reject a Tier 2 Page with a reason |
 
-## Admin Endpoints
+Tier 2 submissions require a license/authorization reference, a profile picture, and at least one payout account. Payout account numbers are validated for supported providers.
+
+## Admin Review
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/admin/onboard` | Manually onboard agent/landlord |
+| GET | `/admin/review-queue` | List all Tier 1 and Tier 2 review submissions |
+| GET | `/admin/review-queue/:id` | Get one submission and its submitted data |
+| POST | `/admin/review` | Approve or reject a submission; rejection requires `reason` |
+| POST | `/admin/onboard` | Manually onboard an agent/landlord |
 | PATCH | `/admin/users/:id/verify-identity` | Verify identity |
 | GET | `/admin/users` | List all users |
 | GET | `/admin/users/:id` | User detail with trust events |
@@ -64,4 +71,4 @@ All student endpoints plus:
 
 ## Swagger
 
-API documentation: `/api/v1/docs` (when `ENABLE_SWAGGER=true`)
+API documentation: `/api/v1/docs` when `ENABLE_SWAGGER=true`.

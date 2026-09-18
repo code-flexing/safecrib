@@ -7,6 +7,7 @@ import type { UpdateListingDto } from './dto/listing.dto.js';
 import type { SearchListingsDto } from './dto/listing.dto.js';
 import type { ListingResponse } from './dto/listing.dto.js';
 import type { Role } from '../../common/roles.decorator.js';
+import { ProviderPagesService } from '../provider-pages/provider-pages.service.js';
 
 export interface CreateListingInput {
   title: string;
@@ -28,6 +29,7 @@ export class ListingsService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(IMAGE_HASH_QUEUE) private readonly imageHashQueue: Queue,
+    private readonly providerPages: ProviderPagesService,
   ) {}
 
   async createListing(
@@ -39,6 +41,7 @@ export class ListingsService {
     if (ownerRole !== 'AGENT' && ownerRole !== 'LANDLORD') {
       throw new ForbiddenException('Only agents and landlords can create listings');
     }
+    const page = await this.providerPages.requireVerifiedPage(ownerId);
 
     const listing = await this.prisma.listing.create({
       data: {
@@ -50,7 +53,8 @@ export class ListingsService {
         lng: input.lng,
         campus: input.campus ?? null,
         address: input.address ?? null,
-        status: 'ACTIVE',
+        providerPageId: page.id,
+        status: 'DRAFT',
       },
     });
 
@@ -108,7 +112,6 @@ export class ListingsService {
         lng: input.lng ?? undefined,
         campus: input.campus ?? undefined,
         address: input.address ?? undefined,
-        status: input.status ?? undefined,
       },
       include: { photos: true },
     });
@@ -148,9 +151,9 @@ export class ListingsService {
     return this.toResponse(listing, listing.photos);
   }
 
-  async searchListings(dto: SearchListingsDto, _userId?: string): Promise<ListingResponse[]> {
+  async searchListings(dto: SearchListingsDto): Promise<ListingResponse[]> {
     const where: any = {
-      status: 'ACTIVE',
+      status: 'VERIFIED',
     };
 
     if (dto.maxPrice !== undefined || dto.minPrice !== undefined) {
@@ -244,6 +247,41 @@ export class ListingsService {
     });
 
     return this.toResponse(fullListing!, [...listing.photos, photo]);
+  }
+
+  async submitListing(listingId: string, ownerId: string): Promise<ListingResponse> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, include: { photos: true } });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.ownerId !== ownerId) throw new ForbiddenException('You do not own this listing');
+    if (listing.status !== 'DRAFT' && listing.status !== 'REJECTED') {
+      throw new ForbiddenException('Only draft or rejected listings can be submitted for verification');
+    }
+    if (listing.photos.length === 0) throw new ForbiddenException('Upload at least one photo before submitting a home');
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.listing.update({ where: { id: listingId }, data: { status: 'SUBMITTED' }, include: { photos: true } });
+      await tx.auditLog.create({ data: { actorId: ownerId, action: 'LISTING_SUBMITTED', entityType: 'listing', entityId: listingId } });
+      return result;
+    });
+    return this.toResponse(updated, updated.photos);
+  }
+
+  async listPendingReview(): Promise<ListingResponse[]> {
+    const listings = await this.prisma.listing.findMany({ where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW'] } }, include: { photos: true }, orderBy: { updatedAt: 'asc' } });
+    return listings.map((listing) => this.toResponse(listing, listing.photos));
+  }
+
+  async reviewListing(listingId: string, adminId: string, approved: boolean, notes?: string): Promise<ListingResponse> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, include: { photos: true } });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (!['SUBMITTED', 'UNDER_REVIEW'].includes(listing.status)) {
+      throw new ForbiddenException('Only submitted listings can be reviewed');
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.listing.update({ where: { id: listingId }, data: { status: approved ? 'VERIFIED' : 'REJECTED' }, include: { photos: true } });
+      await tx.auditLog.create({ data: { actorId: adminId, action: approved ? 'LISTING_VERIFIED' : 'LISTING_REJECTED', entityType: 'listing', entityId: listingId, metadata: { notes } } });
+      return result;
+    });
+    return this.toResponse(updated, updated.photos);
   }
 
   private async computePhashFromBuffer(buffer: Buffer): Promise<string> {

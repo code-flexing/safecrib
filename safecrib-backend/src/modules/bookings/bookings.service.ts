@@ -54,7 +54,7 @@ export class BookingsService {
       throw new NotFoundException('Listing not found');
     }
 
-    if (listing.status !== 'ACTIVE') {
+    if (listing.status !== 'VERIFIED') {
       throw new ConflictException('Listing is not available');
     }
 
@@ -84,7 +84,7 @@ export class BookingsService {
 
       await tx.listing.update({
         where: { id: dto.listingId },
-        data: { status: 'FLAGGED' },
+        data: { status: 'INACTIVE' },
       });
 
       return created;
@@ -208,7 +208,7 @@ export class BookingsService {
       }),
       this.prisma.listing.update({
         where: { id: booking.listingId },
-        data: { status: 'ACTIVE' },
+        data: { status: 'VERIFIED' },
       }),
     ]);
   }
@@ -270,7 +270,7 @@ export class BookingsService {
       }),
       this.prisma.listing.update({
         where: { id: booking.listingId },
-        data: { status: 'ACTIVE' },
+        data: { status: 'VERIFIED' },
       }),
     ]);
   }

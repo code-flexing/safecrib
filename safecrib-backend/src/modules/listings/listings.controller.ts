@@ -41,6 +41,11 @@ export class ListingsController {
     return this.listingsService.searchListings(query);
   }
 
+  @Get('admin/pending-review')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'List homes awaiting verification' })
+  pendingReview() { return this.listingsService.listPendingReview(); }
+
   @Get('my')
   @Roles('AGENT', 'LANDLORD', 'ADMIN')
   @ApiOperation({ summary: 'Get my listings' })
@@ -83,6 +88,27 @@ export class ListingsController {
         address: dto.address,
       },
     );
+  }
+
+  @Post(':id/submit')
+  @Roles('AGENT', 'LANDLORD')
+  @ApiOperation({ summary: 'Submit a draft home for server-side verification' })
+  submitListing(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.listingsService.submitListing(id, user.id);
+  }
+
+  @Patch(':id/verify')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Verify a submitted home and make it visible in the marketplace' })
+  verifyListing(@Param('id') id: string, @CurrentUser() user: { id: string }, @Body('notes') notes?: string) {
+    return this.listingsService.reviewListing(id, user.id, true, notes);
+  }
+
+  @Patch(':id/reject')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Reject a submitted home' })
+  rejectListing(@Param('id') id: string, @CurrentUser() user: { id: string }, @Body('notes') notes?: string) {
+    return this.listingsService.reviewListing(id, user.id, false, notes);
   }
 
   @Post(':id/photos')

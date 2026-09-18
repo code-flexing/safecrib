@@ -43,7 +43,15 @@ See `.env.example` for all available variables. Key ones:
 | `REDIS_URL` | Redis connection for BullMQ queues |
 | `JWT_ACCESS_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
-| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Gmail SMTP credentials for transactional emails |
+| `BREVO_API_KEY` | Brevo transactional-email API key |
+| `BREVO_SENDER_EMAIL` | Sender address verified in Brevo |
+| `BREVO_SENDER_NAME` | Display name for transactional email |
+
+Before sending, verify the sender/domain in Brevo and keep the Brevo API key and sender address in the environment.
+
+Brevo failures are logged with the HTTP status, Brevo error code/message, and
+Brevo request ID (when supplied), so delivery issues can be diagnosed without
+logging the API key.
 
 ## Architecture
 
@@ -73,14 +81,21 @@ src/
 5. **Refresh token rotation** — each use invalidates the previous token; tokens
    are stored hashed in DB so they can be revoked server-side.
 
+### Verification Decisions
+- Rejected Tier 1 and Tier 2 submissions can be resubmitted.
+- A rejected Tier 2 Page remains `REJECTED` and locked from publishing until corrected and resubmitted.
+- Tier 1 and Tier 2 are parallel verification tracks; page creation does not require the student checklist fields.
+- Tier 2 uses its own profile picture and does not require it to match Tier 1.
+- No automatic annual re-verification trigger is enabled in this build.
+
 ## API Endpoints
 
 All endpoints are under `/api/v1/`.
 
 ### Auth
-- `POST /auth/register` — Register with email + password
-- `POST /auth/verify-email` — Verify email with token
-- `POST /auth/login` — Login, get access + refresh tokens
+- `POST /auth/register` — Submit the basic Tier 1 profile for admin review; no tokens are issued until approval
+- `POST /student-profiles/signup` — Submit the same basic profile for admin review
+- `POST /auth/login` — Login after approval and receive access + refresh tokens
 - `POST /auth/refresh` — Exchange refresh token for new pair
 - `POST /auth/forgot-password` — Send password reset email
 - `POST /auth/reset-password` — Reset password with token
@@ -124,7 +139,23 @@ All endpoints are under `/api/v1/`.
 - `GET /fraud/duplicates/pending` — List pending duplicate flags (admin)
 - `PATCH /fraud/duplicates/:id/resolve` — Resolve a duplicate flag (admin)
 
-### Admin
+### Student Profiles
+- `GET /student-profiles/me` — Get the current basic submission
+- `GET /student-profiles/submissions/:id` — Get a submission by review queue ID
+
+### Provider Pages
+- `GET /provider-pages/me` — Get the current provider Page
+- `POST /provider-pages` — Create a Page or replace a rejected Page
+- `PATCH /provider-pages/me` — Update a draft or rejected Page
+- `POST /provider-pages/me/submit` — Submit Tier 2 verification
+- `GET /provider-pages/admin/pending` — List pending Tier 2 Pages
+- `PATCH /provider-pages/:id/verify` — Approve a Tier 2 Page
+- `PATCH /provider-pages/:id/reject` — Reject a Tier 2 Page with a reason
+
+### Admin Review
+- `GET /admin/review-queue` — List Tier 1 and Tier 2 submissions
+- `GET /admin/review-queue/:id` — Get one submission and its submitted data
+- `POST /admin/review` — Approve or reject a submission; rejection requires a reason
 - `POST /admin/onboard` — Manually onboard agent/landlord
 - `PATCH /admin/users/:id/verify-identity` — Verify user identity
 - `GET /admin/users` — List all users
@@ -135,7 +166,7 @@ All endpoints are under `/api/v1/`.
 
 | Queue | Worker | Triggered By |
 |---|---|---|
-| `email` | EmailProcessor | Auth registration, password reset |
+| `email` | EmailProcessor | Verification, password reset, welcome, and profile-review notifications |
 | `image-hash` | ImageHashProcessor | Photo upload |
 | `trust-recompute` | TrustRecomputeProcessor | New trust event |
 | `booking-hold-expiry` | BookingHoldExpiryProcessor | Booking enters HELD |

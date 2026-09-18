@@ -1,20 +1,27 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { TrustService } from '../trust/trust.service.js';
 import type { OnboardAgentDto } from './dto/admin.dto.js';
 import type { IdentityVerificationDto } from './dto/admin.dto.js';
+import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { Role } from '../../common/roles.decorator.js';
+import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
+    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
   ) {}
 
   async onboardAgent(dto: OnboardAgentDto) {
@@ -58,12 +65,6 @@ export class AdminService {
       return created;
     });
 
-    await this.trustService.recordTrustEvent(
-      user.id,
-      'IDENTITY_VERIFIED',
-      15,
-    );
-
     return {
       id: user.id,
       email: user.email,
@@ -84,9 +85,7 @@ export class AdminService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: dto.userId },
-        data: {
-          identityVerified: true,
-        },
+        data: { identityVerified: true },
       });
 
       await tx.trustEvent.create({
@@ -97,7 +96,6 @@ export class AdminService {
           payload: {
             idDocumentNumber: dto.idDocumentNumber,
             idDocumentPhotoUrl: dto.idDocumentPhotoUrl,
-            verifiedBy: dto.userId,
           },
         },
       });
@@ -126,9 +124,7 @@ export class AdminService {
 
   async getAllUsers(skip = 0, take = 50, role?: string) {
     const where: any = {};
-    if (role) {
-      where.role = role;
-    }
+    if (role) where.role = role;
 
     return this.prisma.user.findMany({
       where,
@@ -174,5 +170,271 @@ export class AdminService {
     }
 
     return user;
+  }
+
+  async reviewSubmission(submissionId: string, adminId: string, dto: ReviewSubmissionDto) {
+    const submission = await this.prisma.adminReviewQueue.findUnique({
+      where: { id: submissionId },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('Submission not found');
+    }
+
+    if (submission.status !== 'PENDING') {
+      throw new ConflictException('Submission has already been reviewed');
+    }
+
+    const reason = dto.reason?.trim() || null;
+    if (dto.status === 'REJECTED' && !reason) {
+      throw new BadRequestException('A rejection reason is required');
+    }
+
+    const entityType = (submission.entityType ?? this.defaultEntityType(submission.reviewType)) as SubmissionEntityType;
+    const entityId = submission.entityId;
+    const studentProfile = entityType === 'student_profile'
+      ? await this.findStudentProfile(entityId, submission.email)
+      : null;
+    const providerPage = entityType === 'provider_page'
+      ? await this.findProviderPage(entityId, submission.email)
+      : null;
+
+    if (entityType === 'student_profile' && !studentProfile) {
+      throw new NotFoundException('Student profile submission not found');
+    }
+
+    if (entityType === 'provider_page' && !providerPage) {
+      throw new NotFoundException('Provider Page submission not found');
+    }
+
+    if (
+      (entityType === 'student_profile' && studentProfile?.status !== 'PENDING') ||
+      (entityType === 'provider_page' && providerPage?.verificationState !== 'SUBMITTED')
+    ) {
+      throw new ConflictException('Submission is not pending review');
+    }
+
+    const newStatus = dto.status;
+    const reviewedAt = new Date();
+    let approvedUserId: string | null = null;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.adminReviewQueue.update({
+        where: { id: submissionId },
+        data: {
+          status: newStatus,
+          reviewedBy: adminId,
+          reviewedAt,
+          reviewNotes: reason,
+          rejectionReason: newStatus === 'REJECTED' ? reason : null,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: newStatus === 'APPROVED' ? 'SUBMISSION_APPROVED' : 'SUBMISSION_REJECTED',
+          entityType: 'admin_review',
+          entityId: submissionId,
+          metadata: {
+            tier: submission.tier,
+            reviewType: submission.reviewType,
+            entityType,
+            entityId,
+            reason,
+          },
+        },
+      });
+
+      if (entityType === 'student_profile' && studentProfile) {
+        if (newStatus === 'APPROVED') {
+          const email = submission.email.toLowerCase().trim();
+          const existingUser = await tx.user.findUnique({ where: { email } });
+          const user = existingUser ?? await tx.user.create({
+            data: {
+              email,
+              passwordHash: studentProfile.passwordHash,
+              displayName: studentProfile.displayName ?? null,
+              role: 'STUDENT',
+              emailVerified: true,
+              identityVerified: true,
+            },
+          });
+
+          if (existingUser) {
+            await tx.user.update({
+              where: { id: user.id },
+              data: {
+                role: 'STUDENT',
+                emailVerified: true,
+                identityVerified: true,
+                displayName: studentProfile.displayName ?? existingUser.displayName,
+              },
+            });
+          }
+
+          await tx.studentProfile.update({
+            where: { id: studentProfile.id },
+            data: {
+              userId: user.id,
+              status: 'APPROVED',
+              reviewedBy: adminId,
+              reviewNotes: reason,
+              rejectionReason: null,
+              reviewedAt,
+            },
+          });
+          approvedUserId = user.id;
+        } else {
+          await tx.studentProfile.update({
+            where: { id: studentProfile.id },
+            data: {
+              status: 'REJECTED',
+              reviewedBy: adminId,
+              reviewNotes: reason,
+              rejectionReason: reason,
+              reviewedAt,
+            },
+          });
+        }
+      }
+
+      if (entityType === 'provider_page' && providerPage) {
+        const providerType = providerPage.providerType === 'AGENT' ? 'AGENT' : 'LANDLORD';
+        await tx.providerPage.update({
+          where: { id: providerPage.id },
+          data: {
+            verificationState: newStatus === 'APPROVED' ? 'VERIFIED' : 'REJECTED',
+            verifiedAt: newStatus === 'APPROVED' ? reviewedAt : null,
+            verifiedBy: newStatus === 'APPROVED' ? adminId : null,
+            verificationNotes: reason,
+          },
+        });
+
+        if (newStatus === 'APPROVED') {
+          await tx.user.update({
+            where: { id: providerPage.ownerId },
+            data: {
+              role: providerType,
+              identityVerified: true,
+            },
+          });
+          await tx.trustEvent.create({
+            data: {
+              userId: providerPage.ownerId,
+              eventType: 'IDENTITY_VERIFIED',
+              weight: 15,
+              payload: { providerPageId: providerPage.id, providerType },
+            },
+          });
+          approvedUserId = providerPage.ownerId;
+        }
+      }
+    });
+
+    this.enqueueEmail(
+      submission.tier === 'STUDENT'
+        ? newStatus === 'APPROVED' ? 'student-approval' : 'student-rejection'
+        : newStatus === 'APPROVED' ? 'landlord-approval' : 'landlord-rejection',
+      submission.email,
+      newStatus === 'REJECTED' ? reason ?? 'No reason provided' : undefined,
+    );
+
+    return {
+      id: submissionId,
+      status: newStatus,
+      email: submission.email,
+      tier: submission.tier,
+      reviewType: submission.reviewType,
+      entityType,
+      entityId,
+      reviewedBy: adminId,
+      reviewedAt: reviewedAt.toISOString(),
+      rejectionReason: newStatus === 'REJECTED' ? reason : null,
+      approvedUserId,
+      message: newStatus === 'APPROVED' ? 'Submission approved' : 'Submission rejected',
+    };
+  }
+
+  async listReviewQueue(status?: ProfileStatus, tier?: 'STUDENT' | 'LANDLORD') {
+    const where: any = {};
+    if (status) where.status = status;
+    if (tier) where.tier = tier;
+
+    const queues = await this.prisma.adminReviewQueue.findMany({
+      where,
+      orderBy: { createdAt: status === 'PENDING' ? 'asc' : 'desc' },
+    });
+
+    return queues.map((queue) => this.toRecord(queue));
+  }
+
+  async getReviewQueue(submissionId: string) {
+    const queue = await this.prisma.adminReviewQueue.findUnique({
+      where: { id: submissionId },
+    });
+    if (!queue) throw new NotFoundException('Submission not found');
+    return this.toRecord(queue);
+  }
+
+  private async findStudentProfile(entityId: string | null, email: string) {
+    if (entityId) {
+      return this.prisma.studentProfile.findUnique({ where: { id: entityId } });
+    }
+    return this.prisma.studentProfile.findUnique({ where: { email } });
+  }
+
+  private async findProviderPage(entityId: string | null, email: string) {
+    if (entityId) {
+      return this.prisma.providerPage.findUnique({ where: { id: entityId } });
+    }
+    return this.prisma.providerPage.findFirst({
+      where: { owner: { email } },
+      orderBy: { submittedAt: 'desc' },
+    });
+  }
+
+  private defaultEntityType(reviewType: string): SubmissionEntityType {
+    return reviewType === 'SIGNUP' ? 'student_profile' : 'provider_page';
+  }
+
+  private toRecord(queue: any) {
+    return {
+      id: queue.id,
+      email: queue.email,
+      tier: queue.tier,
+      reviewType: queue.reviewType,
+      status: queue.status,
+      entityType: queue.entityType ?? this.defaultEntityType(queue.reviewType),
+      entityId: queue.entityId ?? null,
+      submittedData: queue.submittedData,
+      reviewNotes: queue.reviewNotes ?? null,
+      reviewedBy: queue.reviewedBy ?? null,
+      reviewedAt: queue.reviewedAt?.toISOString() ?? null,
+      rejectionReason: queue.rejectionReason ?? null,
+      submittedAt: queue.createdAt.toISOString(),
+      createdAt: queue.createdAt.toISOString(),
+    };
+  }
+
+  private enqueueEmail(
+    type: 'student-approval' | 'student-rejection' | 'landlord-approval' | 'landlord-rejection',
+    to: string,
+    reason?: string,
+  ) {
+    void this.emailQueue
+      .add('profile-verification-email', {
+        type,
+        to,
+        ...(reason ? { reason } : {}),
+      } as any, {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      })
+      .catch((error) => {
+        console.error(`Unable to queue ${type}: ${(error as Error).message}`);
+      });
   }
 }

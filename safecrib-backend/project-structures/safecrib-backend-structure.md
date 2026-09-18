@@ -30,7 +30,7 @@ safecrib-backend/
 │   │   │   ├── prisma.service.ts           # Injectable PrismaClient wrapper
 │   │   │   └── prisma.module.ts            # Global Prisma module
 │   │   ├── mail/
-│   │   │   ├── mail.service.ts             # SMTP/nodemailer email sender
+│   │   │   ├── mail.service.ts             # Brevo Transactional Email API sender
 │   │   │   └── mail.module.ts
 │   │   └── queue/
 │   │       ├── queue.module.ts             # BullMQ global config

@@ -10,6 +10,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AdminService } from './admin.service.js';
 import { OnboardAgentDto } from './dto/admin.dto.js';
 import { IdentityVerificationDto } from './dto/admin.dto.js';
+import { ReviewSubmissionActionDto } from './dto/review.dto.js';
 
 @ApiTags('Admin')
 @ApiBearerAuth('access-token')
@@ -25,6 +26,33 @@ export class AdminController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   onboardAgent(@Body() dto: OnboardAgentDto) {
     return this.adminService.onboardAgent(dto);
+  }
+
+  @Get('review-queue')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'List profile verification submissions' })
+  reviewQueue(
+    @Query('status') status?: 'PENDING' | 'APPROVED' | 'REJECTED',
+    @Query('tier') tier?: 'STUDENT' | 'LANDLORD',
+  ) {
+    return this.adminService.listReviewQueue(status, tier);
+  }
+
+  @Get('review-queue/:id')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Get one profile verification submission' })
+  getReviewQueue(@Param('id') id: string) {
+    return this.adminService.getReviewQueue(id);
+  }
+
+  @Post('review')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Approve or reject a submitted profile' })
+  @ApiResponse({ status: 200, description: 'Review submitted' })
+  @ApiResponse({ status: 404, description: 'Submission not found' })
+  @ApiResponse({ status: 403, description: 'Admin only' })
+  review(@Body() dto: ReviewSubmissionActionDto, @CurrentUser() user: { id: string }) {
+    return this.adminService.reviewSubmission(dto.submissionId, user.id, dto);
   }
 
   @Patch('users/:id/verify-identity')

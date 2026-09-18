@@ -51,7 +51,7 @@ export class BookingsController {
     @CurrentUser() user: { id: string },
     @Body() dto: ConfirmBookingDto,
   ) {
-    return this.bookingsService.confirmBooking(user.id, id, dto.depositAmount);
+    return this.bookingsService.confirmBooking(id, user.id, dto.depositAmount);
   }
 
   @Patch(':id/cancel')

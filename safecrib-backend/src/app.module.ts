@@ -12,6 +12,8 @@ import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { TrustModule } from './modules/trust/trust.module.js';
 import { FraudModule } from './modules/fraud/fraud.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { ProviderPagesModule } from './modules/provider-pages/provider-pages.module.js';
+import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { EmailProcessor } from './infra/queue/email.processor.js';
 import { ImageHashProcessor } from './infra/queue/image-hash.processor.js';
 import { TrustRecomputeProcessor } from './infra/queue/trust-recompute.processor.js';
@@ -49,6 +51,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
     TrustModule,
     FraudModule,
     AdminModule,
+    ProviderPagesModule,
+    ReviewsModule,
   ],
   providers: [
     {

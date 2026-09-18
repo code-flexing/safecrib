@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -12,16 +11,15 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
-import { MailService } from '../../infra/mail/mail.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { Role } from '../../common/roles.decorator.js';
 import type { RegisterDto } from './dto/auth.dto.js';
 import type { LoginDto } from './dto/auth.dto.js';
 import type { JwtPayload } from './strategies/jwt.strategy.js';
+import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
-const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 
 export interface AuthTokens {
@@ -35,59 +33,16 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly mailService: MailService,
+    private readonly studentProfiles: StudentProfileService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
   ) {}
 
-  async register(dto: RegisterDto): Promise<{ message: string }> {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
-    });
-
-    if (existing) {
-      throw new ConflictException('An account with this email already exists');
-    }
-
-    const passwordHash = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-      timeCost: 3,
-      memoryCost: 8192,
-      parallelism: 2,
-    });
-
-    const role: Role = dto.role ?? 'STUDENT';
-    if (role === 'ADMIN') {
-      throw new BadRequestException('Cannot self-register as admin');
-    }
-
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email.toLowerCase().trim(),
-        passwordHash,
-        displayName: dto.displayName ?? null,
-        role,
-        emailVerified: false,
-      },
-    });
-
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
-    const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 3600 * 1000);
-
-    await this.prisma.emailVerificationToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-      },
-    });
-
-    await this.emailQueue.add('verification-email', {
-      to: user.email,
-      token: verificationToken,
-    });
-
-    return { message: 'Registration successful. Check your email to verify.' };
+  async register(dto: RegisterDto): Promise<{ message: string; submission: any }> {
+    const submission = await this.studentProfiles.submitSignup(dto);
+    return {
+      message: 'Signup submitted for admin review',
+      submission,
+    };
   }
 
   async verifyEmail(token: string): Promise<{ message: string }> {
@@ -131,24 +86,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user.emailVerified) {
-      throw new UnauthorizedException(
-        'Email not verified. Please verify your email before logging in.',
-      );
-    }
-
-    const tokens = this.issueTokens(user.id, user.email, user.role);
-
-    const refreshTokenHash = crypto.createHash('sha256').update(tokens.refreshToken).digest('hex');
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: refreshTokenHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
-      },
-    });
-
-    return tokens;
+    return this.issueAndStoreTokens(user.id, user.email, user.role as Role);
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
@@ -182,49 +120,13 @@ export class AuthService {
       data: { revoked: true },
     });
 
-    if (!storedToken.user.emailVerified) {
-      throw new UnauthorizedException('Email not verified');
-    }
-
-    return this.issueTokens(storedToken.user.id, storedToken.user.email, storedToken.user.role);
+    return this.issueAndStoreTokens(storedToken.user.id, storedToken.user.email, storedToken.user.role as Role);
   }
 
   async resendVerificationEmail(email: string): Promise<{ message: string }> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
-
-    if (!user) {
-      return { message: 'If an account exists, a verification email has been sent.' };
-    }
-
-    if (user.emailVerified) {
-      return { message: 'Email is already verified. Please log in.' };
-    }
-
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(verificationToken).digest('hex');
-    const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 3600 * 1000);
-
-    await this.prisma.$transaction([
-      this.prisma.emailVerificationToken.deleteMany({
-        where: { userId: user.id },
-      }),
-      this.prisma.emailVerificationToken.create({
-        data: {
-          userId: user.id,
-          tokenHash,
-          expiresAt,
-        },
-      }),
-    ]);
-
-    await this.emailQueue.add('verification-email', {
-      to: user.email,
-      token: verificationToken,
-    });
-
-    return { message: 'If an account exists, a verification email has been sent.' };
+    // Kept for older clients; verification mail is no longer an access requirement.
+    void email;
+    return { message: 'Email verification is no longer required. You can log in now.' };
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
@@ -324,5 +226,28 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  private async issueAndStoreTokens(userId: string, email: string, role: Role): Promise<AuthTokens> {
+    const tokens = this.issueTokens(userId, email, role);
+    const refreshTokenHash = crypto.createHash('sha256').update(tokens.refreshToken).digest('hex');
+    await this.prisma.refreshToken.create({
+      data: { userId, tokenHash: refreshTokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
+    });
+    return tokens;
+  }
+
+  private async enqueueEmail(name: string, data: Record<string, unknown>): Promise<void> {
+    try {
+      await this.emailQueue.add(name, data, {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      });
+    } catch (error) {
+      // Mail and Redis outages are non-fatal for signup.
+      console.error(`Unable to queue ${name}: ${(error as Error).message}`);
+    }
   }
 }
