@@ -126,7 +126,8 @@ describe('CloudinaryStorageProvider', () => {
     it('returns valid=false for wrong signature', () => {
       const now = String(Math.floor(Date.now() / 1000));
       const body = Buffer.from('{"notification_type":"upload"}');
-      const result = provider.verifyWebhook(body, 'wrongsig'.padEnd(40, '0'), now);
+      const wrongSignature = '1'.repeat(40);
+      const result = provider.verifyWebhook(body, wrongSignature, now);
       expect(result.valid).toBe(false);
     });
 
