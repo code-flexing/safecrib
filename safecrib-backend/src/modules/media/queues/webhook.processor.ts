@@ -127,8 +127,8 @@ export class MediaWebhookProcessor implements OnModuleInit {
     const media = await this.mediaRepo.findByPublicId(public_id);
     if (!media) return;
 
-    const reason = (payload as Record<string, unknown>)['error']
-      ? JSON.stringify((payload as Record<string, unknown>)['error'])
+    const reason = (payload as unknown as { error?: unknown })['error']
+      ? JSON.stringify((payload as unknown as { error?: unknown })['error'])
       : 'Cloudinary upload error';
 
     await this.mediaRepo.markFailed(media.id, reason);

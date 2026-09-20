@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   BadRequestException,
   ForbiddenException,
-  TooManyRequestsException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { MediaPolicyService } from './media-policy.service.js';
 import type { MediaRepository } from '../media.repository.js';
@@ -44,11 +45,13 @@ describe('MediaPolicyService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('throws TooManyRequestsException when pending quota exceeded', async () => {
+    it('throws HttpException with TOO_MANY_REQUESTS when pending quota exceeded', async () => {
       const svc = new MediaPolicyService(makeRepo(99));
       await expect(
         svc.validateUploadRequest('user_1', 'AVATAR', 'image/jpeg', 1024),
-      ).rejects.toThrow(TooManyRequestsException);
+      ).rejects.toMatchObject({
+        status: HttpStatus.TOO_MANY_REQUESTS,
+      });
     });
 
     it('allows PDF for STUDENT_ID purpose', async () => {

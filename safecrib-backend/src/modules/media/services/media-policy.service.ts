@@ -1,8 +1,9 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
-  TooManyRequestsException,
 } from '@nestjs/common';
 import type { MediaPurpose } from '@prisma/client';
 import {
@@ -44,10 +45,11 @@ export class MediaPolicyService {
 
     const pendingCount = await this.mediaRepo.countPendingForUser(ownerId, purpose);
     if (pendingCount >= policy.maxPendingPerUser) {
-      throw new TooManyRequestsException(
+      throw new HttpException(
         `You have ${pendingCount} pending uploads for "${purpose}". ` +
           `Maximum is ${policy.maxPendingPerUser}. ` +
           `Wait for them to complete or cancel them before uploading more.`,
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
