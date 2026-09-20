@@ -6,3 +6,7 @@ Mode: silent-execute.
 - When finished, output ONLY a short summary: files created/changed, and the
   exact manual steps I need to do in Render/Netlify/GitHub, as a checklist.
   No recap of what you did along the way, no restating the task back to me.
+  dont give me any feedback just give me  a  summary of fixes when you are done think silently and dont write your thought
+
+
+
