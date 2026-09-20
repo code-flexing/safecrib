@@ -31,6 +31,7 @@ function getAllowedOrigins(): string[] {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    rawBody: true, // Required for Cloudinary webhook signature verification
   });
 
   const isProduction = process.env.NODE_ENV === 'production';

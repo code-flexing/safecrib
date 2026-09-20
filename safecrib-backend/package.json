@@ -25,7 +25,8 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "prisma:db:push": "prisma db push",
-    "prisma:db:migrate": "prisma migrate dev"
+    "prisma:db:migrate": "prisma migrate dev",
+    "cloudinary:sync-presets": "ts-node -r tsconfig-paths/register scripts/sync-presets.ts"
   },
   "dependencies": {
     "@nest-lab/throttler-storage-redis": "^1.2.0",

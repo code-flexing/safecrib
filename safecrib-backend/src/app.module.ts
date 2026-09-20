@@ -15,6 +15,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
 import { ProviderPagesModule } from './modules/provider-pages/provider-pages.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { StudentProfilesModule } from './modules/student-profiles/student-profiles.module.js';
+import { MediaModule } from './modules/media/media.module.js';
 import { EmailProcessor } from './infra/queue/email.processor.js';
 import { ImageHashProcessor } from './infra/queue/image-hash.processor.js';
 import { TrustRecomputeProcessor } from './infra/queue/trust-recompute.processor.js';
@@ -55,6 +56,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
     ProviderPagesModule,
     ReviewsModule,
     StudentProfilesModule,
+    MediaModule,
   ],
   providers: [
     {
