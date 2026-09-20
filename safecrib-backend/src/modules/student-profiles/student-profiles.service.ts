@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -13,6 +14,9 @@ import type {
   SubmissionRecord,
 } from '../../common/types.js';
 import type { StudentSignupDto } from './dto/student-signup.dto.js';
+import type { CompleteStudentProfileDto } from './dto/student-signup.dto.js';
+
+type StudentProfileStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 @Injectable()
 export class StudentProfileService {
@@ -20,26 +24,34 @@ export class StudentProfileService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async submitSignup(dto: StudentSignupDto): Promise<SubmissionRecord> {
-    const email = dto.email.toLowerCase().trim();
+  async submitSignup(_dto: StudentSignupDto): Promise<SubmissionRecord> {
+    throw new BadRequestException(
+      'Direct signup submission is no longer supported. Create an account first, then complete your student profile.',
+    );
+  }
+
+  async completeProfile(userId: string, dto: CompleteStudentProfileDto): Promise<SubmissionRecord> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, passwordHash: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.role !== 'STUDENT') {
+      throw new ForbiddenException('Only student accounts can complete a student profile');
+    }
+
     const existing = await this.prisma.studentProfile.findUnique({
-      where: { email },
+      where: { userId },
     });
 
     if (existing?.status === 'PENDING') {
-      throw new ConflictException('A pending signup already exists for this email');
+      throw new ConflictException('Your student profile is already pending review');
     }
-
     if (existing?.status === 'APPROVED') {
-      throw new ConflictException('This email has already been approved');
+      throw new ConflictException('Your student profile has already been approved');
     }
-
-    const passwordHash = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-      timeCost: 3,
-      memoryCost: 8192,
-      parallelism: 2,
-    });
 
     const submittedData: StudentProfileSubmission = {
       displayName: dto.displayName?.trim() || null,
@@ -58,9 +70,8 @@ export class StudentProfileService {
     const result = await this.prisma.$transaction(async (tx) => {
       const profile = existing
         ? await tx.studentProfile.update({
-            where: { email },
+            where: { id: existing.id },
             data: {
-              passwordHash,
               displayName: submittedData.displayName,
               proofOfStudentship: submittedData.proofOfStudentship,
               schoolOfStudy: submittedData.schoolOfStudy,
@@ -84,8 +95,9 @@ export class StudentProfileService {
           })
         : await tx.studentProfile.create({
             data: {
-              email,
-              passwordHash,
+              userId,
+              email: user.email,
+              passwordHash: user.passwordHash,
               displayName: submittedData.displayName,
               proofOfStudentship: submittedData.proofOfStudentship,
               schoolOfStudy: submittedData.schoolOfStudy,
@@ -106,7 +118,7 @@ export class StudentProfileService {
 
       const queue = await tx.adminReviewQueue.create({
         data: {
-          email,
+          email: user.email,
           tier: 'STUDENT',
           reviewType: 'SIGNUP',
           status: 'PENDING',
@@ -116,11 +128,62 @@ export class StudentProfileService {
         },
       });
 
+      await tx.auditLog.create({
+        data: {
+          actorId: userId,
+          action: 'STUDENT_PROFILE_SUBMITTED',
+          entityType: 'student_profile',
+          entityId: profile.id,
+          metadata: { reviewQueueId: queue.id },
+        },
+      });
+
       return { profile, queue };
     });
 
-    this.logger.log(`Student signup submitted for ${email}`);
+    this.logger.log(`Student profile submitted for ${user.email}`);
     return this.toRecord(result.profile, result.queue);
+  }
+
+  async getMyProfile(userId: string): Promise<SubmissionRecord | null> {
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) return null;
+
+    const queue = await this.prisma.adminReviewQueue.findFirst({
+      where: {
+        entityType: 'student_profile',
+        entityId: profile.id,
+        tier: 'STUDENT',
+        reviewType: 'SIGNUP',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return this.toRecord(profile, queue ?? undefined);
+  }
+
+  async getProfileStatus(userId: string): Promise<{ status: StudentProfileStatus; profile: any | null }> {
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+    });
+    if (!profile) {
+      return { status: 'NOT_SUBMITTED', profile: null };
+    }
+    return { status: profile.status as StudentProfileStatus, profile };
+  }
+
+  async requireApprovedStudent(userId: string): Promise<void> {
+    const profile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+      select: { status: true },
+    });
+    if (!profile || profile.status !== 'APPROVED') {
+      throw new ForbiddenException(
+        'Your student profile must be approved before you can perform this action',
+      );
+    }
   }
 
   async getSubmission(submissionId: string): Promise<SubmissionRecord> {

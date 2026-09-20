@@ -101,6 +101,7 @@ enum ProfileStatus {
   PENDING
   APPROVED
   REJECTED
+  NOT_SUBMITTED
 }
 
 enum ProfileTier {

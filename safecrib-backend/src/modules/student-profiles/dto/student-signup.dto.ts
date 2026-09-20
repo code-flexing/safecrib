@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsEmail,
   IsObject,
   IsOptional,
   IsString,
@@ -11,15 +10,15 @@ import {
 
 export class StudentSignupDto {
   @ApiProperty({ example: 'student@university.edu' })
-  @IsEmail()
+  @IsString()
   email: string;
 
   @ApiProperty({ example: 'SuperSecure123!' })
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
   password: string;
+}
 
+export class CompleteStudentProfileDto {
   @ApiPropertyOptional({ example: 'Jane Doe' })
   @IsOptional()
   @IsString()

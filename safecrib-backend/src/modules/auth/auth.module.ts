@@ -12,13 +12,11 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/roles.guard.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { MailModule } from '../../infra/mail/mail.module.js';
-import { StudentProfilesModule } from '../student-profiles/student-profiles.module.js';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     MailModule,
-    StudentProfilesModule,
 
     JwtModule.registerAsync({
       imports: [ConfigModule],

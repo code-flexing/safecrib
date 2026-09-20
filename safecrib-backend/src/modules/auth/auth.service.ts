@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -16,7 +17,6 @@ import type { Role } from '../../common/roles.decorator.js';
 import type { RegisterDto } from './dto/auth.dto.js';
 import type { LoginDto } from './dto/auth.dto.js';
 import type { JwtPayload } from './strategies/jwt.strategy.js';
-import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
@@ -33,16 +33,35 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly studentProfiles: StudentProfileService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
   ) {}
 
-  async register(dto: RegisterDto): Promise<{ message: string; submission: any }> {
-    const submission = await this.studentProfiles.submitSignup(dto);
-    return {
-      message: 'Signup submitted for admin review',
-      submission,
-    };
+  async register(dto: RegisterDto): Promise<{ message: string; userId: string }> {
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await argon2.hash(dto.password, {
+      type: argon2.argon2id,
+      timeCost: 3,
+      memoryCost: 8192,
+      parallelism: 2,
+    });
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName: dto.displayName?.trim() || null,
+        role: 'STUDENT',
+        emailVerified: true,
+        identityVerified: false,
+      },
+    });
+
+    return { message: 'Registration successful. You can log in now.', userId: user.id };
   }
 
   async verifyEmail(token: string): Promise<{ message: string }> {
@@ -124,7 +143,6 @@ export class AuthService {
   }
 
   async resendVerificationEmail(email: string): Promise<{ message: string }> {
-    // Kept for older clients; verification mail is no longer an access requirement.
     void email;
     return { message: 'Email verification is no longer required. You can log in now.' };
   }
@@ -246,7 +264,6 @@ export class AuthService {
         removeOnFail: false,
       });
     } catch (error) {
-      // Mail and Redis outages are non-fatal for signup.
       console.error(`Unable to queue ${name}: ${(error as Error).message}`);
     }
   }

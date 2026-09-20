@@ -1,8 +1,8 @@
 import {
   CanActivate,
   ExecutionContext,
-  Injectable,
   ForbiddenException,
+  Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -10,6 +10,7 @@ import { ROLES_KEY } from './roles.decorator.js';
 import { PUBLIC_KEY } from './public.decorator.js';
 import type { Role } from './roles.decorator.js';
 import type { Request } from 'express';
+import { PrismaService } from '../infra/prisma/prisma.service.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -22,9 +23,12 @@ export interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -58,6 +62,19 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException(
         `Requires one of: ${requiredRoles.join(', ')}`,
       );
+    }
+
+    // Enforce approved-student profile for any route that requires the STUDENT role.
+    if (requiredRoles.includes('STUDENT') && user.role === 'STUDENT') {
+      const profile = await this.prisma.studentProfile.findUnique({
+        where: { userId: user.id },
+        select: { status: true },
+      });
+      if (!profile || profile.status !== 'APPROVED') {
+        throw new ForbiddenException(
+          'Your student profile must be approved before you can perform this action',
+        );
+      }
     }
 
     return true;

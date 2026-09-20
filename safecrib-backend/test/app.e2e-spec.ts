@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import { AppModule } from './../src/app.module.js';
 
-  describe('SafeCrib Platform (e2e)', () => {
+describe('SafeCrib Platform (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -31,7 +31,7 @@ import { AppModule } from './../src/app.module.js';
       .expect(400);
   });
 
-  it('/api/v1/auth/register (should create student)', () => {
+  it('/api/v1/auth/register (should create minimal account)', () => {
     return request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
@@ -39,12 +39,27 @@ import { AppModule } from './../src/app.module.js';
         password: 'SuperSecure123!',
         displayName: 'Test Student',
       })
-      .expect(200)
-      .expect({ message: 'Registration successful. Check your email to verify.' });
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.message).toBe('Registration successful. You can log in now.');
+        expect(res.body.userId).toBeTruthy();
+      });
   });
 
-  it('/api/v1/auth/login (should reject unverified email)', async () => {
-    const email = `unverified-${Date.now()}@example.com`;
+  it('/api/v1/auth/register (should reject extra student-profile fields)', () => {
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        email: `extra-${Date.now()}@example.com`,
+        password: 'SuperSecure123!',
+        proofOfStudentship: 'student-id.jpg',
+        schoolOfStudy: 'University of Abuja',
+      })
+      .expect(400);
+  });
+
+  it('/api/v1/auth/login (should succeed after registration)', async () => {
+    const email = `login-${Date.now()}@example.com`;
     await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ email, password: 'SuperSecure123!' });
@@ -52,7 +67,11 @@ import { AppModule } from './../src/app.module.js';
     return request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email, password: 'SuperSecure123!' })
-      .expect(401);
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.accessToken).toBeTruthy();
+        expect(res.body.refreshToken).toBeTruthy();
+      });
   });
 
   afterEach(async () => {

@@ -31,9 +31,9 @@ export class AuthController {
   @Post('register')
   @Public()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Submit a basic profile for admin review' })
-  @ApiResponse({ status: 201, description: 'Signup submitted for review' })
-  @ApiResponse({ status: 409, description: 'A pending or approved signup already exists' })
+  @ApiOperation({ summary: 'Register a minimal account (email + password)' })
+  @ApiResponse({ status: 201, description: 'Account created' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -91,7 +91,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password with token' })
   @ApiResponse({ status: 200, description: 'Password reset' })
-  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired reset token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
   }

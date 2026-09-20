@@ -58,4 +58,7 @@ export class UserResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiPropertyOptional({ description: 'Student profile verification status' })
+  studentProfileStatus?: string | null;
 }

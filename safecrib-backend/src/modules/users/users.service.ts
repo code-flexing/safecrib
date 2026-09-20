@@ -26,6 +26,11 @@ export class UserService {
         trustScore: true,
         trustScoreUpdatedAt: true,
         createdAt: true,
+        studentProfile: {
+          select: {
+            status: true,
+          },
+        },
       },
     });
 
@@ -33,7 +38,11 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    const { studentProfile, ...rest } = user;
+    return {
+      ...rest,
+      studentProfileStatus: studentProfile?.status ?? 'NOT_SUBMITTED',
+    };
   }
 
   async updateProfile(userId: string, dto: UpdateUserDto) {

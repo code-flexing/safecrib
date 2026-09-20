@@ -15,6 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '../../common/roles.decorator.js';
+import { RequireApprovedStudent } from '../../common/student-profile.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { BookingsService } from './bookings.service.js';
 import { CreateBookingDto } from './dto/booking.dto.js';
@@ -29,9 +30,11 @@ export class BookingsController {
 
   @Post()
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Create a booking (hold a listing)' })
   @ApiResponse({ status: 201, type: BookingResponseDto })
   @ApiResponse({ status: 409, description: 'Listing already held or booked' })
+  @ApiResponse({ status: 403, description: 'Student profile not approved' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   createBooking(
     @CurrentUser() user: { id: string },
@@ -42,6 +45,7 @@ export class BookingsController {
 
   @Patch(':id/confirm')
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Confirm a held booking (pay deposit)' })
   @ApiResponse({ status: 200, type: BookingResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid state transition' })
@@ -56,6 +60,7 @@ export class BookingsController {
 
   @Patch(':id/cancel')
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Cancel a held or booked listing' })
   @ApiResponse({ status: 204 })
   @ApiResponse({ status: 400, description: 'Cannot cancel in current status' })
@@ -67,6 +72,7 @@ export class BookingsController {
 
   @Patch(':id/complete')
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Mark booking as completed (move-in confirmed)' })
   @ApiResponse({ status: 200, type: BookingResponseDto })
   @ApiResponse({ status: 400, description: 'Cannot complete in current status' })
@@ -77,6 +83,7 @@ export class BookingsController {
 
   @Patch(':id/dispute')
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Raise a dispute on a booking' })
   @ApiResponse({ status: 200, type: BookingResponseDto })
   @ApiResponse({ status: 400, description: 'Cannot dispute in current status' })
@@ -91,6 +98,7 @@ export class BookingsController {
 
   @Get()
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'List current user bookings' })
   @ApiResponse({ status: 200, type: [BookingResponseDto] })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
@@ -100,6 +108,7 @@ export class BookingsController {
 
   @Get(':id')
   @Roles('STUDENT')
+  @RequireApprovedStudent()
   @ApiOperation({ summary: 'Get a booking by ID' })
   @ApiResponse({ status: 200, type: BookingResponseDto })
   @ApiResponse({ status: 404, description: 'Booking not found' })

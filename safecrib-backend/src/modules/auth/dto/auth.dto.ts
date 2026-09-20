@@ -1,9 +1,31 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import type { Role } from '../../../common/roles.decorator.js';
-import { StudentSignupDto } from '../../student-profiles/dto/student-signup.dto.js';
 
-export class RegisterDto extends StudentSignupDto {}
+export class RegisterDto {
+  @ApiProperty({ example: 'student@university.edu' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'SuperSecure123!' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password: string;
+
+  @ApiPropertyOptional({ example: 'Jane Doe' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  displayName?: string;
+}
 
 export class LoginDto {
   @ApiProperty({ example: 'student@university.edu' })
@@ -51,4 +73,3 @@ export class ResetPasswordDto {
 }
 
 export type { Role };
-export { StudentSignupDto };
