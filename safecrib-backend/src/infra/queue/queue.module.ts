@@ -6,6 +6,9 @@ import {
   DUPLICATE_SWEEP_QUEUE,
   EMAIL_QUEUE,
   IMAGE_HASH_QUEUE,
+  MEDIA_CLEANUP_QUEUE,
+  MEDIA_DELETION_QUEUE,
+  MEDIA_WEBHOOK_QUEUE,
   TRUST_RECOMPUTE_QUEUE,
 } from './queue.constants.js';
 import { parseRedisConnection } from './redis-connection.util.js';
@@ -25,6 +28,9 @@ import { parseRedisConnection } from './redis-connection.util.js';
       { name: TRUST_RECOMPUTE_QUEUE },
       { name: BOOKING_HOLD_EXPIRY_QUEUE },
       { name: DUPLICATE_SWEEP_QUEUE },
+      { name: MEDIA_WEBHOOK_QUEUE },
+      { name: MEDIA_DELETION_QUEUE },
+      { name: MEDIA_CLEANUP_QUEUE },
     ),
   ],
   exports: [BullModule],

@@ -25,7 +25,8 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "prisma:db:push": "prisma db push",
-    "prisma:db:migrate": "prisma migrate dev"
+    "prisma:db:migrate": "prisma migrate dev",
+    "cloudinary:sync-presets": "ts-node -r tsconfig-paths/register scripts/sync-presets.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^12.0.0",
@@ -42,6 +43,7 @@
     "bullmq": "^4.18.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "cloudinary": "^2.11.0",
     "helmet": "^8.3.0",
     "multer": "^2.3.0",
     "passport": "^0.7.0",

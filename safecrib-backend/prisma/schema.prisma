@@ -33,6 +33,7 @@ model User {
   fraudReportsAssigned FraudReport[] @relation("FraudTargetUser")
   identityVerified Boolean  @default(false) @map("identity_verified")
   studentProfile  StudentProfile?
+  media           Media[]
 
   @@index([role])
   @@map("users")
@@ -405,3 +406,108 @@ enum DuplicateFlagStatus {
   CONFIRMED
   DISMISSED
 }
+
+// ─── Media ────────────────────────────────────────────────────────────────────
+
+enum MediaPurpose {
+  AVATAR
+  LISTING_PHOTO
+  LISTING_VIDEO
+  PROVIDER_LOGO
+  STUDENT_ID
+  PROOF_OF_STUDENTSHIP
+  PROOF_OF_LICENSE
+  CONTRACT_DOCUMENT
+}
+
+enum MediaResourceType {
+  IMAGE
+  VIDEO
+  RAW
+}
+
+enum MediaDeliveryType {
+  UPLOAD      // public CDN
+  AUTHENTICATED // signed-URL protected
+  PRIVATE     // fully private, signed-URL only
+}
+
+enum MediaStatus {
+  PENDING
+  READY
+  FAILED
+  DELETING
+  DELETED
+}
+
+model Media {
+  id           String            @id @default(uuid())
+  ownerId      String            @map("owner_id")
+  purpose      MediaPurpose
+  resourceType MediaResourceType @map("resource_type")
+  deliveryType MediaDeliveryType @map("delivery_type")
+
+  // Cloudinary references – never store a full URL
+  publicId     String            @unique @map("public_id")
+  assetId      String?           @map("asset_id")
+  version      BigInt?
+  format       String?
+  bytes        Int?
+  width        Int?
+  height       Int?
+  durationSec  Float?            @map("duration_sec")
+  etag         String?
+
+  status        MediaStatus @default(PENDING)
+  failureReason String?     @map("failure_reason")
+
+  // idempotency key for webhook deduplication: assetId + version (set once READY)
+  idempotencyKey String?    @unique @map("idempotency_key")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  readyAt   DateTime? @map("ready_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  attachments MediaAttachment[]
+
+  @@index([ownerId, purpose])
+  @@index([status, createdAt])
+  @@map("media")
+}
+
+// Polymorphic join: one Media can be attached to many entities (listing, profile, etc.)
+model MediaAttachment {
+  id         String @id @default(uuid())
+  mediaId    String @map("media_id")
+  entityType String @map("entity_type") // "listing" | "user" | "provider_page" etc.
+  entityId   String @map("entity_id")
+  role       String // "photo" | "avatar" | "document" | "video"
+  position   Int    @default(0) // ordering within a role
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, entityType, entityId, role])
+  @@index([entityType, entityId, role, position])
+  @@map("media_attachments")
+}
+
+// Access-log for sensitive media (delivery type PRIVATE / AUTHENTICATED)
+model MediaAccessLog {
+  id        String   @id @default(uuid())
+  mediaId   String   @map("media_id")
+  accessorId String  @map("accessor_id")
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([mediaId])
+  @@index([accessorId])
+  @@map("media_access_logs")
+}
+
+// Relation back-reference on User
+// (we need to extend the User model to include the media relation)
