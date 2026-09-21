@@ -11,14 +11,23 @@ dns.setDefaultResultOrder('ipv4first');
 
 const logger = new Logger('Bootstrap');
 
+function normalizeOrigin(origin: string): string {
+  return origin.replace(/\/+$/, '');
+}
+
 function getAllowedOrigins(): string[] {
-  const testingUrl =
-    process.env.FRONTEND_URL_TESTING?.trim() || 'http://localhost:3000';
-  const productionUrl = process.env.FRONTEND_URL_PRODUCTION?.trim();
-  const swaggerUrl = process.env.FRONTEND_URL_SWAGGER?.trim();
+  const testingUrl = normalizeOrigin(
+    process.env.FRONTEND_URL_TESTING?.trim() || 'http://localhost:3000',
+  );
+  const productionUrl = normalizeOrigin(
+    process.env.FRONTEND_URL_PRODUCTION?.trim() || '',
+  );
+  const swaggerUrl = normalizeOrigin(
+    process.env.FRONTEND_URL_SWAGGER?.trim() || '',
+  );
   const extraOrigins =
     process.env.CORS_ORIGINS?.split(',')
-      .map((origin) => origin.trim())
+      .map((origin) => normalizeOrigin(origin.trim()))
       .filter(Boolean) ?? [];
 
   const origins = [productionUrl, testingUrl, swaggerUrl, ...extraOrigins].filter(
