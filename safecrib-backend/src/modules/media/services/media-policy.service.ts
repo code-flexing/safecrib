@@ -11,7 +11,7 @@ import {
   PURPOSE_POLICIES,
   type PurposePolicy,
 } from '../policies/purpose-policies.js';
-import type { MediaRepository } from '../media.repository.js';
+import { MediaRepository } from '../media.repository.js';
 
 @Injectable()
 export class MediaPolicyService {
