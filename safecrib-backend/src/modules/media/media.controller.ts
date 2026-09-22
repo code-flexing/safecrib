@@ -28,6 +28,7 @@ import { MediaService } from './services/media.service.js';
 import {
   ConfirmUploadDto,
   GetSignedUrlDto,
+  RequestProfileImageSignatureDto,
   RequestUploadSignatureDto,
 } from './dto/media.dto.js';
 import {
@@ -45,6 +46,32 @@ export class MediaController {
     private readonly mediaService: MediaService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
+
+  @Post('profile-picture/upload-signature')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Request a signed profile-picture upload payload' })
+  async requestProfilePictureSignature(
+    @CurrentUser() user: { id: string },
+    @Body() dto: RequestProfileImageSignatureDto,
+  ) {
+    return this.mediaService.requestUploadSignature(user.id, {
+      ...dto,
+      purpose: 'AVATAR',
+    });
+  }
+
+  @Post('cover-photo/upload-signature')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Request a signed profile cover-photo upload payload' })
+  async requestCoverPhotoSignature(
+    @CurrentUser() user: { id: string },
+    @Body() dto: RequestProfileImageSignatureDto,
+  ) {
+    return this.mediaService.requestUploadSignature(user.id, {
+      ...dto,
+      purpose: 'COVER_PHOTO',
+    });
+  }
 
   // ─── POST /media/upload-signature ─────────────────────────────────────────
 

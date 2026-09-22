@@ -427,6 +427,7 @@ enum DuplicateFlagStatus {
 
 enum MediaPurpose {
   AVATAR
+  COVER_PHOTO
   LISTING_PHOTO
   LISTING_VIDEO
   PROVIDER_LOGO

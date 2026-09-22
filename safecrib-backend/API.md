@@ -4,17 +4,41 @@ All endpoints are under `/api/v1/`.
 
 ## Authentication
 
-JWT Bearer tokens are required for protected routes. `POST /auth/register` submits the basic Tier 1 profile for admin review; it does not issue tokens until approval. `POST /auth/login` issues tokens only for an approved account.
+JWT Bearer tokens are required for protected routes. Use the access token as `Authorization: Bearer <accessToken>`. Registration and login are available before student-profile approval; approval is required only for protected marketplace actions such as bookings and reviews.
+
+### Frontend auth flow
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/register` | No | Create a student account. Body: `{ email, password, displayName? }` |
+| POST | `/auth/login` | No | Return `{ accessToken, refreshToken }` |
+| POST | `/auth/refresh` | No | Exchange `{ refreshToken }` for a new token pair |
+| POST | `/auth/logout` | No | Revoke `{ refreshToken }` |
+| POST | `/auth/forgot-password` | No | Request a password-reset email with `{ email }` |
+| POST | `/auth/reset-password` | No | Reset with `{ token, password }` |
+| GET | `/users/me` | Yes | Current user plus full linked student profile, including `profilePicture` and review status |
+| PATCH | `/users/me` | Yes | Update the account display name |
+| POST | `/users/me/change-password` | Yes | Change password with `{ currentPassword, newPassword }` |
+
+### Student profile flow
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/student-profiles/me` | Student | Current submitted profile/review record, or `null` before submission |
+| GET | `/student-profiles/status` | Student | `{ status, profile }`; status is `NOT_SUBMITTED`, `PENDING`, `APPROVED`, or `REJECTED` |
+| POST | `/student-profiles/complete` | Student | Submit or resubmit the full student profile for review |
+
+These student-profile endpoints work before approval. Booking and review endpoints still require an `APPROVED` student profile.
 
 ## Student / Basic Account
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/auth/register` | Submit the basic profile with Tier 1 documents for review |
+| POST | `/auth/register` | Create a minimal student account |
 | POST | `/student-profiles/signup` | Submit the same basic profile for review |
 | GET | `/student-profiles/me` | Get the current user's basic submission |
 | GET | `/student-profiles/submissions/:id` | Get a submission by review queue ID |
-| POST | `/auth/login` | Log in after approval |
+| POST | `/auth/login` | Log in and receive tokens |
 | POST | `/auth/refresh` | Refresh an access token |
 | POST | `/auth/forgot-password` | Send reset email |
 | POST | `/auth/reset-password` | Reset password |
@@ -39,6 +63,29 @@ JWT Bearer tokens are required for protected routes. `POST /auth/register` submi
 | GET | `/trust/me` | Your trust score |
 | GET | `/trust/users/:userId` | Public trust score |
 | POST | `/fraud/reports` | Submit fraud report |
+
+## Profile pictures and cover photos
+
+Uploads use a signed direct-to-Cloudinary flow. The frontend does not send the image binary to the API.
+
+1. Request a signature using one of these endpoints with `{ contentType, sizeBytes }`:
+
+| Method | Path | Purpose | Limit |
+|---|---|---|---|
+| POST | `/media/profile-picture/upload-signature` | Profile picture/avatar | JPEG, PNG, WebP, GIF; 5 MB |
+| POST | `/media/cover-photo/upload-signature` | Profile cover photo | JPEG, PNG, WebP; 10 MB |
+
+2. POST the returned `uploadPayload` to Cloudinary using its `api_key`, `timestamp`, `signature`, `public_id`, `folder`, and `upload_preset` fields plus the file.
+
+3. Confirm the upload after Cloudinary returns its asset metadata:
+
+`POST /media/:mediaId/confirm` with `{ assetId, version, format, bytes, width, height, etag }`. The webhook normally marks the asset ready; confirmation is an idempotent fallback.
+
+4. Read the finished image with `GET /media/:mediaId/access`. For profile images this returns a permanent CDN URL. Use `?transformation=avatar_sm` or `avatar_md` for profile-picture sizing.
+
+5. Send the returned media URL or public asset reference in `profilePicture` when calling `/student-profiles/complete`. Cover photos are represented by the returned media record and accessed by its `mediaId`.
+
+The generic `POST /media/upload-signature` also accepts `purpose: AVATAR` or `purpose: COVER_PHOTO`.
 
 ## Agent / Landlord Pages
 

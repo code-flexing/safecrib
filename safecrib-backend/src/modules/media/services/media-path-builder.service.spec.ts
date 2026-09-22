@@ -19,6 +19,7 @@ describe('MediaPathBuilder', () => {
   describe('buildFolder', () => {
     it.each([
       ['AVATAR', 'prod/users/avatar/user_123'],
+      ['COVER_PHOTO', 'prod/users/cover-photo/user_123'],
       ['LISTING_PHOTO', 'prod/listings/photo/listing_xyz'],
       ['LISTING_VIDEO', 'prod/listings/video/listing_xyz'],
       ['PROVIDER_LOGO', 'prod/providers/logo/provider_abc'],
@@ -63,6 +64,7 @@ describe('MediaPathBuilder', () => {
   describe('uploadPresetName', () => {
     it.each([
       ['AVATAR', 'sc_avatar'],
+      ['COVER_PHOTO', 'sc_cover_photo'],
       ['LISTING_PHOTO', 'sc_photo'],
       ['LISTING_VIDEO', 'sc_video'],
       ['PROOF_OF_STUDENTSHIP', 'sc_proof_of_studentship'],

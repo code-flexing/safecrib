@@ -20,6 +20,7 @@ import type {
 
 export const MEDIA_PURPOSE_VALUES = [
   'AVATAR',
+  'COVER_PHOTO',
   'LISTING_PHOTO',
   'LISTING_VIDEO',
   'PROVIDER_LOGO',
@@ -28,6 +29,19 @@ export const MEDIA_PURPOSE_VALUES = [
   'PROOF_OF_LICENSE',
   'CONTRACT_DOCUMENT',
 ] as const;
+
+export class RequestProfileImageSignatureDto {
+  @ApiProperty({ example: 'image/jpeg' })
+  @IsString()
+  @MaxLength(100)
+  contentType: string;
+
+  @ApiProperty({ example: 2097152 })
+  @IsInt()
+  @Min(1)
+  @Max(5 * 1024 * 1024)
+  sizeBytes: number;
+}
 
 // ─── Request DTOs ────────────────────────────────────────────────────────────
 

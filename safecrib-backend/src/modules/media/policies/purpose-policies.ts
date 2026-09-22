@@ -27,6 +27,15 @@ export const PURPOSE_POLICIES: Record<MediaPurpose, PurposePolicy> = {
     maxPendingPerUser: 2,
     label: 'Profile avatar',
   },
+  COVER_PHOTO: {
+    purpose: 'COVER_PHOTO',
+    resourceType: 'IMAGE',
+    deliveryType: 'UPLOAD',
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    maxBytes: 10 * MB,
+    maxPendingPerUser: 2,
+    label: 'Profile cover photo',
+  },
   LISTING_PHOTO: {
     purpose: 'LISTING_PHOTO',
     resourceType: 'IMAGE',

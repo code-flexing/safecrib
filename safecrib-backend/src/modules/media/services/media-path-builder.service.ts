@@ -24,6 +24,7 @@ export class MediaPathBuilder {
   /** Maps each purpose to the domain segment of the path */
   private static readonly PURPOSE_DOMAIN: Record<MediaPurpose, string> = {
     AVATAR: 'users',
+    COVER_PHOTO: 'users',
     LISTING_PHOTO: 'listings',
     LISTING_VIDEO: 'listings',
     PROVIDER_LOGO: 'providers',
@@ -36,6 +37,7 @@ export class MediaPathBuilder {
   /** Maps each purpose to the sub-folder within the domain */
   private static readonly PURPOSE_SLUG: Record<MediaPurpose, string> = {
     AVATAR: 'avatar',
+    COVER_PHOTO: 'cover-photo',
     LISTING_PHOTO: 'photo',
     LISTING_VIDEO: 'video',
     PROVIDER_LOGO: 'logo',

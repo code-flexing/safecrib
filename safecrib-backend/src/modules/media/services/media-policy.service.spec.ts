@@ -33,6 +33,16 @@ describe('MediaPolicyService', () => {
       expect(policy.purpose).toBe('AVATAR');
     });
 
+    it('passes for valid COVER_PHOTO upload', async () => {
+      const policy = await service.validateUploadRequest(
+        'user_1',
+        'COVER_PHOTO',
+        'image/webp',
+        5 * 1024 * 1024,
+      );
+      expect(policy.purpose).toBe('COVER_PHOTO');
+    });
+
     it('throws BadRequestException for disallowed MIME type', async () => {
       await expect(
         service.validateUploadRequest('user_1', 'AVATAR', 'video/mp4', 1024),
@@ -79,6 +89,7 @@ describe('MediaPolicyService', () => {
   describe('requiresSignedUrl', () => {
     it.each<[MediaPurpose, boolean]>([
       ['AVATAR', false],
+      ['COVER_PHOTO', false],
       ['LISTING_PHOTO', false],
       ['LISTING_VIDEO', false],
       ['STUDENT_ID', true],

@@ -11,6 +11,7 @@ import { PUBLIC_KEY } from './public.decorator.js';
 import type { Role } from './roles.decorator.js';
 import type { Request } from 'express';
 import { PrismaService } from '../infra/prisma/prisma.service.js';
+import { STUDENT_PROFILE_APPROVED_KEY } from './student-profile.decorator.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -64,8 +65,11 @@ export class RolesGuard implements CanActivate {
       );
     }
 
-    // Enforce approved-student profile for any route that requires the STUDENT role.
-    if (requiredRoles.includes('STUDENT') && user.role === 'STUDENT') {
+    const requiresApprovedStudent = this.reflector.getAllAndOverride<boolean>(
+      STUDENT_PROFILE_APPROVED_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (requiresApprovedStudent && user.role === 'STUDENT') {
       const profile = await this.prisma.studentProfile.findUnique({
         where: { userId: user.id },
         select: { status: true },

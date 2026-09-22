@@ -61,4 +61,7 @@ export class UserResponseDto {
 
   @ApiPropertyOptional({ description: 'Student profile verification status' })
   studentProfileStatus?: string | null;
+
+  @ApiPropertyOptional({ description: 'Linked student profile, including profile picture and review fields' })
+  studentProfile?: Record<string, unknown> | null;
 }
