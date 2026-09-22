@@ -323,6 +323,39 @@ export class MailService {
     );
   }
 
+  async sendProviderContactEmail(
+    to: string,
+    studentName: string,
+    studentEmail: string,
+    message: string,
+    listingTitle?: string,
+  ): Promise<void> {
+    const appName = this.configService.get<string>('API_NAME') || 'SafeCrib';
+    const appUrl = this.configService.get<string>('FRONTEND_URL_PRODUCTION')
+      || this.configService.get<string>('FRONTEND_URL_TESTING')
+      || 'http://localhost:3000';
+    const subjectContext = listingTitle ? ` about ${listingTitle}` : '';
+    const body = `<p style="margin:0;color:#59677a;font-size:15px;line-height:1.65;"><strong>${escapeHtml(studentName)}</strong> (${escapeHtml(studentEmail)}) sent you a message${escapeHtml(subjectContext)}:</p><div style="margin-top:18px;padding:16px;border-left:3px solid #2563eb;background:#f7f9fc;color:#172033;font-size:15px;line-height:1.65;white-space:pre-wrap;">${escapeHtml(message)}</div>`;
+
+    await this.sendMail(
+      to,
+      `${escapeHtml(studentName)} contacted you on ${appName}`,
+      this.renderEmail({
+        appName,
+        appUrl,
+        preheader: 'A student sent you a message through SafeCrib.',
+        eyebrow: 'NEW PROVIDER CONTACT',
+        title: 'A student wants to connect',
+        intro: 'A verified SafeCrib student contacted your provider Page.',
+        body,
+        ctaLabel: 'Open SafeCrib',
+        ctaUrl: appUrl,
+        tone: 'default',
+        secondary: 'Reply directly to the student email above to continue the conversation.',
+      }),
+    );
+  }
+
   private renderEmail(options: EmailTemplateOptions): string {
     const tone = options.tone ?? 'default';
     const tones = {

@@ -15,8 +15,10 @@ import { TrustService } from '../trust/trust.service.js';
 import type { ProviderProfileSubmission } from '../../common/types.js';
 import type {
   CreateProviderPageDto,
+  ContactProviderDto,
   UpdateProviderPageDto,
 } from './dto/provider-page.dto.js';
+import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
 
 @Injectable()
 export class ProviderPagesService {
@@ -25,11 +27,18 @@ export class ProviderPagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
+    private readonly studentProfiles: StudentProfileService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
   ) {}
 
   async getMine(ownerId: string) {
-    return this.prisma.providerPage.findUnique({ where: { ownerId } });
+    const page = await this.prisma.providerPage.findUnique({ where: { ownerId } });
+    if (!page) return null;
+    return {
+      ...page,
+      status: page.verificationState,
+      rejectionReason: page.verificationState === 'REJECTED' ? page.verificationNotes : null,
+    };
   }
 
   async create(ownerId: string, dto: CreateProviderPageDto) {
@@ -172,6 +181,51 @@ export class ProviderPagesService {
     });
 
     return { ...updated, reviewQueueId: reviewId };
+  }
+
+  async contact(pageId: string, studentId: string, dto: ContactProviderDto) {
+    await this.studentProfiles.requireApprovedStudent(studentId);
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { email: true, displayName: true },
+    });
+    const page = await this.prisma.providerPage.findUnique({
+      where: { id: pageId },
+      include: { owner: { select: { email: true } } },
+    });
+    if (!student) throw new NotFoundException('User not found');
+    if (!page || page.verificationState !== 'VERIFIED') {
+      throw new NotFoundException('Verified provider Page not found');
+    }
+    if (page.owner.email === student.email) {
+      throw new BadRequestException('You cannot contact your own provider Page');
+    }
+
+    let listingTitle: string | undefined;
+    if (dto.listingId) {
+      const listing = await this.prisma.listing.findFirst({
+        where: { id: dto.listingId, providerPageId: pageId, status: 'VERIFIED' },
+        select: { title: true },
+      });
+      if (!listing) throw new NotFoundException('Listing not found for this provider Page');
+      listingTitle = listing.title;
+    }
+
+    await this.emailQueue.add('provider-contact-email', {
+      type: 'provider-contact',
+      to: page.owner.email,
+      studentName: student.displayName?.trim() || 'A SafeCrib student',
+      studentEmail: student.email,
+      message: dto.message.trim(),
+      ...(listingTitle ? { listingTitle } : {}),
+    }, {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 1000 },
+      removeOnComplete: true,
+      removeOnFail: false,
+    });
+
+    return { accepted: true, delivery: 'email' as const };
   }
 
   async listPending() {

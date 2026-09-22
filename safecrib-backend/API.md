@@ -24,7 +24,11 @@ JWT Bearer tokens are required for protected routes. `POST /auth/register` submi
 | POST | `/users/me/change-password` | Change password |
 | GET | `/users/me/trust` | Your trust score |
 | GET | `/listings` | Search listings |
+| GET | `/listings/my` | Get the authenticated provider's listings |
 | GET | `/listings/:id` | Listing details |
+| POST | `/listings/:id/bookmark` | Save a listing; returns `{ saved: true, listingId }` |
+| DELETE | `/listings/:id/bookmark` | Unsave a listing; returns `{ saved: false, listingId }` |
+| GET | `/listings/bookmarks` | Get saved listings in listing response shape |
 | POST | `/bookings` | Create booking hold |
 | PATCH | `/bookings/:id/confirm` | Confirm booking |
 | PATCH | `/bookings/:id/cancel` | Cancel booking |
@@ -47,8 +51,19 @@ JWT Bearer tokens are required for protected routes. `POST /auth/register` submi
 | GET | `/provider-pages/admin/pending` | List pending Tier 2 Pages |
 | PATCH | `/provider-pages/:id/verify` | Approve a Tier 2 Page |
 | PATCH | `/provider-pages/:id/reject` | Reject a Tier 2 Page with a reason |
+| POST | `/providers/:id/contact` | Email a verified provider from an approved student account |
 
 Tier 2 submissions require a license/authorization reference, a profile picture, and at least one payout account. Payout account numbers are validated for supported providers.
+
+## Response contracts
+
+`GET /student-profiles/status` returns `{ status, profile }`. `status` is one of `NOT_SUBMITTED`, `PENDING`, `APPROVED`, or `REJECTED`. `profile` is `null` when the student has not submitted a profile; otherwise it includes the submitted profile fields and `rejectionReason` when rejected.
+
+`GET /provider-pages/me` returns the Page fields plus `status` (`DRAFT`, `SUBMITTED`, `VERIFIED`, or `REJECTED`) and `rejectionReason` (the review reason or `null`). Account approval and Page approval are independent.
+
+Listing responses include `id`, `title`, `description`, `price`, `lat`, `lng`, `campus`, `address`, `status`, `ownerId`, `photos`, `createdAt`, and `updatedAt`. Each photo contains `url` and `phash`.
+
+`POST /providers/:id/contact` is email-only for now. An approved student sends `{ "message": "...", "listingId": "optional-listing-id" }`; the provider receives an email and the response is `{ "accepted": true, "delivery": "email" }`. It does not create in-app messages.
 
 ## Admin Review
 

@@ -203,6 +203,32 @@ export class ListingsService {
     return listings.map((l) => this.toResponse(l, l.photos));
   }
 
+  async bookmark(listingId: string, userId: string) {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException('Listing not found');
+
+    await this.prisma.bookmark.upsert({
+      where: { userId_listingId: { userId, listingId } },
+      create: { userId, listingId },
+      update: {},
+    });
+    return { saved: true, listingId };
+  }
+
+  async unbookmark(listingId: string, userId: string) {
+    await this.prisma.bookmark.deleteMany({ where: { userId, listingId } });
+    return { saved: false, listingId };
+  }
+
+  async getBookmarks(userId: string): Promise<ListingResponse[]> {
+    const bookmarks = await this.prisma.bookmark.findMany({
+      where: { userId },
+      include: { listing: { include: { photos: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return bookmarks.map(({ listing }) => this.toResponse(listing, listing.photos));
+  }
+
   async uploadPhoto(
     listingId: string,
     ownerId: string,

@@ -19,8 +19,9 @@ docker run -d --name postgres-safecrib \
   -e POSTGRES_DB=safecrib_dev \
   -p 5432:5432 postgres:16-alpine
 
-# Start Redis (Docker)
-docker run -d --name redis-safecrib -p 6379:6379 redis:7-alpine
+# Start Redis (Docker) with a durable queue policy
+docker run -d --name redis-safecrib -p 6379:6379 redis:7-alpine \
+   redis-server --maxmemory-policy noeviction
 
 # Apply database migrations
 npx prisma migrate dev
@@ -41,6 +42,7 @@ See `.env.example` for all available variables. Key ones:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `DIRECT_URL` | PostgreSQL connection for Prisma migrations |
 | `REDIS_URL` | Redis connection for BullMQ queues |
+| `REDIS_ENFORCE_NOEVICTION` | When `true`, verify/repair Redis `maxmemory-policy` at startup where the provider permits it |
 | `JWT_ACCESS_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
 | `BREVO_API_KEY` | Brevo transactional-email API key |
@@ -48,6 +50,11 @@ See `.env.example` for all available variables. Key ones:
 | `BREVO_SENDER_NAME` | Display name for transactional email |
 
 Before sending, verify the sender/domain in Brevo and keep the Brevo API key and sender address in the environment.
+
+Redis must use `maxmemory-policy noeviction`. For Render or another managed Redis
+provider, set this in the Redis service configuration; changing `REDIS_URL` in the
+web service cannot change a Redis server policy. After changing it, verify with
+`CONFIG GET maxmemory-policy` and restart the API and worker services.
 
 Brevo failures are logged with the HTTP status, Brevo error code/message, and
 Brevo request ID (when supplied), so delivery issues can be diagnosed without

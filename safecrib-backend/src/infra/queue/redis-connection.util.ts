@@ -13,6 +13,9 @@ export function parseRedisConnection(
     password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
     db: parsed.pathname && parsed.pathname.length > 1 ? Number(parsed.pathname.slice(1)) : undefined,
     tls: tls ? {} : undefined,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    retryStrategy: (times: number) => Math.min(times * 250, 5000),
   };
 
   return connection;

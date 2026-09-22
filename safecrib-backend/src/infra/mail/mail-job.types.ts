@@ -38,6 +38,15 @@ export interface LandlordRejectionEmailJobData {
   reason: string;
 }
 
+export interface ProviderContactEmailJobData {
+  type: 'provider-contact';
+  to: string;
+  studentName: string;
+  studentEmail: string;
+  message: string;
+  listingTitle?: string;
+}
+
 export type EmailJobData =
   | VerificationEmailJobData
   | PasswordResetEmailJobData
@@ -45,6 +54,7 @@ export type EmailJobData =
   | StudentApprovalEmailJobData
   | StudentRejectionEmailJobData
   | LandlordApprovalEmailJobData
-  | LandlordRejectionEmailJobData;
+  | LandlordRejectionEmailJobData
+  | ProviderContactEmailJobData;
 
   

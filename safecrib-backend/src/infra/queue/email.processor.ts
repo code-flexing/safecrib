@@ -42,6 +42,14 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
           await this.mailService.sendLandlordApprovalEmail(to);
         } else if (type === 'landlord-rejection') {
           await this.mailService.sendLandlordRejectionEmail(to, job.data.reason);
+        } else if (type === 'provider-contact') {
+          await this.mailService.sendProviderContactEmail(
+            to,
+            job.data.studentName,
+            job.data.studentEmail,
+            job.data.message,
+            job.data.listingTitle,
+          );
         } else {
           throw new Error(`Unknown email job type: ${type}`);
         }

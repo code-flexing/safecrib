@@ -206,3 +206,17 @@ export class ReviewProviderPageDto {
   @MaxLength(2000)
   reason?: string;
 }
+
+export class ContactProviderDto {
+  @ApiProperty({ example: 'Is this room still available for the next semester?' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(2000)
+  message: string;
+
+  @ApiPropertyOptional({ description: 'Listing the student is asking about' })
+  @IsOptional()
+  @IsString()
+  listingId?: string;
+}

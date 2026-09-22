@@ -55,6 +55,13 @@ export class ListingsController {
     return this.listingsService.getMyListings(user.id);
   }
 
+  @Get('bookmarks')
+  @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
+  @ApiOperation({ summary: 'Get my saved listings' })
+  getBookmarks(@CurrentUser() user: { id: string }) {
+    return this.listingsService.getBookmarks(user.id);
+  }
+
   @Get(':id')
   @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
   @ApiOperation({ summary: 'Get a listing by ID' })
@@ -63,6 +70,21 @@ export class ListingsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   getListings(@Param('id') id: string) {
     return this.listingsService.getListing(id);
+  }
+
+  @Post(':id/bookmark')
+  @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
+  @ApiOperation({ summary: 'Save a listing' })
+  bookmark(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.listingsService.bookmark(id, user.id);
+  }
+
+  @Delete(':id/bookmark')
+  @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove a saved listing' })
+  unbookmark(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.listingsService.unbookmark(id, user.id);
   }
 
   @Post()

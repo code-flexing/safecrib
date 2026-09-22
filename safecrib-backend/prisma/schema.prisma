@@ -34,6 +34,7 @@ model User {
   identityVerified Boolean  @default(false) @map("identity_verified")
   studentProfile  StudentProfile?
   media           Media[]
+  bookmarks       Bookmark[]
 
   @@index([role])
   @@map("users")
@@ -177,6 +178,7 @@ model Listing {
   photos  ListingPhoto[]
   bookings Booking[]
   fraudReports FraudReport[]
+  bookmarks Bookmark[]
   duplicateFlagsA DuplicateFlag[] @relation("DuplicateFlagsA")
   duplicateFlagsB DuplicateFlag[] @relation("DuplicateFlagsB")
 
@@ -263,6 +265,20 @@ model ListingPhoto {
   @@index([listingId])
   @@index([phash])
   @@map("listing_photos")
+}
+
+model Bookmark {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  listingId String   @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId, createdAt])
+  @@map("bookmarks")
 }
 
 model Booking {

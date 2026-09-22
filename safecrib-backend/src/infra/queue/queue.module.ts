@@ -12,6 +12,7 @@ import {
   TRUST_RECOMPUTE_QUEUE,
 } from './queue.constants.js';
 import { parseRedisConnection } from './redis-connection.util.js';
+import { RedisPolicyService } from './redis-policy.service.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { parseRedisConnection } from './redis-connection.util.js';
       { name: MEDIA_CLEANUP_QUEUE },
     ),
   ],
+  providers: [RedisPolicyService],
   exports: [BullModule],
 })
 export class QueueModule {}
