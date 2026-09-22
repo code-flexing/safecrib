@@ -114,16 +114,39 @@ Listing responses include `id`, `title`, `description`, `price`, `lat`, `lng`, `
 
 ## Admin Review
 
+Admin review covers both verification tracks:
+
+- `entityType: "student_profile"` is a student account submission.
+- `entityType: "provider_page"` is an agent account submission. The submitted
+	Page may have `providerType: "AGENT"` or `providerType: "LANDLORD"`; both are
+	reviewed in the same provider/agent queue and should not be treated as a
+	separate admin product.
+
+The frontend route `/admin/login` uses `POST /auth/login` because the backend
+currently has one login endpoint. After login, it must call `POST /auth/me` and
+allow access only when the response has `role: "ADMIN"`; there is no admin
+signup flow. Every review request must still send the admin bearer token because
+the API enforces `ADMIN` authorization server-side.
+
 | Method | Path | Description |
 |---|---|---|
-| GET | `/admin/review-queue` | List all Tier 1 and Tier 2 review submissions |
+| POST | `/auth/login` | Admin login transport; frontend follows with `POST /auth/me` and accepts only `role: ADMIN` |
+| POST | `/admin/create` | Create another admin account; existing admin bearer token required |
+| POST | `/auth/logout` | Revoke the stored admin refresh token |
+| POST | `/admin/onboard` | Exceptional manual onboarding; creates an already-verified provider account, not an admin and not a Page review |
+| GET | `/admin/review-queue` | List student and provider/agent submissions; optional `status` and `tier` filters |
 | GET | `/admin/review-queue/:id` | Get one submission and its submitted data |
 | POST | `/admin/review` | Approve or reject a submission; rejection requires `reason` |
-| POST | `/admin/onboard` | Manually onboard an agent/landlord |
+| GET | `/provider-pages/admin/pending` | Direct provider Page pending list; admin only |
+| PATCH | `/provider-pages/:id/verify` | Directly approve a submitted provider Page; admin only |
+| PATCH | `/provider-pages/:id/reject` | Directly reject a submitted provider Page; admin only |
 | PATCH | `/admin/users/:id/verify-identity` | Verify identity |
 | GET | `/admin/users` | List all users |
 | GET | `/admin/users/:id` | User detail with trust events |
 | PATCH | `/admin/listings/:id/flag` | Flag listing for review |
+
+For the frontend request/response flow, see
+[`docs/admin-review-frontend.md`](docs/admin-review-frontend.md).
 | GET | `/fraud/reports` | List all fraud reports |
 | GET | `/fraud/reports/pending` | Pending reports |
 | PATCH | `/fraud/reports/:id/resolve` | Resolve fraud report |

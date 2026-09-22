@@ -11,7 +11,7 @@ import * as argon2 from 'argon2';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { TrustService } from '../trust/trust.service.js';
-import type { OnboardAgentDto } from './dto/admin.dto.js';
+import type { CreateAdminDto, OnboardAgentDto } from './dto/admin.dto.js';
 import type { IdentityVerificationDto } from './dto/admin.dto.js';
 import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { Role } from '../../common/roles.decorator.js';
@@ -26,6 +26,43 @@ export class AdminService {
     private readonly trustService: TrustService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
   ) {}
+
+  async createAdmin(dto: CreateAdminDto) {
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await argon2.hash(dto.password, {
+      type: argon2.argon2id,
+      timeCost: 3,
+      memoryCost: 8192,
+      parallelism: 2,
+    });
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName: dto.displayName?.trim() || null,
+        role: 'ADMIN',
+        emailVerified: true,
+        identityVerified: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        role: true,
+        emailVerified: true,
+        identityVerified: true,
+      },
+    });
+
+    return { ...user, message: 'Admin account created successfully' };
+  }
 
   async onboardAgent(dto: OnboardAgentDto) {
     const existing = await this.prisma.user.findUnique({

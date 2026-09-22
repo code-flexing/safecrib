@@ -32,6 +32,24 @@ export class OnboardAgentDto {
   role?: Role;
 }
 
+export class CreateAdminDto {
+  @ApiProperty({ example: 'reviewer@safecrib.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'AdminSecure123!', minLength: 8 })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password: string;
+
+  @ApiPropertyOptional({ example: 'SafeCrib Reviewer' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  displayName?: string;
+}
+
 export class IdentityVerificationDto {
   @ApiProperty({ example: 'user-123' })
 

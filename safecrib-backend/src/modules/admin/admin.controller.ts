@@ -8,7 +8,7 @@ import {
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AdminService } from './admin.service.js';
-import { OnboardAgentDto } from './dto/admin.dto.js';
+import { CreateAdminDto, OnboardAgentDto } from './dto/admin.dto.js';
 import { IdentityVerificationDto } from './dto/admin.dto.js';
 import { ReviewSubmissionActionDto } from './dto/review.dto.js';
 
@@ -17,6 +17,17 @@ import { ReviewSubmissionActionDto } from './dto/review.dto.js';
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Post('create')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Create another admin account (admin only)' })
+  @ApiResponse({ status: 201, description: 'Admin account created' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Admin only' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  createAdmin(@Body() dto: CreateAdminDto) {
+    return this.adminService.createAdmin(dto);
+  }
 
   @Post('onboard')
   @Roles('ADMIN')
