@@ -68,9 +68,13 @@ export class MailService {
       return;
     }
 
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), 15000);
+
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
+        signal: abortController.signal,
         headers: {
           accept: 'application/json',
           'content-type': 'application/json',
@@ -107,6 +111,8 @@ export class MailService {
         `Failed to send email to ${to}: ${(error as Error).message}`,
       );
       throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -167,23 +173,44 @@ export class MailService {
 
     await this.sendMail(
       to,
-      `Welcome to ${appName}`,
+      `Welcome to ${appName}, ${name}! 🎓`,
       this.renderEmail({
         appName,
         appUrl,
-        preheader: 'Your SafeCrib account is ready. Start finding a home you can trust.',
-        eyebrow: 'WELCOME TO SAFECRIB',
-        title: `Welcome, ${name}`,
-        intro: 'Your account is ready. SafeCrib brings verified student accommodation, transparent provider profiles, and protected booking holds into one calm experience.',
+        preheader: 'Welcome to SafeCrib — your trusted home for verified student accommodation is just a click away.',
+        eyebrow: 'WELCOME ABOARD',
+        title: `Welcome, ${name}!`,
+        intro: 'Your SafeCrib account is now active. You are just a few steps away from finding a student home you can truly trust — no hidden fees, no risky deposits, no guesswork.',
         body: this.renderFeatureGrid([
-          { title: 'Verified homes', text: 'Browse listings that have passed our review checks.' },
-          { title: 'Protected holds', text: 'Request a booking hold without paying a risky deposit.' },
-          { title: 'Trusted providers', text: 'See provider identity and verification details before you commit.' },
+          {
+            title: '🔍 Verified homes only',
+            text: 'Every listing on SafeCrib passes our quality and safety checks. Live near campus with confidence — photos, prices, and provider details are double-verified.',
+          },
+          {
+            title: '🔒 Protected booking holds',
+            text: 'Found a room you love? Request a booking hold without paying a risky deposit upfront. We hold the space for you while you review every detail.',
+          },
+          {
+            title: '🏆 Trusted provider profiles',
+            text: 'See verified provider identity, licenses, reviews from other students, and trust scores before you commit to anything.',
+          },
+          {
+            title: '📱 Real-time booking updates',
+            text: 'Track every step of your booking — from hold to contract to move-in — all in one place with real-time notifications.',
+          },
+          {
+            title: '💬 Direct student-provider messaging',
+            text: 'Ask questions, request viewings, and communicate securely through SafeCrib. Your contact details stay private until you are ready.',
+          },
+          {
+            title: '🌟 Build your trust profile',
+            text: 'Complete your profile, get it verified, and unlock higher trust scores. More trust means more booking options and faster responses.',
+          },
         ]),
-        ctaLabel: 'Start exploring',
+        ctaLabel: 'Start finding your home',
         ctaUrl: appUrl,
         tone: 'success',
-        secondary: 'Need help? Reply to this email and the SafeCrib team will point you in the right direction.',
+        secondary: 'Questions? Reply to this email or visit our Help Center — we usually respond within a few hours. Safe travels on the hunt for your next home. 🏠',
       }),
     );
   }
@@ -342,8 +369,14 @@ export class MailService {
   }
 
   private renderFeatureGrid(features: Array<{ title: string; text: string }>): string {
-    const cells = features.map((feature) => `<td width="33%" valign="top" style="padding:0 10px 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e4e9f1;border-radius:12px;background:#fbfcfe;"><tr><td style="padding:16px;"><div style="width:28px;height:3px;border-radius:3px;background:#2563eb;margin-bottom:13px;"></div><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;color:#172033;line-height:1.35;">${escapeHtml(feature.title)}</div><div style="margin-top:7px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.55;color:#667085;">${escapeHtml(feature.text)}</div></td></tr></table></td>`).join('');
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:26px;border-top:1px solid #edf0f5;padding-top:24px;"><tr>${cells}</tr></table>`;
+    const chunkSize = 3;
+    const rows: string[] = [];
+    for (let i = 0; i < features.length; i += chunkSize) {
+      const chunk = features.slice(i, i + chunkSize);
+      const cells = chunk.map((feature) => `<td width="33%" valign="top" style="padding:0 10px 0 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e4e9f1;border-radius:12px;background:#fbfcfe;"><tr><td style="padding:16px;"><div style="width:28px;height:3px;border-radius:3px;background:#2563eb;margin-bottom:13px;"></div><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;color:#172033;line-height:1.35;">${escapeHtml(feature.title)}</div><div style="margin-top:7px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.55;color:#667085;">${escapeHtml(feature.text)}</div></td></tr></table></td>`).join('');
+      rows.push(`<tr>${cells}</tr>`);
+    }
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:26px;border-top:1px solid #edf0f5;padding-top:24px;">${rows.join('')}</table>`;
   }
 
   private renderReasonBox(reason: string): string {

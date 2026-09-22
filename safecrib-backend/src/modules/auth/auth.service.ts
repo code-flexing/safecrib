@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,8 @@ import type { JwtPayload } from './strategies/jwt.strategy.js';
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
+const EMAIL_JOB_ATTEMPTS = 5;
+const EMAIL_JOB_BACKOFF_DELAY = 1000;
 
 export interface AuthTokens {
   accessToken: string;
@@ -29,6 +32,8 @@ export interface AuthTokens {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -61,7 +66,21 @@ export class AuthService {
       },
     });
 
-    return { message: 'Registration successful. You can log in now.', userId: user.id };
+    await this.enqueueEmail(
+      'welcome-email',
+      {
+        type: 'welcome',
+        to: email,
+        displayName: user.displayName,
+      },
+      `welcome email for ${email}`,
+    );
+
+    return {
+      message:
+        'Registration successful. A welcome email has been sent to your address.',
+      userId: user.id,
+    };
   }
 
   async verifyEmail(token: string): Promise<{ message: string }> {
@@ -168,10 +187,15 @@ export class AuthService {
       },
     });
 
-    await this.emailQueue.add('password-reset-email', {
-      to: user.email,
-      token: resetToken,
-    });
+    await this.enqueueEmail(
+      'password-reset-email',
+      {
+        type: 'password-reset',
+        to: user.email,
+        token: resetToken,
+      },
+      `password-reset for ${user.email}`,
+    );
 
     return { message: 'If an account exists, a password reset email has been sent.' };
   }
@@ -255,16 +279,27 @@ export class AuthService {
     return tokens;
   }
 
-  private async enqueueEmail(name: string, data: Record<string, unknown>): Promise<void> {
+  private async enqueueEmail(
+    name: string,
+    data: Record<string, unknown>,
+    description: string,
+  ): Promise<void> {
+    const to = data.to as string | undefined;
+    const jobId = to ? `email:${name}:${to}` : undefined;
     try {
       await this.emailQueue.add(name, data, {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 1000 },
+        attempts: EMAIL_JOB_ATTEMPTS,
+        backoff: { type: 'exponential', delay: EMAIL_JOB_BACKOFF_DELAY },
         removeOnComplete: true,
         removeOnFail: false,
+        jobId,
       });
+      this.logger.log(`Queued email: ${description}`);
     } catch (error) {
-      console.error(`Unable to queue ${name}: ${(error as Error).message}`);
+      this.logger.error(
+        `Unable to queue email (${name}) for ${to ?? 'unknown'}: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
     }
   }
 }

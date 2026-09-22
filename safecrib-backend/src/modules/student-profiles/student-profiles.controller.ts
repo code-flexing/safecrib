@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/public.decorator.js';
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
@@ -32,11 +33,13 @@ export class StudentProfilesController {
 
   @Post('complete')
   @Roles('STUDENT')
+  @Throttle({ default: { limit: 5, ttl: 3_600_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Complete your student profile and submit for admin review' })
   @ApiResponse({ status: 201, description: 'Profile submitted for review' })
   @ApiResponse({ status: 409, description: 'Already pending or approved' })
   @ApiResponse({ status: 403, description: 'Not a student account' })
+  @ApiResponse({ status: 429, description: 'Too many submissions' })
   completeProfile(
     @CurrentUser() user: { id: string },
     @Body() dto: CompleteStudentProfileDto,

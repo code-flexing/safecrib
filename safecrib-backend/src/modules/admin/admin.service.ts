@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -18,6 +19,8 @@ import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js'
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
@@ -432,9 +435,13 @@ export class AdminService {
         backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: true,
         removeOnFail: false,
+        jobId: `email:${type}:${to}`,
       })
       .catch((error) => {
-        console.error(`Unable to queue ${type}: ${(error as Error).message}`);
+        this.logger.error(
+          `Unable to queue ${type} email for ${to}: ${(error as Error).message}`,
+          (error as Error).stack,
+        );
       });
   }
 }

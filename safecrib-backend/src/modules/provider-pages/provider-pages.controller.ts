@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import {
@@ -23,6 +24,7 @@ export class ProviderPagesController {
 
   @Post()
   @Roles('STUDENT', 'AGENT', 'LANDLORD')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Create or replace a rejected provider Page' })
   create(@CurrentUser() user: { id: string }, @Body() dto: CreateProviderPageDto) {
     return this.pages.create(user.id, dto);
@@ -30,6 +32,7 @@ export class ProviderPagesController {
 
   @Patch('me')
   @Roles('STUDENT', 'AGENT', 'LANDLORD')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Update a draft or rejected provider Page' })
   update(@CurrentUser() user: { id: string }, @Body() dto: UpdateProviderPageDto) {
     return this.pages.update(user.id, dto);
@@ -37,6 +40,7 @@ export class ProviderPagesController {
 
   @Post('me/submit')
   @Roles('STUDENT', 'AGENT', 'LANDLORD')
+  @Throttle({ default: { limit: 5, ttl: 3_600_000 } })
   submit(@CurrentUser() user: { id: string }) {
     return this.pages.submit(user.id);
   }

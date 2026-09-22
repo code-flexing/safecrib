@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { MailModule } from './infra/mail/mail.module.js';
@@ -31,15 +32,27 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [
-          {
-            name: 'short',
-            ttl: config.get<number>('THROTTLE_TTL') || 60,
-            limit: config.get<number>('THROTTLE_LIMIT') || 10,
-          },
-        ],
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379';
+
+        const shortTtl = (config.get<number>('THROTTLE_TTL') || 60) * 1000;
+        const shortLimit = config.get<number>('THROTTLE_LIMIT') || 10;
+
+        const authTtl = (config.get<number>('THROTTLE_AUTH_TTL') || 60) * 1000;
+        const authLimit = config.get<number>('THROTTLE_AUTH_LIMIT') || 5;
+
+        const strictTtl = (config.get<number>('THROTTLE_STRICT_TTL') || 3600) * 1000;
+        const strictLimit = config.get<number>('THROTTLE_STRICT_LIMIT') || 3;
+
+        return {
+          throttlers: [
+            { name: 'short', ttl: shortTtl, limit: shortLimit },
+            { name: 'auth', ttl: authTtl, limit: authLimit },
+            { name: 'strict', ttl: strictTtl, limit: strictLimit },
+          ],
+          storage: new ThrottlerStorageRedisService(redisUrl),
+        };
+      },
     }),
 
     PrismaModule,

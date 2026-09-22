@@ -1,66 +1,17 @@
 import { Worker, Job } from 'bullmq';
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MailService } from '../../infra/mail/mail.service.js';
-import { BrevoDeliveryError } from '../../infra/mail/mail.service.js';
+import { MailService, BrevoDeliveryError } from '../../infra/mail/mail.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import type { EmailJobData } from '../../infra/mail/mail-job.types.js';
 
-export interface VerificationEmailJobData {
-  type: 'verification';
-  to: string;
-  token: string;
-}
-
-export interface PasswordResetEmailJobData {
-  type: 'password-reset';
-  to: string;
-  token: string;
-}
-
-export interface WelcomeEmailJobData {
-  type: 'welcome';
-  to: string;
-  displayName?: string | null;
-}
-
-export interface StudentApprovalEmailJobData {
-  type: 'student-approval';
-  to: string;
-}
-
-export interface StudentRejectionEmailJobData {
-  type: 'student-rejection';
-  to: string;
-  reason: string;
-}
-
-
-
-
-
-export interface LandlordApprovalEmailJobData {
-  type: 'landlord-approval';
-  to: string;
-}
-
-export interface LandlordRejectionEmailJobData {
-  type: 'landlord-rejection';
-  to: string;
-  reason: string;
-}
-
-export type EmailJobData =
-  | VerificationEmailJobData
-  | PasswordResetEmailJobData
-  | WelcomeEmailJobData
-  | StudentApprovalEmailJobData
-  | StudentRejectionEmailJobData
-  | LandlordApprovalEmailJobData
-  | LandlordRejectionEmailJobData;
+const EMAIL_JOB_ATTEMPTS = 5;
+const WORKER_CONCURRENCY = 5;
+const WORKER_LOCK_DURATION = 300_000;
 
 @Injectable()
-export class EmailProcessor implements OnModuleInit {
+export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailProcessor.name);
   private worker: Worker | null = null;
 
@@ -91,22 +42,66 @@ export class EmailProcessor implements OnModuleInit {
           await this.mailService.sendLandlordApprovalEmail(to);
         } else if (type === 'landlord-rejection') {
           await this.mailService.sendLandlordRejectionEmail(to, job.data.reason);
+        } else {
+          throw new Error(`Unknown email job type: ${type}`);
         }
       },
       {
         connection: parseRedisConnection(redisUrl),
+        concurrency: WORKER_CONCURRENCY,
+        lockDuration: WORKER_LOCK_DURATION,
       },
     );
 
-    this.worker.on('failed', (job, err) => {
-      const details = err instanceof BrevoDeliveryError
-        ? `Brevo status=${err.status}; code=${err.code ?? 'none'}; requestId=${err.requestId ?? 'none'}; response=${err.responseBody}`
-        : err?.message;
-      this.logger.error(`Email job ${job?.id ?? 'unknown'} failed after ${job?.attemptsMade ?? 0} attempts: ${details}`, err?.stack);
+    this.worker.on('active', (job: Job) => {
+      this.logger.log(`Email job ${job.id} started for ${job.data.to} (${job.data.type})`);
     });
 
-    this.worker.on('completed', (job) => {
-      this.logger.log(`Email job completed for ${job.data.to}`);
+    this.worker.on('completed', (job: Job) => {
+      this.logger.log(`Email job ${job.id} completed for ${job.data.to} (${job.data.type})`);
+    });
+
+    this.worker.on('failed', (job: Job | undefined, err: Error) => {
+      const attemptsMade = job?.attemptsMade ?? 0;
+      const details = err instanceof BrevoDeliveryError
+        ? `Brevo status=${err.status}; code=${err.code ?? 'none'}; requestId=${err.requestId ?? 'none'}; response=${err.responseBody}`
+        : err?.message ?? 'Unknown error';
+
+      this.logger.error(
+        `Email job ${job?.id ?? 'unknown'} FAILED after ${attemptsMade}/${EMAIL_JOB_ATTEMPTS} attempts: ${details}`,
+        err?.stack,
+      );
+
+      this.logger.error(
+        `FAILED EMAIL — recipient=${job?.data?.to ?? 'unknown'}; ` +
+        `type=${job?.data?.type ?? 'unknown'}; ` +
+        `attempts=${attemptsMade}/${EMAIL_JOB_ATTEMPTS}; ` +
+        `error=${details}`,
+      );
+
+      if (attemptsMade >= EMAIL_JOB_ATTEMPTS - 1) {
+        this.logger.error(
+          `PERMANENT EMAIL FAILURE — recipient=${job?.data?.to ?? 'unknown'}; ` +
+          `type=${job?.data?.type ?? 'unknown'}; all ${EMAIL_JOB_ATTEMPTS} retries exhausted. ` +
+          `Manual intervention required. Job data is retained in Redis for inspection.`,
+        );
+      }
+    });
+
+    this.worker.on('error', (err: Error) => {
+      this.logger.error(`Email processor worker error: ${err.message}`, err.stack);
+    });
+
+    this.worker.on('drained', () => {
+      this.logger.log('Email queue drained — all pending jobs processed');
     });
   }
+
+  async onModuleDestroy() {
+    if (this.worker) {
+      await this.worker.close();
+      this.logger.log('Email processor worker closed');
+    }
+  }
 }
+
