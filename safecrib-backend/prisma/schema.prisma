@@ -35,6 +35,8 @@ model User {
   studentProfile  StudentProfile?
   media           Media[]
   bookmarks       Bookmark[]
+  supportConversations SupportConversation[]
+  supportMessages SupportMessage[]
 
   @@index([role])
   @@map("users")
@@ -251,6 +253,49 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+model SupportConversation {
+  id            String          @id @default(uuid())
+  userId        String          @map("user_id")
+  status        SupportStatus   @default(OPEN)
+  subject       String?
+  lastMessageAt DateTime        @default(now()) @map("last_message_at")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([status, lastMessageAt])
+  @@index([userId, status])
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             String              @id @default(uuid())
+  conversationId String              @map("conversation_id")
+  senderId       String              @map("sender_id")
+  senderRole     SupportSenderRole   @map("sender_role")
+  body           String
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  conversation SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("support_messages")
+}
+
+enum SupportStatus {
+  OPEN
+  RESOLVED
+}
+
+enum SupportSenderRole {
+  USER
+  ADMIN
 }
 
 model ListingPhoto {

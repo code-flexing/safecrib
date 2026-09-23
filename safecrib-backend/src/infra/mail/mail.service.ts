@@ -358,6 +358,34 @@ export class MailService {
     );
   }
 
+  async sendSupportMessageEmail(
+    to: string,
+    conversationId: string,
+    message: string,
+  ): Promise<void> {
+    const appName = this.configService.get<string>('API_NAME') || 'SafeCrib';
+    const appUrl = this.configService.get<string>('FRONTEND_URL_PRODUCTION')
+      || this.configService.get<string>('FRONTEND_URL_TESTING')
+      || 'http://localhost:3000';
+
+    await this.sendMail(
+      to,
+      `New support request on ${appName}`,
+      this.renderEmail({
+        appName,
+        appUrl,
+        preheader: 'A user needs help from the SafeCrib support team.',
+        eyebrow: 'NEW SUPPORT REQUEST',
+        title: 'A user needs help',
+        intro: `Open conversation ${conversationId} in the admin dashboard.`,
+        body: `<div style="margin-top:18px;padding:16px;border-left:3px solid #2563eb;background:#f7f9fc;color:#172033;font-size:15px;line-height:1.65;white-space:pre-wrap;">${escapeHtml(message)}</div>`,
+        ctaLabel: 'Open admin support',
+        ctaUrl: `${appUrl}/admin/support/${conversationId}`,
+        tone: 'default',
+      }),
+    );
+  }
+
   private renderEmail(options: EmailTemplateOptions): string {
     const tone = options.tone ?? 'default';
     const tones = {

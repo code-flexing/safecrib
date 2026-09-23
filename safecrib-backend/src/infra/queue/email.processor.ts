@@ -50,6 +50,12 @@ export class EmailProcessor implements OnModuleInit, OnModuleDestroy {
             job.data.message,
             job.data.listingTitle,
           );
+        } else if (type === 'support-message') {
+          await this.mailService.sendSupportMessageEmail(
+            to,
+            job.data.conversationId,
+            job.data.message,
+          );
         } else {
           throw new Error(`Unknown email job type: ${type}`);
         }

@@ -24,6 +24,7 @@ import { BookingHoldExpiryProcessor } from './infra/queue/booking-hold-expiry.pr
 import { DuplicateSweepProcessor } from './infra/queue/duplicate-sweep.processor.js';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { SupportModule } from './modules/support/support.module.js';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
     ReviewsModule,
     StudentProfilesModule,
     MediaModule,
+    SupportModule,
   ],
   providers: [
     {

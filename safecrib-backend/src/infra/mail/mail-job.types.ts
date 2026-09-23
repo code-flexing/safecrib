@@ -47,6 +47,13 @@ export interface ProviderContactEmailJobData {
   listingTitle?: string;
 }
 
+export interface SupportMessageEmailJobData {
+  type: 'support-message';
+  to: string;
+  conversationId: string;
+  message: string;
+}
+
 export type EmailJobData =
   | VerificationEmailJobData
   | PasswordResetEmailJobData
@@ -55,6 +62,7 @@ export type EmailJobData =
   | StudentRejectionEmailJobData
   | LandlordApprovalEmailJobData
   | LandlordRejectionEmailJobData
-  | ProviderContactEmailJobData;
+  | ProviderContactEmailJobData
+  | SupportMessageEmailJobData;
 
   

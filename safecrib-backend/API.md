@@ -147,6 +147,26 @@ the API enforces `ADMIN` authorization server-side.
 
 For the frontend request/response flow, see
 [`docs/admin-review-frontend.md`](docs/admin-review-frontend.md).
+
+## Support Conversations
+
+Authenticated users can send support messages from their dashboard. Messages
+are persisted immediately and verified admin accounts are notified through the
+email queue. Admins can read, reply to, and resolve conversations.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/support/conversations` | User | Start a support conversation with `message` and optional `subject` |
+| GET | `/support/conversations` | User | List the current user's conversations |
+| GET | `/support/conversations/:id` | User | Read one owned conversation |
+| POST | `/support/conversations/:id/messages` | User | Send a follow-up message |
+| GET | `/admin/support/conversations` | Admin | List support conversations; optional `status=OPEN\|RESOLVED` |
+| GET | `/admin/support/conversations/:id` | Admin | Read a conversation and all messages |
+| POST | `/admin/support/conversations/:id/messages` | Admin | Reply to the user; reopens a resolved conversation |
+| PATCH | `/admin/support/conversations/:id/resolve` | Admin | Mark a conversation resolved |
+
+Frontend implementation details are in
+[`docs/support-frontend.md`](docs/support-frontend.md).
 | GET | `/fraud/reports` | List all fraud reports |
 | GET | `/fraud/reports/pending` | Pending reports |
 | PATCH | `/fraud/reports/:id/resolve` | Resolve fraud report |
