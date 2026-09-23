@@ -42,19 +42,22 @@ See `.env.example` for all available variables. Key ones:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `DIRECT_URL` | PostgreSQL connection for Prisma migrations |
 | `REDIS_URL` | Redis connection for BullMQ queues |
-| `REDIS_ENFORCE_NOEVICTION` | When `true`, verify/repair Redis `maxmemory-policy` at startup where the provider permits it |
+| `REDIS_ENFORCE_NOEVICTION` | When `true`, verify/repair Redis `maxmemory-policy`; set `false` for managed providers that reject `CONFIG SET` |
 | `JWT_ACCESS_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
 | `BREVO_API_KEY` | Brevo transactional-email API key |
 | `BREVO_SENDER_EMAIL` | Sender address verified in Brevo |
+| `SMTP_FROM` | Compatibility fallback sender address when `BREVO_SENDER_EMAIL` is not set |
 | `BREVO_SENDER_NAME` | Display name for transactional email |
 
 Before sending, verify the sender/domain in Brevo and keep the Brevo API key and sender address in the environment.
 
-Redis must use `maxmemory-policy noeviction`. For Render or another managed Redis
-provider, set this in the Redis service configuration; changing `REDIS_URL` in the
-web service cannot change a Redis server policy. After changing it, verify with
-`CONFIG GET maxmemory-policy` and restart the API and worker services.
+BullMQ works best with Redis `maxmemory-policy noeviction`. For Render or another
+managed Redis provider that reports `allkeys-lru` or rejects `CONFIG SET`, set
+`REDIS_ENFORCE_NOEVICTION=false` and configure the policy in the Redis service
+settings when possible. Changing `REDIS_URL` in the web service cannot change a
+Redis server policy. Restart the API and worker services after changing these
+settings.
 
 Brevo failures are logged with the HTTP status, Brevo error code/message, and
 Brevo request ID (when supplied), so delivery issues can be diagnosed without

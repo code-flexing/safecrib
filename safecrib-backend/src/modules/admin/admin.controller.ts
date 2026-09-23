@@ -5,6 +5,8 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { Public } from '../../common/public.decorator.js';
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { AdminService } from './admin.service.js';
@@ -13,23 +15,22 @@ import { IdentityVerificationDto } from './dto/admin.dto.js';
 import { ReviewSubmissionActionDto } from './dto/review.dto.js';
 
 @ApiTags('Admin')
-@ApiBearerAuth('access-token')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post('create')
-  @Roles('ADMIN')
-  @ApiOperation({ summary: 'Create another admin account (admin only)' })
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 3_600_000 } })
+  @ApiOperation({ summary: 'Create an admin account (bootstrap)' })
   @ApiResponse({ status: 201, description: 'Admin account created' })
-  @ApiResponse({ status: 401, description: 'Not authenticated' })
-  @ApiResponse({ status: 403, description: 'Admin only' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
   createAdmin(@Body() dto: CreateAdminDto) {
     return this.adminService.createAdmin(dto);
   }
 
   @Post('onboard')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Manually onboard an agent/landlord (admin)' })
   @ApiResponse({ status: 201, description: 'Agent onboarded' })
@@ -40,6 +41,7 @@ export class AdminController {
   }
 
   @Get('review-queue')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'List profile verification submissions' })
   reviewQueue(
@@ -50,6 +52,7 @@ export class AdminController {
   }
 
   @Get('review-queue/:id')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get one profile verification submission' })
   getReviewQueue(@Param('id') id: string) {
@@ -57,6 +60,7 @@ export class AdminController {
   }
 
   @Post('review')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Approve or reject a submitted profile' })
   @ApiResponse({ status: 200, description: 'Review submitted' })
@@ -67,6 +71,7 @@ export class AdminController {
   }
 
   @Patch('users/:id/verify-identity')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Verify a user\'s identity (admin)' })
   @ApiResponse({ status: 200, description: 'Identity verified' })
@@ -79,6 +84,7 @@ export class AdminController {
   }
 
   @Get('users')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'List all users (admin)' })
   @ApiResponse({ status: 200, description: 'Array of users' })
@@ -92,6 +98,7 @@ export class AdminController {
   }
 
   @Get('users/:id')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Get user detail with trust events (admin)' })
   @ApiResponse({ status: 200, description: 'User details' })
@@ -101,6 +108,7 @@ export class AdminController {
   }
 
   @Patch('listings/:id/flag')
+  @ApiBearerAuth('access-token')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Flag a listing for review (admin)' })
   @ApiResponse({ status: 200, description: 'Listing flagged' })

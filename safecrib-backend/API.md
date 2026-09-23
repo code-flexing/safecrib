@@ -131,7 +131,7 @@ the API enforces `ADMIN` authorization server-side.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/auth/login` | Admin login transport; frontend follows with `POST /auth/me` and accepts only `role: ADMIN` |
-| POST | `/admin/create` | Create another admin account; existing admin bearer token required |
+| POST | `/admin/create` | Bootstrap an admin account; public for initial setup, so protect it at the deployment layer until bootstrap is complete |
 | POST | `/auth/logout` | Revoke the stored admin refresh token |
 | POST | `/admin/onboard` | Exceptional manual onboarding; creates an already-verified provider account, not an admin and not a Page review |
 | GET | `/admin/review-queue` | List student and provider/agent submissions; optional `status` and `tier` filters |

@@ -26,7 +26,7 @@ or landlord account. The normal agent/landlord flow uses `/provider-pages`, not
 | `/admin/login` | None | Admin login form. Do not show signup or agent/landlord registration links. |
 | `/admin` | `ADMIN` | Pending review queue, filters, refresh, and responsive navigation shell. |
 | `/admin/reviews/[id]` | `ADMIN` | Full submitted profile, media references, and approve/reject actions. |
-| `/admin/admins/new` | `ADMIN` | Optional screen for calling `POST /admin/create`. |
+| `/admin/admins/new` | `ADMIN` | Optional admin-management screen. Do not expose the bootstrap endpoint as a normal public signup. |
 
 The admin session guard must run before rendering any protected route or making
 protected data requests:
@@ -71,6 +71,7 @@ POST /api/v1/auth/me
 Authorization: Bearer <accessToken>
 ```
 
+
 The expected response for an admin is:
 
 ```json
@@ -109,11 +110,14 @@ or refresh tokens in logs, URLs, analytics events, or error messages.
 
 ## Admin Account Creation
 
-There is no public admin signup. An existing admin creates another admin:
+The first admin is created through the public bootstrap endpoint. This endpoint
+is intentionally unauthenticated for initial setup, so deploy it behind a
+temporary deployment restriction, private network, secret gateway, or disable
+it after the first admin is created. It must not be presented as a public
+signup page.
 
 ```http
 POST /api/v1/admin/create
-Authorization: Bearer <existing admin access token>
 Content-Type: application/json
 
 {
@@ -128,12 +132,11 @@ Rules:
 - The backend always assigns `role: "ADMIN"`.
 - The backend creates the account as email-verified and identity-verified.
 - Never send a `role` field from the frontend; it is not accepted by the DTO.
-- `403` means the current account is not an admin.
 - `409` means the email already exists.
 - The response never includes the password.
+- After the first admin is created, do not leave this endpoint openly reachable.
+- Admin review endpoints remain protected and require an `ADMIN` bearer token.
 
-The first admin must be provisioned by deployment/database setup because this
-endpoint intentionally cannot be public.
 
 ## Canonical Review API
 

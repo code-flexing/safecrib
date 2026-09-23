@@ -10,7 +10,11 @@ export class RedisPolicyService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
-    if (this.configService.get<string>('REDIS_ENFORCE_NOEVICTION') === 'false') return;
+    const enforceNoEviction = this.configService
+      .get<string>('REDIS_ENFORCE_NOEVICTION')
+      ?.trim()
+      .toLowerCase();
+    if (enforceNoEviction === 'false') return;
 
     const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
     this.client = new Redis(redisUrl, {

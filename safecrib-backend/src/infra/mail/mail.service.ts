@@ -55,12 +55,14 @@ export class MailService {
 
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     const apiKey = this.configService.get<string>('BREVO_API_KEY');
-    const senderEmail = this.configService.get<string>('BREVO_SENDER_EMAIL');
+    const senderEmail =
+      this.configService.get<string>('BREVO_SENDER_EMAIL') ||
+      this.configService.get<string>('SMTP_FROM');
     const senderName = this.configService.get<string>('BREVO_SENDER_NAME') || 'SafeCrib';
     const apiUrl = this.configService.get<string>('BREVO_API_URL') || 'https://api.brevo.com/v3/smtp/email';
 
     if (!apiKey || !senderEmail) {
-      const message = 'Brevo is not configured. Set BREVO_API_KEY and BREVO_SENDER_EMAIL.';
+      const message = 'Brevo is not configured. Set BREVO_API_KEY and BREVO_SENDER_EMAIL (or SMTP_FROM).';
       if (this.configService.get<string>('NODE_ENV') === 'production') {
         throw new ServiceUnavailableException(message);
       }
