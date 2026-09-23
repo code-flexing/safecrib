@@ -91,6 +91,22 @@ export class MediaController {
     return this.mediaService.requestUploadSignature(user.id, dto);
   }
 
+  @Get('pending')
+  @ApiOperation({ summary: 'List the current user pending uploads' })
+  async listPendingUploads(@CurrentUser() user: { id: string }) {
+    return this.mediaService.listPendingUploads(user.id);
+  }
+
+  @Delete('pending/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Cancel a current user pending upload' })
+  async cancelPendingUpload(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    await this.mediaService.cancelPendingUpload(id, user.id);
+  }
+
   // ─── POST /media/:id/confirm ───────────────────────────────────────────────
 
   @Post(':id/confirm')

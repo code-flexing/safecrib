@@ -203,6 +203,17 @@ export class MediaService {
     };
   }
 
+  async listPendingUploads(ownerId: string): Promise<MediaResponse[]> {
+    const pending = await this.mediaRepo.findPendingForOwner(ownerId);
+    return pending.map((media) => this.toResponse(media));
+  }
+
+  async cancelPendingUpload(mediaId: string, ownerId: string): Promise<void> {
+    const media = await this.getOwnedMedia(mediaId, ownerId);
+    if (media.status !== 'PENDING') return;
+    await this.deleteMedia(mediaId, ownerId, 'USER');
+  }
+
   /**
    * Soft-delete a media record and enqueue the Cloudinary deletion.
    * Only owner or ADMIN may delete.

@@ -167,6 +167,23 @@ email queue. Admins can read, reply to, and resolve conversations.
 
 Frontend implementation details are in
 [`docs/support-frontend.md`](docs/support-frontend.md).
+
+## Media Upload Recovery
+
+Pending upload reservations are automatically cleaned every five minutes;
+uploads older than 30 minutes are moved out of `PENDING` and scheduled for
+storage deletion. The frontend can also recover immediately from an interrupted
+upload:
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/media/pending` | User | List the current user's pending uploads |
+| DELETE | `/media/pending/:id` | User | Cancel one owned pending upload and release its quota |
+
+Successful Cloudinary upload webhooks and the authenticated confirmation
+endpoint both mark the media `READY`, so completed uploads no longer count
+toward the pending limit. Deploy the media cleanup migration/code and keep the
+media cleanup worker running alongside the API.
 | GET | `/fraud/reports` | List all fraud reports |
 | GET | `/fraud/reports/pending` | Pending reports |
 | PATCH | `/fraud/reports/:id/resolve` | Resolve fraud report |

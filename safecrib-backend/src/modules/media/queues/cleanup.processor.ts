@@ -1,5 +1,5 @@
 import { Worker, Queue, Job } from 'bullmq';
-import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseRedisConnection } from '../../../infra/queue/redis-connection.util.js';
 import {
@@ -18,7 +18,7 @@ import type { Media } from '@prisma/client';
 const ORPHAN_AGE_MS = 30 * 60 * 1000;
 
 @Injectable()
-export class MediaCleanupProcessor implements OnModuleInit {
+export class MediaCleanupProcessor implements OnModuleDestroy, OnModuleInit {
   private readonly logger = new Logger(MediaCleanupProcessor.name);
   private worker: Worker | null = null;
 
@@ -27,6 +27,7 @@ export class MediaCleanupProcessor implements OnModuleInit {
     private readonly configService: ConfigService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
     @InjectQueue(MEDIA_DELETION_QUEUE) private readonly deletionQueue: Queue,
+    @InjectQueue(MEDIA_CLEANUP_QUEUE) private readonly cleanupQueue: Queue,
   ) {}
 
   onModuleInit(): void {
@@ -44,6 +45,13 @@ export class MediaCleanupProcessor implements OnModuleInit {
       },
     );
 
+    void this.cleanupQueue.add('run-cleanup', {}, {
+      jobId: 'media-cleanup-scheduled',
+      repeat: { every: 5 * 60 * 1000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    });
+
     this.worker.on('failed', (job, err) => {
       this.logger.error(`Cleanup job ${job?.id} failed: ${err?.message}`, err?.stack);
     });
@@ -51,6 +59,10 @@ export class MediaCleanupProcessor implements OnModuleInit {
     this.worker.on('completed', (job) => {
       this.logger.log(`Cleanup job ${job.id} completed`);
     });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.worker) await this.worker.close();
   }
 
   private async runCleanup(): Promise<void> {

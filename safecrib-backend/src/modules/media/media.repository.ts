@@ -108,6 +108,13 @@ export class MediaRepository {
     });
   }
 
+  async findPendingForOwner(ownerId: string): Promise<Media[]> {
+    return this.prisma.media.findMany({
+      where: { ownerId, status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   /**
    * Find PENDING uploads older than the given age (for orphan cleanup).
    */
