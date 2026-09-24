@@ -30,9 +30,17 @@ function getAllowedOrigins(): string[] {
       .map((origin) => normalizeOrigin(origin.trim()))
       .filter(Boolean) ?? [];
 
-  const origins = [productionUrl, testingUrl, swaggerUrl, ...extraOrigins].filter(
-    (origin): origin is string => Boolean(origin),
-  );
+  const fallbackOrigins = [
+    'https://pible.onrender.com',
+  ];
+
+  const origins = [
+    productionUrl,
+    testingUrl,
+    swaggerUrl,
+    ...extraOrigins,
+    ...fallbackOrigins,
+  ].filter((origin): origin is string => Boolean(origin));
 
   return Array.from(new Set(origins));
 }
