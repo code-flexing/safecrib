@@ -131,6 +131,44 @@ export class MediaRepository {
   }
 
   /**
+   * Cancel PENDING uploads older than the given age, marking them FAILED.
+   * Used to clean up records left over from failed uploads (e.g. an invalid
+   * Cloudinary upload preset) once the configuration has been corrected.
+   *
+   * Returns the number of records cancelled.
+   */
+  async cancelStalePending(
+    olderThanMs: number,
+    reason: string,
+    limit = 200,
+  ): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanMs);
+    // Find the stale IDs first so we can cap the batch size (Prisma's
+    // updateMany has no native limit and we don't want to lock the table).
+    const stale = await this.prisma.media.findMany({
+      where: {
+        status: 'PENDING',
+        createdAt: { lt: cutoff },
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    });
+
+    if (stale.length === 0) return 0;
+
+    const result = await this.prisma.media.updateMany({
+      where: { id: { in: stale.map((m) => m.id) } },
+      data: {
+        status: 'FAILED',
+        failureReason: reason,
+      },
+    });
+
+    return result.count;
+  }
+
+  /**
    * Find DELETING records that may need a retry.
    */
   async findDeletingRecords(limit = 100): Promise<Media[]> {

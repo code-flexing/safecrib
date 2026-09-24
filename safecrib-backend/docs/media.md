@@ -191,6 +191,7 @@ transformations. The webhook `notification_type: "eager"` fires when they're rea
 | Purpose | Resource type | Delivery | Allowed types | Max size |
 |---|---|---|---|---|
 | `AVATAR` | image | public CDN | jpeg, png, webp, gif | 5 MB |
+| `COVER_PHOTO` | image | public CDN | jpeg, png, webp | 10 MB |
 | `LISTING_PHOTO` | image | public CDN | jpeg, png, webp | 15 MB |
 | `LISTING_VIDEO` | video | public CDN | mp4, mov, avi, webm | 500 MB |
 | `PROVIDER_LOGO` | image | public CDN | jpeg, png, webp, svg | 5 MB |
@@ -406,6 +407,28 @@ npm run cloudinary:sync-presets
 # 3. Run the database migration
 npx prisma migrate deploy
 ```
+
+### Cancelling failed uploads
+
+If a deploy ever served signed uploads against a Cloudinary account whose
+presets were missing (Cloudinary responds `{"error":{"message":"Upload preset
+not found"}}`), those uploads never stored an asset and leave `PENDING` rows in
+the `media` table. After correcting the configuration, cancel them with:
+
+```bash
+npm run cloudinary:cancel-failed-uploads      # cancels PENDING rows older than 10 min (the signature TTL)
+# MAX_AGE_MINUTES=60 npm run cloudinary:cancel-failed-uploads   # custom cutoff
+```
+
+Stale `PENDING` rows whose uploads *did* reach Cloudinary are handled
+automatically by the orphan cleanup cron (see _Orphan cleanup cron_ below).
+
+### Automatic preset sync on deploy
+
+`render.yaml` runs `npm run cloudinary:sync-presets` as a `postdeploy` hook on
+every Render deploy, so the upload presets always exist before the service
+receives traffic. The required Cloudinary secrets are set in the Render
+dashboard (they are never committed to version control).
 
 ### Cloudinary console steps (manual)
 

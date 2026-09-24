@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: safecrib-backend
+    region: omaha
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/main
+    rootDir: safecrib-backend
+    autoDeploy: true
+    envVars:
+      # ── Cloudinary (Media System) ──────────────────────────────────────────
+      # Secret values (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY,
+      # CLOUDINARY_API_SECRET) are set in the Render dashboard as Secrets —
+      # they are intentionally NOT committed here.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Public URL Cloudinary will POST webhook notifications to (this service's URL)
+      # Set the exact host in the Render dashboard — it depends on the deployed URL.
+      - key: CLOUDINARY_WEBHOOK_URL
+        sync: false
+      # Namespace for all Cloudinary assets (dev / staging / prod)
+      - key: CLOUDINARY_ENV_PREFIX
+        value: prod
+      # ── Database & Infra ────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      # ── Auth & mail ─────────────────────────────────────────────────────────
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+    # Create / update Cloudinary upload presets + named transformations on
+    # every deploy so the signed upload flow always targets existing presets.
+    postdeploy: npm run cloudinary:sync-presets
+
+  # BullMQ worker: processes Cloudinary webhooks, asset deletions, and orphan
+  # media cleanup. Runs in its own process (see package.json start:worker).
+  - type: worker
+    name: safecrib-backend-worker
+    region: omaha
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/infra/queue/worker
+    rootDir: safecrib-backend
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_ENV_PREFIX
+        value: prod
+      - key: CLOUDINARY_WEBHOOK_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+    autoDeploy: true

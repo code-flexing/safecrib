@@ -69,6 +69,19 @@ const presets: PresetDef[] = [
     notificationUrl: webhookUrl,
   },
   {
+    name: 'sc_cover_photo',
+    folder: `${envPrefix}/users/cover-photo`,
+    resourceType: 'image',
+    deliveryType: 'upload',
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+    maxBytes: 10 * MB,
+    eagerTransformations: [
+      'c_fill,w_800,h_200,f_auto,q_auto',
+      'c_fill,w_1200,h_400,f_auto,q_auto',
+    ],
+    notificationUrl: webhookUrl,
+  },
+  {
     name: 'sc_photo',
     folder: `${envPrefix}/listings/photo`,
     resourceType: 'image',
