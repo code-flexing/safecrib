@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -19,9 +19,29 @@ import type { RegisterDto } from './dto/auth.dto.js';
 import type { LoginDto } from './dto/auth.dto.js';
 import type { JwtPayload } from './strategies/jwt.strategy.js';
 
-const ACCESS_TOKEN_TTL = '15m';
-const REFRESH_TOKEN_TTL = '7d';
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
+
+function ttlToMs(ttl: string | number | undefined): number {
+  if (ttl === undefined) {
+    throw new Error('TTL value is required');
+  }
+  if (typeof ttl === 'number') {
+    return ttl * 1000;
+  }
+  const match = /^(\d+)\s*([smhd])$/i.exec(String(ttl).trim());
+  if (!match) {
+    throw new Error(`Invalid TTL "${ttl}", expected e.g. "15m" or "14d"`);
+  }
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const secondsByUnit: Record<string, number> = {
+    s: 1,
+    m: 60,
+    h: 3600,
+    d: 86400,
+  };
+  return value * secondsByUnit[unit] * 1000;
+}
 const EMAIL_JOB_ATTEMPTS = 5;
 const EMAIL_JOB_BACKOFF_DELAY = 1000;
 
@@ -33,13 +53,27 @@ export interface AuthTokens {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly accessTokenTtl: NonNullable<JwtSignOptions['expiresIn']>;
+  private readonly refreshTokenTtl: NonNullable<JwtSignOptions['expiresIn']>;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
-  ) {}
+  ) {
+    const accessTtl = this.configService.get<string>('ACCESS_TOKEN_TTL') ?? '14d';
+    const refreshTtl = this.configService.get<string>('REFRESH_TOKEN_TTL') ?? '14d';
+    const accessMs = ttlToMs(accessTtl);
+    const refreshMs = ttlToMs(refreshTtl);
+    if (refreshMs < accessMs) {
+      throw new Error(
+        `REFRESH_TOKEN_TTL (${refreshTtl}) must be >= ACCESS_TOKEN_TTL (${accessTtl})`,
+      );
+    }
+    this.accessTokenTtl = accessTtl as NonNullable<JwtSignOptions['expiresIn']>;
+    this.refreshTokenTtl = refreshTtl as NonNullable<JwtSignOptions['expiresIn']>;
+  }
 
   async register(dto: RegisterDto): Promise<{ message: string; userId: string }> {
     const email = dto.email.toLowerCase().trim();
@@ -259,12 +293,12 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-      expiresIn: ACCESS_TOKEN_TTL,
+      expiresIn: this.accessTokenTtl,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: REFRESH_TOKEN_TTL,
+      expiresIn: this.refreshTokenTtl,
     });
 
     return { accessToken, refreshToken };
@@ -274,7 +308,11 @@ export class AuthService {
     const tokens = this.issueTokens(userId, email, role);
     const refreshTokenHash = crypto.createHash('sha256').update(tokens.refreshToken).digest('hex');
     await this.prisma.refreshToken.create({
-      data: { userId, tokenHash: refreshTokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) },
+      data: {
+        userId,
+        tokenHash: refreshTokenHash,
+        expiresAt: new Date(Date.now() + ttlToMs(this.refreshTokenTtl)),
+      },
     });
     return tokens;
   }
