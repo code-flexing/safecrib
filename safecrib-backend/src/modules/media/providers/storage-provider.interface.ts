@@ -43,6 +43,31 @@ export interface DeleteAssetOptions {
   deliveryType?: 'upload' | 'authenticated' | 'private';
 }
 
+export interface UploadAssetOptions {
+  /** Explicit public_id (must be unique). Defaults to a Cloudinary-generated name. */
+  publicId?: string;
+  /** Cloudinary folder to store the asset under */
+  folder?: string;
+  /** resource_type passed straight to Cloudinary */
+  resourceType?: 'image' | 'video' | 'raw';
+  /** Tags applied to the asset */
+  tags?: string[];
+  /** Context metadata (key=value) stored on the asset */
+  context?: Record<string, string>;
+}
+
+export interface UploadAssetResult {
+  publicId: string;
+  url: string;
+  assetId: string;
+  format: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  etag: string | null;
+}
+
 export interface WebhookVerificationResult {
   valid: boolean;
   /** Reason for rejection when valid=false */
@@ -69,6 +94,16 @@ export interface StorageProvider {
    * Uses the SDK's local URL builder — no Admin API call.
    */
   getSignedUrl(publicId: string, options?: SignedAccessUrlOptions): string;
+
+  /**
+   * Upload an asset directly from the server using the Cloudinary SDK
+   * (authenticated with the API secret — no upload preset required).
+   */
+  uploadAsset(
+    buffer: Buffer,
+    mimeType: string,
+    options?: UploadAssetOptions,
+  ): Promise<UploadAssetResult>;
 
   /**
    * Delete an asset via the Cloudinary Destroy API.

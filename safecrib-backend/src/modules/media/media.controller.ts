@@ -13,6 +13,8 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,7 +22,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import type { Request } from 'express';
+import type { MediaPurpose } from '@prisma/client';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/public.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
@@ -89,6 +94,36 @@ export class MediaController {
   ) {
     if (!user) throw new UnauthorizedException();
     return this.mediaService.requestUploadSignature(user.id, dto);
+  }
+
+  // ─── POST /media/upload ─────────────────────────────────────────────────────
+  // Simple direct-upload flow: the client sends the file to the backend, which
+  // uploads it to Cloudinary server-side (no upload preset / signed client
+  // payload required) and returns the resulting URL.
+  @Post('upload')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: 'Upload a file directly to Cloudinary via the backend' })
+  @ApiResponse({ status: 201, description: 'Asset uploaded; URL returned' })
+  @ApiResponse({ status: 400, description: 'Validation or policy error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async uploadAsset(
+    @CurrentUser() user: { id: string },
+    @UploadedFile() file: Express.Multer.File,
+    @Body('purpose') purpose: string,
+    @Body('entityId') entityId?: string,
+  ) {
+    if (!user) throw new UnauthorizedException();
+    if (!file) {
+      throw new BadRequestException('`file` is required (multipart/form-data)');
+    }
+    const result = await this.mediaService.uploadAsset(
+      user.id,
+      purpose as MediaPurpose,
+      file,
+      entityId,
+    );
+    return result;
   }
 
   @Get('pending')

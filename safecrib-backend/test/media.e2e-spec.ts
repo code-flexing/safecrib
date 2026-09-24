@@ -25,6 +25,8 @@ import type {
   DeliveryUrlOptions,
   SignedAccessUrlOptions,
   DeleteAssetOptions,
+  UploadAssetOptions,
+  UploadAssetResult,
 } from '../src/modules/media/providers/storage-provider.interface.js';
 
 // ─── Mock storage provider ───────────────────────────────────────────────────
@@ -58,6 +60,24 @@ class MockStorageProvider implements StorageProvider {
 
   async deleteAsset(_publicId: string, _options?: DeleteAssetOptions): Promise<{ result: string }> {
     return { result: 'ok' };
+  }
+
+  async uploadAsset(
+    _buffer: Buffer,
+    _mimeType: string,
+    _options?: UploadAssetOptions,
+  ): Promise<UploadAssetResult> {
+    return {
+      publicId: 'prod/users/avatar/mock_user/uuid',
+      url: 'https://res.cloudinary.com/mock/image/upload/prod/users/avatar/mock_user/uuid.jpg',
+      assetId: 'mock_asset_id',
+      format: 'jpg',
+      bytes: 1024,
+      width: 200,
+      height: 200,
+      durationSec: null,
+      etag: 'mock_etag',
+    };
   }
 
   verifyWebhook(
@@ -239,7 +259,7 @@ describe('Media Module (E2E)', () => {
         })
         .expect(201);
 
-      const { media } = sigRes.body as { media: { id: string; publicId: string } };
+      const { media } = sigRes.body as { media: { id: string; publicId: string; status: string } };
       expect(media.status).toBe('PENDING');
 
       // 2. Simulate Cloudinary webhook

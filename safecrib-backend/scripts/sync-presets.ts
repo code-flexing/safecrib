@@ -200,15 +200,19 @@ async function syncPresets(): Promise<void> {
         await (cloudinary.api as any).update_upload_preset(preset.name, params);
         console.log(`  ✓ Updated: ${preset.name}`);
       } catch (err: any) {
-        if (err?.error?.http_code === 404 || err?.http_code === 404) {
-          await (cloudinary.api as any).create_upload_preset({ name: preset.name, ...params });
-          console.log(`  ✓ Created: ${preset.name}`);
-        } else {
+        const code = err?.error?.http_code ?? err?.http_code;
+        // 404 means the preset doesn't exist yet — create it.
+        if (!(code === 404)) {
           throw err;
         }
+        await (cloudinary.api as any).create_upload_preset({ name: preset.name, ...params });
+        console.log(`  ✓ Created: ${preset.name}`);
       }
-    } catch (err) {
-      console.error(`  ✗ Failed: ${preset.name}`, (err as Error).message);
+    } catch (err: any) {
+      console.error(
+        `  ✗ Failed: ${preset.name}`,
+        err?.error?.message ?? err?.message ?? 'unknown error',
+      );
       process.exitCode = 1;
     }
   }
@@ -227,15 +231,30 @@ async function syncPresets(): Promise<void> {
 
   for (const [name, transform] of Object.entries(named)) {
     try {
+      // Create first (passing the raw transformation string — NOT an options
+      // object). Cloudinary returns HTTP 409 if the name already exists.
       try {
-        await (cloudinary.api as any).update_transformation(name, { allowed_for_strict: true, transformation: transform });
-        console.log(`  ✓ Updated transformation: ${name}`);
-      } catch {
-        await (cloudinary.api as any).create_transformation(name, { allowed_for_strict: true, transformation: transform });
+        await (cloudinary.api as any).create_transformation(name, transform);
         console.log(`  ✓ Created transformation: ${name}`);
+      } catch (err: any) {
+        const code = err?.error?.http_code ?? err?.http_code;
+        const msg = err?.error?.message ?? err?.message ?? '';
+        // 409 "already exists" is expected on re-runs — proceed to update.
+        if (!(code === 409 && /already exists/i.test(msg))) {
+          throw err;
+        }
       }
-    } catch (err) {
-      console.error(`  ✗ Failed transformation: ${name}`, (err as Error).message);
+
+      // Ensure strict-transformations are allowed for this named transformation.
+      await (cloudinary.api as any).update_transformation(name, {
+        allowed_for_strict: true,
+      });
+      console.log(`  ✓ Enabled strict: ${name}`);
+    } catch (err: any) {
+      console.error(
+        `  ✗ Failed transformation: ${name}`,
+        err?.error?.message ?? err?.message ?? 'unknown error',
+      );
       process.exitCode = 1;
     }
   }

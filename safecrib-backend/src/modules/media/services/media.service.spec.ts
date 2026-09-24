@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -56,13 +57,30 @@ function makeStorage(): StorageProvider {
     getDeliveryUrl: vi.fn(() => 'https://res.cloudinary.com/cloud/image/upload/prod/p.jpg'),
     getSignedUrl: vi.fn(() => 'https://res.cloudinary.com/cloud/image/authenticated/sign.jpg'),
     deleteAsset: vi.fn(async () => ({ result: 'ok' })),
+    uploadAsset: vi.fn(async () => ({
+      publicId: 'prod/users/avatar/u1/uuid',
+      url: 'https://res.cloudinary.com/cloud/image/upload/prod/users/avatar/u1/uuid.jpg',
+      assetId: 'a1b2c3d4e5f6789012345678901234ab',
+      format: 'jpg',
+      bytes: 204800,
+      width: 200,
+      height: 200,
+      durationSec: null,
+      etag: 'etag_abc',
+    })),
     verifyWebhook: vi.fn(() => ({ valid: true })),
   };
 }
 
 function makeRepo(media: Media | null = null): MediaRepository {
   return {
-    create: vi.fn(async () => makeMedia()),
+    create: vi.fn(async (input: any) =>
+      makeMedia({
+        status: input?.status ?? 'PENDING',
+        purpose: input?.purpose,
+        publicId: input?.publicId,
+      }),
+    ),
     findById: vi.fn(async () => media),
     findByPublicId: vi.fn(async () => media),
     findByIdempotencyKey: vi.fn(async () => null),
@@ -163,6 +181,89 @@ describe('MediaService', () => {
         'AVATAR',
         'image/jpeg',
         512,
+      );
+    });
+  });
+
+  describe('uploadAsset', () => {
+    const avatarPolicy = {
+      purpose: 'AVATAR' as const,
+      resourceType: 'IMAGE' as const,
+      deliveryType: 'UPLOAD' as const,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+      maxBytes: 5 * 1024 * 1024,
+      maxPendingPerUser: 2,
+      label: 'Profile avatar',
+    };
+
+    it('uploads via storage and returns a READY media record with the URL', async () => {
+      const storage = makeStorage();
+      const policy = makePolicy();
+      vi.mocked(policy.getPolicy).mockReturnValue(avatarPolicy);
+      const repo = makeRepo();
+      const path = makePathBuilder();
+      const svc = makeService({ storage, repo, policy, path });
+
+      const file = {
+        buffer: Buffer.from('img'),
+        mimetype: 'image/jpeg',
+        size: 1024,
+      } as unknown as Express.Multer.File;
+
+      const result = await svc.uploadAsset('user_1', 'AVATAR', file);
+
+      expect(storage.uploadAsset).toHaveBeenCalledWith(
+        file.buffer,
+        'image/jpeg',
+        expect.objectContaining({
+          publicId: 'prod/listings/photo/l1/new-uuid',
+          folder: 'prod/listings/photo/l1',
+          resourceType: 'image',
+        }),
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ purpose: 'AVATAR', status: 'READY' }),
+      );
+      expect(result.media.status).toBe('READY');
+      expect(result.url).toContain('res.cloudinary.com');
+    });
+
+    it('throws BadRequestException when no file buffer is provided', async () => {
+      const svc = makeService();
+      await expect(
+        svc.uploadAsset('user_1', 'AVATAR', undefined as unknown as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException for a disallowed mimetype', async () => {
+      const policy = makePolicy();
+      vi.mocked(policy.getPolicy).mockReturnValue(avatarPolicy);
+      const svc = makeService({ policy });
+
+      const file = {
+        buffer: Buffer.from('x'),
+        mimetype: 'application/exe',
+        size: 10,
+      } as unknown as Express.Multer.File;
+
+      await expect(svc.uploadAsset('user_1', 'AVATAR', file)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException for a file over the size limit', async () => {
+      const policy = makePolicy();
+      vi.mocked(policy.getPolicy).mockReturnValue({ ...avatarPolicy, maxBytes: 100 });
+      const svc = makeService({ policy });
+
+      const file = {
+        buffer: Buffer.alloc(200),
+        mimetype: 'image/jpeg',
+        size: 200,
+      } as unknown as Express.Multer.File;
+
+      await expect(svc.uploadAsset('user_1', 'AVATAR', file)).rejects.toThrow(
+        BadRequestException,
       );
     });
   });

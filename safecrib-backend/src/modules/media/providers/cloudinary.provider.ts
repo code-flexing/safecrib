@@ -7,6 +7,8 @@ import type {
   DeliveryUrlOptions,
   SignedAccessUrlOptions,
   StorageProvider,
+  UploadAssetOptions,
+  UploadAssetResult,
   UploadSignatureParams,
   UploadSignatureResult,
   WebhookVerificationResult,
@@ -118,6 +120,47 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
       type: options.deliveryType ?? 'upload',
     });
     return { result: result.result as string };
+  }
+
+  /**
+   * Server-side upload that authenticates with the Cloudinary API secret
+   * directly — no upload preset / signed-client payload is required.
+   *
+   * The file buffer is sent as a base64 data URI, so it must fit comfortably
+   * in memory. For very large assets (e.g. >50 MB videos) prefer a chunked
+   * direct-to-Cloudinary upload flow instead.
+   */
+  async uploadAsset(
+    buffer: Buffer,
+    mimeType: string,
+    options: UploadAssetOptions = {},
+  ): Promise<UploadAssetResult> {
+    const dataUri = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+    const result = await cloudinary.uploader.upload(dataUri, {
+      public_id: options.publicId,
+      folder: options.folder,
+      resource_type: options.resourceType ?? 'image',
+      ...(options.tags?.length ? { tags: options.tags } : {}),
+      ...(options.context ? { context: options.context } : {}),
+      use_filename: false,
+      unique_filename: false,
+      invalidate: true,
+    });
+
+    const duration = (result as unknown as { duration?: number }).duration;
+
+    return {
+      publicId: result.public_id,
+      url: result.secure_url ?? result.url,
+      assetId: result.asset_id ?? result.public_id,
+      format: result.format ?? '',
+      bytes: result.bytes ?? 0,
+      width: result.width ?? null,
+      height: result.height ?? null,
+      durationSec: typeof duration === 'number' ? duration : null,
+      etag: result.etag ?? null,
+    };
   }
 
   verifyWebhook(

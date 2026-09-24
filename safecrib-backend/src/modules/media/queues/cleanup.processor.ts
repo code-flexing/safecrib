@@ -14,7 +14,12 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Media } from '@prisma/client';
 
-/** PENDING uploads older than 30 minutes are considered orphaned */
+/**
+ * PENDING uploads older than 30 minutes are considered orphaned (the signed
+ * upload signature TTL is 10 minutes, so anything older was either abandoned
+ * or a failed upload — e.g. Cloudinary rejected an invalid upload preset and
+ * no asset was ever stored).
+ */
 const ORPHAN_AGE_MS = 30 * 60 * 1000;
 
 @Injectable()
@@ -68,13 +73,17 @@ export class MediaCleanupProcessor implements OnModuleDestroy, OnModuleInit {
   private async runCleanup(): Promise<void> {
     this.logger.log('Starting orphan media cleanup');
 
-    // 1. Find stale PENDING uploads and schedule them for deletion
-    const orphans = await this.mediaRepo.findStaleOrphans(ORPHAN_AGE_MS, 200);
-    this.logger.log(`Found ${orphans.length} orphaned PENDING media records`);
-
-    for (const media of orphans) {
-      await this.scheduleForDeletion(media);
-    }
+    // 1. Cancel stale PENDING uploads. These were either abandoned by the
+    //    client or failed uploads (e.g. an invalid upload preset). Because the
+    //    signed-upload signature TTL is 10 min, anything pending past 30 min
+    //    never completed, so no Cloudinary asset exists to delete — mark it
+    //    FAILED directly instead of making a no-op Admin API call.
+    const cancelled = await this.mediaRepo.cancelStalePending(
+      ORPHAN_AGE_MS,
+      'Upload aborted: no Cloudinary webhook received within the signature TTL window.',
+      200,
+    );
+    this.logger.log(`Cancelled ${cancelled} stale PENDING media records`);
 
     // 2. Retry stale DELETING records that may have been missed
     const deleting = await this.mediaRepo.findDeletingRecords(50);

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -101,6 +102,76 @@ export class MediaService {
         expires_at: signed.expiresAt,
         ...signed.extra,
       },
+    };
+  }
+
+  /**
+   * Simple direct-upload flow: the client sends the file to the backend, which
+   * uploads it to Cloudinary server-side (authenticated with the API secret —
+   * no upload preset / signed client payload required) and returns the URL.
+   */
+  async uploadAsset(
+    ownerId: string,
+    purpose: MediaPurpose,
+    file: Express.Multer.File,
+    entityId?: string,
+  ): Promise<{ media: MediaResponse; url: string }> {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const policy = this.policyService.getPolicy(purpose);
+
+    if (!policy.allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        `Content type "${file.mimetype}" is not allowed for purpose "${purpose}". ` +
+          `Allowed: ${policy.allowedMimeTypes.join(', ')}`,
+      );
+    }
+
+    if (file.size > policy.maxBytes) {
+      const maxMB = (policy.maxBytes / (1024 * 1024)).toFixed(0);
+      throw new BadRequestException(
+        `File size ${file.size} bytes exceeds the ${maxMB} MB limit for ${policy.label}`,
+      );
+    }
+
+    const targetEntityId = entityId ?? ownerId;
+    const publicId = this.pathBuilder.buildPublicId(purpose, targetEntityId);
+    const folder = this.pathBuilder.buildFolder(purpose, targetEntityId);
+
+    const uploaded = await this.storage.uploadAsset(file.buffer, file.mimetype, {
+      publicId,
+      folder,
+      resourceType: this.resourceTypeToSdk(policy.resourceType),
+      tags: [`purpose=${purpose}`, `owner=${ownerId}`],
+      context: { purpose, owner: ownerId },
+    });
+
+    const media = await this.mediaRepo.create({
+      ownerId,
+      purpose,
+      resourceType: policy.resourceType,
+      deliveryType: policy.deliveryType,
+      publicId: uploaded.publicId,
+      status: 'READY',
+      assetId: uploaded.assetId,
+      format: uploaded.format,
+      bytes: uploaded.bytes,
+      width: uploaded.width,
+      height: uploaded.height,
+      durationSec: uploaded.durationSec,
+      etag: uploaded.etag,
+      idempotencyKey: `${uploaded.assetId ?? uploaded.publicId}:${0}`,
+    });
+
+    this.logger.log(
+      `Direct upload complete: mediaId=${media.id} purpose=${purpose} owner=${ownerId}`,
+    );
+
+    return {
+      media: this.toResponse(media),
+      url: uploaded.url,
     };
   }
 

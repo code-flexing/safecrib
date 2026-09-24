@@ -17,13 +17,24 @@ export type CreateMediaInput = Omit<
 export class MediaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(input: {
+   async create(input: {
     ownerId: string;
     purpose: MediaPurpose;
     resourceType: Prisma.MediaCreateInput['resourceType'];
     deliveryType: Prisma.MediaCreateInput['deliveryType'];
     publicId: string;
     status: MediaStatus;
+    /** Metadata filled in immediately when uploading directly server-side */
+    assetId?: string | null;
+    version?: bigint;
+    format?: string | null;
+    bytes?: number | null;
+    width?: number | null;
+    height?: number | null;
+    durationSec?: number | null;
+    etag?: string | null;
+    idempotencyKey?: string | null;
+    readyAt?: Date | null;
   }): Promise<Media> {
     return this.prisma.media.create({
       data: {
@@ -33,6 +44,16 @@ export class MediaRepository {
         deliveryType: input.deliveryType,
         publicId: input.publicId,
         status: input.status,
+        assetId: input.assetId,
+        version: input.version,
+        format: input.format,
+        bytes: input.bytes,
+        width: input.width,
+        height: input.height,
+        durationSec: input.durationSec,
+        etag: input.etag,
+        idempotencyKey: input.idempotencyKey,
+        readyAt: input.status === 'READY' ? input.readyAt ?? new Date() : input.readyAt ?? undefined,
       },
     });
   }
