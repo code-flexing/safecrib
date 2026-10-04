@@ -22,7 +22,7 @@ const items = [
   { href: "/settings", label: "Settings", icon: "settings" },
 ] satisfies { href: string; label: string; icon: IconName }[];
 
-type NavUser = { id?: string; email?: string; displayName?: unknown; role?: string; profilePicture?: string };
+type NavUser = { id?: string; email?: string; displayName?: unknown; role?: string; profilePicture?: string; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
 
 function iconLinkClass(active: boolean) {
   return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green" : "border-transparent text-black/60 hover:border-black/10 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
@@ -61,7 +61,14 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       return resolveMediaUrl(reference);
     };
 
-    const syncVerification = async (userId?: string) => {
+    const syncVerification = async (userId?: string, directVerification?: NavUser["verification"]) => {
+      if (directVerification && typeof directVerification === "object") {
+        const normalized = normalizeVerificationStage(directVerification);
+        if (normalized) {
+          setVerification(normalized);
+          return;
+        }
+      }
       if (!userId) {
         setVerification(null);
         return;
@@ -92,7 +99,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
     }
 
     if (cachedUser) {
-      void syncVerification(cachedUser.id);
+      void syncVerification(cachedUser.id, cachedUser.verification);
       void resolveAvatar(cachedUser).then((url) => { if (active) setAvatarUrl(url); });
     }
     const unsubscribeCache = subscribeClientCacheUpdates(({ path, value }) => {
@@ -100,7 +107,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         const updatedUser = unwrapData<NavUser | null>(value);
         if (!updatedUser) return;
         setNavUser(updatedUser);
-        void syncVerification(updatedUser.id);
+        void syncVerification(updatedUser.id, updatedUser.verification);
         void resolveAvatar(updatedUser).then((url) => { if (active) setAvatarUrl(url); });
         return;
       }

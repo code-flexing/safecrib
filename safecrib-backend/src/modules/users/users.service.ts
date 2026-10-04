@@ -29,6 +29,14 @@ export class UserService {
         trustScore: true,
         trustScoreUpdatedAt: true,
         createdAt: true,
+        verification: {
+          select: {
+            stage: true,
+            badge: true,
+            badgeColor: true,
+            riskBlocked: true,
+          },
+        },
         providerPage: {
           select: {
             verificationState: true,
@@ -61,10 +69,35 @@ export class UserService {
       flaggedForReview: false,
     });
 
+    const normalizedVerification = user.verification ?? {
+      stage: verificationStage.stage,
+      badge: verificationStage.badge,
+      badgeColor: verificationStage.badgeColor,
+      riskBlocked: false,
+      eligible: true,
+    };
+
     return {
       ...rest,
       studentProfileStatus: studentProfile?.status ?? 'NOT_SUBMITTED',
       followerCount: _count.followers,
+      verification: user.verification
+        ? {
+            isVerified: Boolean(user.verification.badge || user.verification.stage),
+            stage: user.verification.stage,
+            badge: user.verification.badge,
+            badgeColor: user.verification.badgeColor,
+            riskBlocked: user.verification.riskBlocked,
+            eligible: Boolean(user.verification.badge || user.verification.stage),
+          }
+        : {
+            isVerified: Boolean(verificationStage.stage || verificationStage.badge),
+            stage: normalizedVerification.stage,
+            badge: normalizedVerification.badge,
+            badgeColor: normalizedVerification.badgeColor,
+            riskBlocked: normalizedVerification.riskBlocked,
+            eligible: normalizedVerification.eligible,
+          },
       verificationStage,
     };
   }
@@ -113,6 +146,14 @@ export class UserService {
         role: true,
         identityVerified: true,
         createdAt: true,
+        verification: {
+          select: {
+            stage: true,
+            badge: true,
+            badgeColor: true,
+            riskBlocked: true,
+          },
+        },
         studentProfile: {
           select: { status: true, profilePicture: true },
         },
@@ -171,9 +212,36 @@ export class UserService {
     }
 
     const providerPage = providerVerified ? user.providerPage : null;
+    const computedVerification = user.verification ?? {
+      stage: providerVerified ? 'AGENT_VERIFIED' : 'PROFILE_VERIFIED',
+      badge: providerVerified ? 'BLUE_SHIELD' : 'GREEN_CHECK',
+      badgeColor: providerVerified ? 'blue' : 'green',
+      riskBlocked: false,
+      eligible: true,
+    };
+
+    const verification = user.verification
+      ? {
+          isVerified: Boolean(user.verification.badge || user.verification.stage),
+          stage: user.verification.stage,
+          badge: user.verification.badge,
+          badgeColor: user.verification.badgeColor,
+          riskBlocked: user.verification.riskBlocked,
+          eligible: Boolean(user.verification.badge || user.verification.stage),
+        }
+      : {
+          isVerified: true,
+          stage: computedVerification.stage,
+          badge: computedVerification.badge,
+          badgeColor: computedVerification.badgeColor,
+          riskBlocked: computedVerification.riskBlocked,
+          eligible: computedVerification.eligible,
+        };
+
     return {
       id: user.id,
-      isVerified: true,
+      isVerified: verification.isVerified,
+      verification,
       displayName: providerPage?.displayName ?? user.displayName,
       role: user.role,
       createdAt: user.createdAt,

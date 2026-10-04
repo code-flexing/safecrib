@@ -14,7 +14,7 @@ import { normalizeVerificationStage, VerificationBadge, type VerificationStageRe
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: string[]; images?: string[]; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
-type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verificationStage?: unknown };
+type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
 type StudentProfile = { profilePicture?: string } | null;
 type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
@@ -53,6 +53,11 @@ export default function DashboardPage() {
       const currentUser = unwrapData<Profile | null>(value);
       if (!currentUser) return;
       setProfile({ ...currentUser, displayName: displayName(currentUser) || getAuthenticatedDisplayName() });
+      const userVerification = currentUser.verification ?? getPersistedVerification(currentUser.id);
+      if (userVerification) {
+        const normalized = normalizeVerificationStage(userVerification);
+        if (normalized) setVerification(normalized);
+      }
       if (["STUDENT", "UNVERIFIED"].includes(String(currentUser.role ?? "").toUpperCase())) {
         setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
       }
@@ -127,7 +132,13 @@ export default function DashboardPage() {
       primeCurrentUserCache(user);
       setProfile({ ...user, displayName: displayName(user) || getAuthenticatedDisplayName() });
       const role = String(user.role ?? "").toUpperCase();
-      setVerification((current) => current ?? normalizeVerificationStage(getPersistedVerification(user.id)));
+      const immediateVerification = user.verification ?? getPersistedVerification(user.id);
+      if (immediateVerification) {
+        const normalized = normalizeVerificationStage(immediateVerification);
+        if (normalized) setVerification((current) => current ?? normalized);
+      } else {
+        setVerification((current) => current ?? normalizeVerificationStage(getPersistedVerification(user.id)));
+      }
       if (["AGENT", "LANDLORD"].includes(role) && user.id) {
         const today = new Date().toISOString().slice(0, 10);
         const activityKey = `safecrib-provider-active-day:${user.id}`;
@@ -144,7 +155,7 @@ export default function DashboardPage() {
             .then(normalizeAccountStatus)
             .catch(() => null)
         : Promise.resolve(null);
-      const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role)
+      const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !user.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
             .then((response) => {
               const stage = normalizeVerificationStage(response);

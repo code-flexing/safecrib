@@ -17,6 +17,13 @@ export type AuthenticatedUser = {
   role: Role;
   displayName: string | null;
   profilePicture: string | null;
+  verification: {
+    stage: string;
+    badge: string;
+    badgeColor: 'green' | 'blue' | 'gold';
+    riskBlocked: boolean;
+    eligible: boolean;
+  } | null;
   emailVerified: boolean;
 };
 
@@ -46,6 +53,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         displayName: true,
         profilePicture: true,
         emailVerified: true,
+        verification: {
+          select: {
+            stage: true,
+            badge: true,
+            badgeColor: true,
+            riskBlocked: true,
+          },
+        },
       },
     });
     if (!user || !user.emailVerified) return null as never;
@@ -55,6 +70,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       role: user.role as Role,
       displayName: user.displayName ?? null,
       profilePicture: user.profilePicture ?? null,
+      verification: user.verification
+        ? {
+            stage: user.verification.stage,
+            badge: user.verification.badge,
+            badgeColor: user.verification.badgeColor,
+            riskBlocked: user.verification.riskBlocked,
+            eligible: Boolean(user.verification.badge || user.verification.stage),
+          }
+        : null,
       emailVerified: user.emailVerified,
     };
   }

@@ -192,8 +192,14 @@ export default function ProfilePage() {
       if (!active) return;
       setUser(currentUser);
       const role = String(currentUser.role ?? "").toUpperCase();
-      setVerification((current) => current ?? normalizeVerificationStage(getPersistedVerification(currentUser.id)));
-      const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role)
+      const immediateVerification = currentUser.verification ?? getPersistedVerification(currentUser.id);
+      if (immediateVerification) {
+        const normalized = normalizeVerificationStage(immediateVerification);
+        if (normalized) setVerification((current) => current ?? normalized);
+      } else {
+        setVerification((current) => current ?? normalizeVerificationStage(getPersistedVerification(currentUser.id)));
+      }
+      const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !currentUser.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
             .then((response) => {
               const stage = normalizeVerificationStage(response);

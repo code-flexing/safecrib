@@ -124,13 +124,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user info' })
   @ApiResponse({ status: 200, description: 'Current user info' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  me(@CurrentUser() user: { id: string; email: string; role: string; displayName?: string | null; profilePicture?: string | null }) {
+  me(@CurrentUser() user: { id: string; email: string; role: string; displayName?: string | null; profilePicture?: string | null; verification?: { stage: string; badge: string; badgeColor: 'green' | 'blue' | 'gold'; riskBlocked: boolean; eligible: boolean } | null }) {
     return {
       id: user.id,
       email: user.email,
       role: user.role,
       displayName: user.displayName ?? null,
       profilePicture: user.profilePicture ?? null,
+      verification: user.verification ?? null,
     };
   }
 }

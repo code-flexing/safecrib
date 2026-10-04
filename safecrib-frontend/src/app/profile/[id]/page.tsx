@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { PageLoader } from "@/components/loading/PageLoader";
-import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
+import { Icon } from "@/components/ui/Icon";
 import { VerificationBadge } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
@@ -81,6 +81,8 @@ export default function PublicProfilePage() {
   const profileId = params.id;
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarPending, setAvatarPending] = useState(false);
+  const [avatarMissing, setAvatarMissing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
   const [followPending, setFollowPending] = useState(false);
@@ -97,15 +99,63 @@ export default function PublicProfilePage() {
     }
 
     let active = true;
+    let avatarRequestId = 0;
+    let avatarTimeout: number | undefined;
+    let pendingImage: HTMLImageElement | null = null;
+    const resolveAvatar = (pictureReference?: string | null, onSettled?: () => void) => {
+      const requestId = ++avatarRequestId;
+      if (avatarTimeout !== undefined) window.clearTimeout(avatarTimeout);
+      if (pendingImage) {
+        pendingImage.onload = null;
+        pendingImage.onerror = null;
+        pendingImage = null;
+      }
+      setAvatarUrl(null);
+      setAvatarMissing(!pictureReference);
+      setAvatarPending(Boolean(pictureReference));
+      if (!pictureReference) {
+        onSettled?.();
+        return;
+      }
+      const finish = (loadedUrl: string | null) => {
+        if (!active || requestId !== avatarRequestId) return;
+        if (avatarTimeout !== undefined) window.clearTimeout(avatarTimeout);
+        if (pendingImage) {
+          pendingImage.onload = null;
+          pendingImage.onerror = null;
+          pendingImage = null;
+        }
+        setAvatarUrl(loadedUrl);
+        setAvatarMissing(!loadedUrl);
+        setAvatarPending(false);
+        onSettled?.();
+      };
+      void resolveMediaUrl(pictureReference)
+        .then((pictureUrl) => {
+          if (!active || requestId !== avatarRequestId) return;
+          if (!pictureUrl) {
+            finish(null);
+            return;
+          }
+          const image = new window.Image();
+          pendingImage = image;
+          image.onload = () => finish(pictureUrl);
+          image.onerror = () => finish(null);
+          avatarTimeout = window.setTimeout(() => finish(null), 5000);
+          image.src = pictureUrl;
+        })
+        .catch(() => {
+          finish(null);
+        });
+    };
     const publicProfilePath = `/api/v1/users/${encodeURIComponent(profileId)}/public-profile`;
     const unsubscribeCache = subscribeClientCacheUpdates(({ path, value }) => {
       if (path === publicProfilePath) {
         const refreshedProfile = unwrapData<PublicProfile>(value);
         if (!refreshedProfile) return;
+        setLoading(true);
         setProfile(refreshedProfile);
-        void resolveMediaUrl(refreshedProfile.profilePicture).then((pictureUrl) => {
-          if (active) setAvatarUrl(pictureUrl);
-        });
+        resolveAvatar(refreshedProfile.profilePicture, () => setLoading(false));
       }
     });
     void cachedApiFetch<unknown>(publicProfilePath)
@@ -113,10 +163,7 @@ export default function PublicProfilePage() {
       .then((publicProfile) => {
         if (!active) return;
         setProfile(publicProfile);
-        setLoading(false);
-        void resolveMediaUrl(publicProfile.profilePicture)
-          .then((pictureUrl) => { if (active) setAvatarUrl(pictureUrl); })
-          .catch(() => { if (active) setAvatarUrl(null); });
+        resolveAvatar(publicProfile.profilePicture, () => setLoading(false));
       })
       .catch((loadError: unknown) => {
         if (isUnauthorizedError(loadError)) {
@@ -130,7 +177,15 @@ export default function PublicProfilePage() {
         }
       });
 
-    return () => { active = false; unsubscribeCache(); };
+    return () => {
+      active = false;
+      if (avatarTimeout !== undefined) window.clearTimeout(avatarTimeout);
+      if (pendingImage) {
+        pendingImage.onload = null;
+        pendingImage.onerror = null;
+      }
+      unsubscribeCache();
+    };
   }, [profileId, router]);
 
   const toggleFollow = async (target: "user" | "page") => {
@@ -175,7 +230,7 @@ export default function PublicProfilePage() {
     }
   };
 
-  if (loading) return <PageLoader label="Loading profile" />;
+  if (loading || avatarPending) return <PageLoader label={avatarPending ? "Loading profile picture" : "Loading profile"} />;
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
@@ -192,7 +247,9 @@ export default function PublicProfilePage() {
             <section className="mt-6 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(11,12,14,0.05)]">
               <div className="h-28 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.45),transparent_30%),linear-gradient(120deg,#0b684c,#b9dfc9)] sm:h-36" />
               <div className="flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-end sm:px-8">
-                <ProfileAvatar src={avatarUrl} seed={profile.id} alt={`${profile.displayName || "Member"} profile`} size="large" className="-mt-14 border-4 border-white sm:-mt-16" />
+                {avatarMissing
+                  ? <div role="img" aria-label="Profile picture unavailable" className="-mt-14 flex h-32 w-32 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black/[0.04] text-black/35 sm:-mt-16"><Icon name="page" className="h-9 w-9" /></div>
+                  : avatarUrl && <Image src={avatarUrl} alt={`${profile.displayName || "Member"} profile`} width={128} height={128} unoptimized className="-mt-14 h-32 w-32 shrink-0 rounded-full border-4 border-white object-cover sm:-mt-16" />}
                 <div className="min-w-0 flex-1 sm:pb-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-safecrib-green">SafeCrib member</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">

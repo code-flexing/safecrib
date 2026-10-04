@@ -23,6 +23,13 @@ export interface AuthenticatedRequest extends Request {
     role: Role;
     displayName?: string | null;
     profilePicture?: string | null;
+    verification?: {
+      stage: string;
+      badge: string;
+      badgeColor: 'green' | 'blue' | 'gold';
+      riskBlocked: boolean;
+      eligible: boolean;
+    } | null;
     emailVerified: boolean;
   };
 }
