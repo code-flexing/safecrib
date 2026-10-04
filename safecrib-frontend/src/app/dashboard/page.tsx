@@ -191,9 +191,10 @@ export default function DashboardPage() {
           setAccountStatus(latestStatus);
         });
       }
-      setProfileImage(null);
       if (pictureReference) {
-        void resolveMediaUrl(pictureReference).then(setProfileImage).catch(() => setProfileImage(null));
+        void resolveMediaUrl(pictureReference).then((url) => {
+          if (url) setProfileImage(url);
+        }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));
       setListings(Array.isArray(homes) ? homes : []);

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const backgrounds = ["#DCEFE7", "#F5E3D7", "#E1E8FA", "#F4EAC6", "#F1DDE9", "#D6E9EE"];
 const skinTones = ["#F2C7A5", "#C9875E", "#E3AA82", "#8B553D", "#D99A73", "#F0D0B3"];
@@ -33,6 +33,10 @@ export function ProfileAvatar({
 }: ProfileAvatarProps) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const avatarSeed = seed?.trim() || alt;
+
+  useEffect(() => {
+    if (src) setFailedSource(null);
+  }, [src]);
   const index = variantIndex(avatarSeed, backgrounds.length);
   const hairStyle = variantIndex(avatarSeed, 4, 41);
   const sizeClass = size === "small" ? "h-12 w-12" : size === "large" ? "h-32 w-32" : "h-16 w-16";

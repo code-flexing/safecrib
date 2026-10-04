@@ -21,6 +21,8 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
     role: Role;
+    displayName?: string | null;
+    profilePicture?: string | null;
     emailVerified: boolean;
   };
 }

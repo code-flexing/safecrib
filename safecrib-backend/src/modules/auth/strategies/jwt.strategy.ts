@@ -11,6 +11,15 @@ export interface JwtPayload {
   role: Role;
 }
 
+export type AuthenticatedUser = {
+  id: string;
+  email: string;
+  role: Role;
+  displayName: string | null;
+  profilePicture: string | null;
+  emailVerified: boolean;
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(configService: ConfigService, private readonly prisma: PrismaService) {
@@ -27,16 +36,25 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<{ id: string; email: string; role: Role; emailVerified: boolean }> {
+  async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, emailVerified: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        displayName: true,
+        profilePicture: true,
+        emailVerified: true,
+      },
     });
     if (!user || !user.emailVerified) return null as never;
     return {
       id: user.id,
       email: user.email,
       role: user.role as Role,
+      displayName: user.displayName ?? null,
+      profilePicture: user.profilePicture ?? null,
       emailVerified: user.emailVerified,
     };
   }

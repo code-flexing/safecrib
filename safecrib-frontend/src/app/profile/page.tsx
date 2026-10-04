@@ -233,10 +233,8 @@ export default function ProfilePage() {
       const picture = currentUser.profilePicture ?? studentProfile?.profilePicture ?? providerPage?.profilePicture;
       if (picture) {
         void resolveMediaUrl(picture).then((resolvedPicture) => {
-          if (active) setAvatarUrl(resolvedPicture);
-        }).catch(() => {
-          if (active) setAvatarUrl(null);
-        });
+          if (active && resolvedPicture) setAvatarUrl(resolvedPicture);
+        }).catch(() => undefined);
       }
     }).catch((loadError: unknown) => {
       if (isUnauthorizedError(loadError)) {

@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, logoutSession, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
+import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type DashboardNavProps = {
   onCreatePage: () => void;
@@ -39,6 +40,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   const pageActive = pathname.startsWith("/page");
   const [navUser, setNavUser] = useState<NavUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [verification, setVerification] = useState<VerificationStageResult | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -59,6 +61,29 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       return resolveMediaUrl(reference);
     };
 
+    const syncVerification = async (userId?: string) => {
+      if (!userId) {
+        setVerification(null);
+        return;
+      }
+      const persisted = getPersistedVerification(userId);
+      const normalized = persisted ? normalizeVerificationStage(persisted) : null;
+      if (normalized) {
+        setVerification(normalized);
+        return;
+      }
+      try {
+        const response = await apiFetch<unknown>("/api/v1/trust/me/verification-stage");
+        const stage = normalizeVerificationStage(response);
+        if (stage) {
+          setPersistedVerification(userId, response);
+          setVerification(stage);
+        }
+      } catch {
+        setVerification(null);
+      }
+    };
+
     const cachedUser = getCachedCurrentUser<NavUser>();
     if (cachedUser) setNavUser(cachedUser);
     else {
@@ -67,6 +92,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
     }
 
     if (cachedUser) {
+      void syncVerification(cachedUser.id);
       void resolveAvatar(cachedUser).then((url) => { if (active) setAvatarUrl(url); });
     }
     const unsubscribeCache = subscribeClientCacheUpdates(({ path, value }) => {
@@ -74,6 +100,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         const updatedUser = unwrapData<NavUser | null>(value);
         if (!updatedUser) return;
         setNavUser(updatedUser);
+        void syncVerification(updatedUser.id);
         void resolveAvatar(updatedUser).then((url) => { if (active) setAvatarUrl(url); });
         return;
       }
@@ -108,7 +135,10 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={iconLinkClass(false)}><Icon name="logout" /></button>
         </nav>
         <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={profileLinkClass}>
-          <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
+          <span className="relative inline-flex">
+            <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
+            {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
+          </span>
         </Link>
       </div>
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-black/10 bg-safecrib-white pb-[var(--safe-area-bottom)] md:hidden">
