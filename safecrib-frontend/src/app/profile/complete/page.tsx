@@ -901,7 +901,6 @@ export default function CompleteStudentProfilePage() {
   };
 
   const isPending = status === "pending";
-  const isRejected = status === "rejected";
   const providerPagePending = pageStatus === "pending";
 
   if (isPending || providerPagePending) {

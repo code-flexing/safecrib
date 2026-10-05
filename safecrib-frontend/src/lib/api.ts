@@ -207,10 +207,6 @@ export function setPersistedVerification(userId: string | undefined, value: unkn
 
 const pendingUploadPrefix = "safecrib_pending_upload:";
 
-function uploadFingerprint(file: File) {
-  return `${file.name}:${file.size}:${file.lastModified}`;
-}
-
 export function clearPendingUploads() {
   if (typeof window === "undefined") return;
   (["AVATAR", "COVER_PHOTO", "PROOF_OF_LICENSE", "PROOF_OF_STUDENTSHIP"] as const).forEach((purpose) => {

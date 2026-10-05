@@ -21,6 +21,7 @@ type User = {
   studentProfileStatus?: unknown;
   followerCount?: number;
   verificationStage?: unknown;
+  verification?: unknown;
 };
 
 type StudentProfile = {
