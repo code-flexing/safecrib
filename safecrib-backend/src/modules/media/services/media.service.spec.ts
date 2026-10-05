@@ -168,7 +168,14 @@ describe('MediaService', () => {
 
       expect(repo.create).toHaveBeenCalledOnce();
       expect(storage.createUploadSignature).toHaveBeenCalledWith(
-        expect.objectContaining({ resourceType: 'image' }),
+        expect.objectContaining({
+          publicId: 'uuid',
+          folder: 'prod/listings/photo/user_1',
+          resourceType: 'image',
+        }),
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ publicId: 'prod/listings/photo/user_1/uuid' }),
       );
       expect(result.uploadUrl).toBe('https://api.cloudinary.com/v1_1/cloud/image/upload');
       expect(result.media).toEqual({
@@ -241,7 +248,7 @@ describe('MediaService', () => {
         file.buffer,
         'image/jpeg',
         expect.objectContaining({
-          publicId: 'prod/listings/photo/l1/new-uuid',
+          publicId: 'new-uuid',
           folder: 'prod/listings/photo/l1',
           resourceType: 'image',
         }),
