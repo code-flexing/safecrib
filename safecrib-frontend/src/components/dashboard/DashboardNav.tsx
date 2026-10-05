@@ -7,7 +7,7 @@ import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
+import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type DashboardNavProps = {
   onCreatePage: () => void;
@@ -58,6 +58,11 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           reference = unwrapData<{ profilePicture?: string } | null>(profile)?.profilePicture;
         }
       }
+      const cachedUrl = getCachedMediaUrl(reference);
+      if (cachedUrl) {
+        setAvatarUrl(cachedUrl);
+        return cachedUrl;
+      }
       return resolveMediaUrl(reference);
     };
 
@@ -92,7 +97,10 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
     };
 
     const cachedUser = getCachedCurrentUser<NavUser>();
-    if (cachedUser) setNavUser(cachedUser);
+    if (cachedUser) {
+      setNavUser(cachedUser);
+      setAvatarUrl(getCachedMediaUrl(cachedUser.profilePicture));
+    }
     else {
       const tokenName = getAuthenticatedDisplayName();
       if (tokenName) setNavUser({ displayName: tokenName });
@@ -114,6 +122,8 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       if (path === "/api/v1/student-profiles/me" || path === "/api/v1/provider-pages/me") {
         const profile = unwrapData<{ profilePicture?: string } | null>(value);
         if (profile?.profilePicture) {
+          const cachedUrl = getCachedMediaUrl(profile.profilePicture);
+          if (cachedUrl) setAvatarUrl(cachedUrl);
           void resolveMediaUrl(profile.profilePicture).then((url) => { if (active) setAvatarUrl(url); });
         }
       }
@@ -128,33 +138,37 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   };
 
   return (
-    <header className="border-b border-black/10 bg-safecrib-white md:sticky md:top-0 md:z-40">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
-        <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="hidden md:block">
-          <SafeCribLogo height={28} href={false} />
-        </Link>
-        <nav aria-label="Dashboard navigation" className="ml-auto hidden items-center gap-2 md:flex">
-          {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href)}>
-            <Icon name={item.icon} />
-            {item.href === "/support" && <SupportCount count={supportCount} />}
-          </Link>)}
-          {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive)}><Icon name="page" /></button>}
-          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={iconLinkClass(false)}><Icon name="logout" /></button>
-        </nav>
-        <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={profileLinkClass}>
-          <span className="relative inline-flex">
-            <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
-            {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
-          </span>
-        </Link>
-      </div>
-      <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-black/10 bg-safecrib-white pb-[var(--safe-area-bottom)] md:hidden">
-        <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`mx-1 my-2 flex min-h-12 flex-1 items-center justify-center rounded-xl ${pathname === "/dashboard" ? "bg-safecrib-green/10 text-safecrib-green" : "text-black/60 hover:bg-black/[0.03]"}`}><Icon name="home" className="h-6 w-6" /></Link>
-        <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative mx-1 my-2 flex min-h-12 flex-1 items-center justify-center rounded-xl ${pathname.startsWith("/support") ? "bg-safecrib-green/10 text-safecrib-green" : "text-black/60 hover:bg-black/[0.03]"}`}><Icon name="support" className="h-6 w-6" /><SupportCount count={supportCount} /></Link>
-        {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={`mx-1 my-2 flex min-h-12 flex-1 items-center justify-center rounded-xl ${pageActive ? "bg-safecrib-green/10 text-safecrib-green" : "text-black/60 hover:bg-black/[0.03]"}`}><Icon name="page" className="h-6 w-6" /></button>}
-        <Link href="/settings" aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`mx-1 my-2 flex min-h-12 flex-1 items-center justify-center rounded-xl ${pathname === "/settings" ? "bg-safecrib-green/10 text-safecrib-green" : "text-black/60 hover:bg-black/[0.03]"}`}><Icon name="settings" className="h-6 w-6" /></Link>
-        <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="mx-1 my-2 flex min-h-12 flex-1 items-center justify-center rounded-xl text-black/60 hover:bg-red-50 hover:text-red-700"><Icon name="logout" className="h-6 w-6" /></button>
+    <>
+      <header className="hidden border-b border-safecrib-green/20 bg-safecrib-green text-white backdrop-blur-xl md:sticky md:top-0 md:z-40 md:block md:border-b md:border-safecrib-green/20 md:bg-safecrib-green md:text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
+          <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="hidden md:block">
+            <SafeCribLogo height={28} href={false} />
+          </Link>
+          <nav aria-label="Dashboard navigation" className="ml-auto hidden items-center gap-2 md:flex">
+            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href)}>
+              <Icon name={item.icon} />
+              {item.href === "/support" && <SupportCount count={supportCount} />}
+            </Link>)}
+            {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive)}><Icon name="page" /></button>}
+            <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={iconLinkClass(false)}><Icon name="logout" /></button>
+          </nav>
+          <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={profileLinkClass}>
+            <span className="relative inline-flex">
+              <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
+              {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
+            </span>
+          </Link>
+        </div>
+      </header>
+      <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border border-black/10 bg-white/25 p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.12)] backdrop-blur-2xl">
+          <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname === "/dashboard" ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="home" className="h-5 w-5" /></Link>
+          <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname.startsWith("/support") ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
+          {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pageActive ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="page" className="h-5 w-5" /></button>}
+          <Link href="/settings" aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname === "/settings" ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="settings" className="h-5 w-5" /></Link>
+          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="flex h-12 flex-1 items-center justify-center rounded-[1.9rem] text-current/70 transition-all duration-200 hover:bg-red-500/10 hover:text-red-600"><Icon name="logout" className="h-5 w-5" /></button>
+        </div>
       </nav>
-    </header>
+    </>
   );
 }

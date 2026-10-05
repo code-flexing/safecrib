@@ -8,7 +8,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearSession, displayName, getCachedCurrentUser, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearSession, displayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type User = {
   id?: string;
@@ -141,6 +141,8 @@ export default function ProfilePage() {
       const currentUser = unwrapData<User | null>(value);
       if (currentUser) {
         setUser(currentUser);
+        const cachedPicture = getCachedMediaUrl(currentUser.profilePicture);
+        if (cachedPicture) setAvatarUrl(cachedPicture);
         if (currentUser.profilePicture) {
           void resolveMediaUrl(currentUser.profilePicture).then((url) => {
             if (url) setAvatarUrl(url);
@@ -153,6 +155,8 @@ export default function ProfilePage() {
       const studentProfile = unwrapData<StudentProfile>(value);
       setStudent(studentProfile);
       const picture = getCachedCurrentUser<User>()?.profilePicture ?? studentProfile?.profilePicture;
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) setAvatarUrl(cachedPicture);
       if (picture) void resolveMediaUrl(picture).then(setAvatarUrl);
       return;
     }
@@ -160,6 +164,8 @@ export default function ProfilePage() {
       const providerPage = unwrapData<ProviderPage>(value);
       setProvider(providerPage);
       const picture = getCachedCurrentUser<User>()?.profilePicture ?? providerPage?.profilePicture;
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) setAvatarUrl(cachedPicture);
       if (picture) void resolveMediaUrl(picture).then(setAvatarUrl);
       return;
     }
@@ -182,6 +188,8 @@ export default function ProfilePage() {
     const cachedUser = getCachedCurrentUser<User>();
     if (cachedUser) {
       setUser(cachedUser);
+      const cachedPicture = getCachedMediaUrl(cachedUser.profilePicture);
+      if (cachedPicture) setAvatarUrl(cachedPicture);
       setVerification(normalizeVerificationStage(getPersistedVerification(cachedUser.id)));
     }
 
@@ -236,6 +244,8 @@ export default function ProfilePage() {
       setProviderStats(providerDiscovery);
       const picture = currentUser.profilePicture ?? studentProfile?.profilePicture ?? providerPage?.profilePicture;
       if (picture) {
+        const cachedPicture = getCachedMediaUrl(picture);
+        if (cachedPicture) setAvatarUrl(cachedPicture);
         void resolveMediaUrl(picture).then((resolvedPicture) => {
           if (active && resolvedPicture) setAvatarUrl(resolvedPicture);
         }).catch(() => undefined);

@@ -11,7 +11,7 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: string[]; images?: string[]; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
@@ -62,6 +62,8 @@ export default function DashboardPage() {
         setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
       }
       const picture = currentUser.profilePicture ?? currentUser.studentProfile?.profilePicture;
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) setProfileImage(cachedPicture);
       if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
       return;
     }
@@ -70,6 +72,8 @@ export default function DashboardPage() {
       const student = unwrapData<StudentProfile>(value);
       const currentUser = getCachedCurrentUser<Profile>();
       const picture = currentUser?.profilePicture ?? student?.profilePicture;
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) setProfileImage(cachedPicture);
       if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
       return;
     }
@@ -79,6 +83,8 @@ export default function DashboardPage() {
       setPageStatus(normalizePageStatus(page?.status));
       const currentUser = getCachedCurrentUser<Profile>();
       const picture = currentUser?.profilePicture ?? page?.profilePicture;
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) setProfileImage(cachedPicture);
       if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
       return;
     }
@@ -120,6 +126,8 @@ export default function DashboardPage() {
     if (cachedProfile) {
       setProfile({ ...cachedProfile, displayName: resolveAccountName(cachedProfile) });
       setVerification(normalizeVerificationStage(getPersistedVerification(cachedProfile.id)));
+      const cachedPicture = getCachedMediaUrl(cachedProfile.profilePicture ?? cachedProfile.studentProfile?.profilePicture);
+      if (cachedPicture) setProfileImage(cachedPicture);
     }
     else {
       const tokenName = getAuthenticatedDisplayName();
@@ -203,6 +211,8 @@ export default function DashboardPage() {
         });
       }
       if (pictureReference) {
+        const cachedPicture = getCachedMediaUrl(pictureReference);
+        if (cachedPicture) setProfileImage(cachedPicture);
         void resolveMediaUrl(pictureReference).then((url) => {
           if (url) setProfileImage(url);
         }).catch(() => undefined);

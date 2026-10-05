@@ -7,7 +7,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
 import { VerificationBadge } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
+import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, getCachedMediaUrl, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type Listing = {
   id: string;
@@ -125,7 +125,8 @@ export default function PublicProfilePage() {
         setAvatarMissing(!loadedUrl);
         onSettled?.();
       };
-      void resolveMediaUrl(pictureReference)
+      const cachedUrl = getCachedMediaUrl(pictureReference);
+      void (cachedUrl ? Promise.resolve(cachedUrl) : resolveMediaUrl(pictureReference))
         .then((pictureUrl) => {
           if (!active || requestId !== avatarRequestId) return;
           if (!pictureUrl) {

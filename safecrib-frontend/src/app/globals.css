@@ -38,6 +38,20 @@ body {
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
   background: #ffffff;
+  overscroll-behavior-y: none;
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+
+  body {
+    padding-top: 0;
+    padding-bottom: max(var(--safe-area-bottom), 0.75rem);
+  }
 }
 
 * {
@@ -139,6 +153,17 @@ body {
 
 .safecrib-accordion[open] summary::after {
   content: "−";
+}
+
+.safecrib-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.safecrib-no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 @keyframes safecrib-card-float {

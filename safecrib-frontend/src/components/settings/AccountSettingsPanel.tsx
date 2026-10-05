@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, primeCurrentUserCache, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData, uploadDocument } from "@/lib/api";
+import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, getCachedMediaUrl, primeCurrentUserCache, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData, uploadDocument } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { useTheme, type ThemeMode } from "@/components/theme/ThemeProvider";
 
@@ -40,6 +40,8 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
       if (!currentAccount) return;
       setAccount(currentAccount);
       setDisplayName(nameFrom(currentAccount.displayName));
+      const cachedPicture = getCachedMediaUrl(currentAccount.profilePicture);
+      if (cachedPicture) setAvatarUrl(cachedPicture);
       if (currentAccount.profilePicture) {
         void resolveMediaUrl(currentAccount.profilePicture).then((url) => {
           if (url) setAvatarUrl(url);
@@ -57,7 +59,7 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
         const provider = unwrapData<{ profilePicture?: string } | null>(await cachedApiFetch<unknown>("/api/v1/provider-pages/me"));
         profilePicture = provider?.profilePicture;
       }
-      setAvatarUrl(await resolveMediaUrl(profilePicture));
+      setAvatarUrl(getCachedMediaUrl(profilePicture) ?? await resolveMediaUrl(profilePicture));
     }).catch((loadError: unknown) => {
       setError(loadError instanceof Error ? loadError.message : "We could not load account settings.");
     });

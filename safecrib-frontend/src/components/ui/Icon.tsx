@@ -1,4 +1,4 @@
-export type IconName = "home" | "settings" | "page" | "support" | "logout" | "back" | "search";
+export type IconName = "home" | "settings" | "page" | "support" | "logout" | "back" | "search" | "image";
 
 export function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
   return (
@@ -10,6 +10,7 @@ export function Icon({ name, className = "h-5 w-5" }: { name: IconName; classNam
       {name === "logout" && <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></>}
       {name === "back" && <path d="m14.5 5-7 7 7 7M8 12h13" />}
       {name === "search" && <><circle cx="10.8" cy="10.8" r="6.3" /><path d="m15.5 15.5 5 5" /></>}
+      {name === "image" && <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 20" /></>}
     </svg>
   );
 }

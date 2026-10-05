@@ -7,7 +7,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { VerificationBadge } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, resolveMediaUrl, unwrapData } from "@/lib/api";
+import { apiFetch, cachedApiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/api";
 
 type UserResult = {
   id: string;
@@ -40,6 +40,12 @@ function DiscoveryAvatar({ reference, seed, label }: { reference?: string | null
   const [resolving, setResolving] = useState(Boolean(reference));
 
   useEffect(() => {
+    const cachedUrl = getCachedMediaUrl(reference);
+    if (cachedUrl) {
+      setImageUrl(cachedUrl);
+      setResolving(false);
+      return;
+    }
     setImageUrl(null);
     setResolving(Boolean(reference));
     if (!reference) return;
@@ -177,19 +183,21 @@ export default function ConnectPage() {
   return <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
     <DashboardNav onCreatePage={() => router.push("/page/new")} pageStatus="none" />
     <section className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
-      <Link href="/dashboard" aria-label="Back to dashboard" title="Back to dashboard" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/65 transition-colors hover:bg-black/[0.03] hover:text-safecrib-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
-        <Icon name="back" />
-      </Link>
-      <header className="mt-5">
-        <label htmlFor="community-search" className="relative block w-full">
-          <span className="sr-only">Search users and pages</span>
-          <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-black/40" />
-          <input id="community-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search campus mates, pages, and homes" className="w-full rounded-full border border-black/15 bg-white py-3.5 pl-11 pr-4 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
-        </label>
-      </header>
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard" aria-label="Back to dashboard" title="Back to dashboard" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/80 text-black/65 shadow-sm shadow-black/[0.04] transition-colors hover:bg-black/[0.03] hover:text-safecrib-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+          <Icon name="back" />
+        </Link>
+        <header className="flex-1">
+          <label htmlFor="community-search" className="relative block w-full">
+            <span className="sr-only">Search users and pages</span>
+            <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-black/40" />
+            <input id="community-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search campus mates, pages, and homes" className="w-full rounded-full border border-black/15 bg-white py-3.5 pl-11 pr-4 text-sm text-safecrib-black shadow-sm shadow-black/[0.02] focus:border-safecrib-green focus:outline-none" />
+          </label>
+        </header>
+      </div>
       {error && <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
-      <nav aria-label="Search result types" className="mt-6 flex gap-2 overflow-x-auto border-b border-black/10 pb-3">
-        {resultTypes.map((type) => <button key={type} type="button" aria-pressed={resultType === type} onClick={() => setResultType(type)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${resultType === type ? "bg-safecrib-green text-white" : "border border-black/10 bg-white text-black/65 hover:border-safecrib-green/40 hover:text-safecrib-green"}`}>{type}</button>)}
+      <nav aria-label="Search result types" className="safecrib-no-scrollbar mt-6 flex gap-2 overflow-x-auto border-b border-black/10 pb-3">
+        {resultTypes.map((type) => <button key={type} type="button" aria-pressed={resultType === type} onClick={() => setResultType(type)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${resultType === type ? "bg-safecrib-green text-white shadow-sm shadow-safecrib-green/15" : "border border-black/10 bg-white text-black/65 hover:border-safecrib-green/40 hover:text-safecrib-green"}`}>{type}</button>)}
       </nav>
       {!query.trim() && recentSearches.length > 0 && <section className="mt-6" aria-labelledby="recent-searches-title">
         <div className="flex items-center justify-between gap-3">
