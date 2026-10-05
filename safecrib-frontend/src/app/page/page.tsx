@@ -30,7 +30,6 @@ export default function ProviderWorkspacePage() {
   const [studentStatus, setStudentStatus] = useState<AccountStatus>("not_submitted");
   const [listings, setListings] = useState<Listing[]>([]);
   const [verification, setVerification] = useState<VerificationStageResult | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -91,7 +90,7 @@ export default function ProviderWorkspacePage() {
       }
     }).catch((loadError: unknown) => {
       setError(loadError instanceof Error ? loadError.message : "We could not load your provider workspace.");
-    }).finally(() => setLoading(false));
+    });
   }, [router]);
 
   const rawPageStatus = String(providerPage?.status ?? "NONE").toUpperCase();

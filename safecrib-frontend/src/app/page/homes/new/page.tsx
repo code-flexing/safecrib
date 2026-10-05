@@ -42,7 +42,6 @@ export default function NewHomePage() {
   const [step, setStep] = useState(1);
   const [draftKey, setDraftKey] = useState("");
   const [restored, setRestored] = useState(false);
-  const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"photo" | "video" | null>(null);
   const [error, setError] = useState("");
@@ -228,7 +227,6 @@ export default function NewHomePage() {
     } finally { setSaving(false); }
   };
 
-  if (loading) return <PageLoader label="Loading home form" />;
   const status = String(listing?.status ?? "DRAFT").toUpperCase();
   const pendingReview = ["SUBMITTED", "UNDER_REVIEW"].includes(status);
   const mapUrl = form.lat && form.lng ? `https://www.google.com/maps?q=${encodeURIComponent(`${form.lat},${form.lng}`)}&output=embed` : "";

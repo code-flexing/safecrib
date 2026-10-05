@@ -91,7 +91,6 @@ export default function NewProviderPage() {
   const [rejectionNotes, setRejectionNotes] = useState("");
   const [draftKey, setDraftKey] = useState("");
   const [restored, setRestored] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checkingMedia, setCheckingMedia] = useState(false);
   const [uploading, setUploading] = useState<"license" | "picture" | null>(null);
@@ -169,7 +168,7 @@ export default function NewProviderPage() {
     }).catch((loadError: unknown) => {
       if (loadError instanceof ApiError && loadError.status === 401) router.replace("/login?reason=session-expired");
       else setError(loadError instanceof Error ? loadError.message : "We could not load provider setup.");
-    }).finally(() => setLoading(false));
+    });
   }, [router]);
 
   useEffect(() => {
