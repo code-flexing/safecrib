@@ -612,12 +612,19 @@ export async function resolveMediaUrl(reference: unknown): Promise<string | null
 }
 
 export async function resolveAdminMediaUrl(reference: unknown): Promise<{ url: string | null; error: string | null }> {
-  if (typeof reference !== "string" || !reference) {
+  const mediaReference = typeof reference === "string"
+    ? reference
+    : typeof reference === "object" && reference !== null
+      ? ["url", "accessUrl", "deliveryUrl", "id", "mediaId"]
+        .map((key) => (reference as Record<string, unknown>)[key])
+        .find((value): value is string => typeof value === "string" && Boolean(value))
+      : undefined;
+  if (!mediaReference) {
     return { url: null, error: "No media reference was submitted." };
   }
-  if (/^(https?:|data:|blob:)/.test(reference)) return { url: reference, error: null };
+  if (/^(https?:|data:|blob:)/.test(mediaReference)) return { url: mediaReference, error: null };
   try {
-    const response = unwrapData<unknown>(await adminFetch<unknown>(`/api/v1/media/${encodeURIComponent(reference)}/access`));
+    const response = unwrapData<unknown>(await adminFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaReference)}/access`));
     if (typeof response === "string") return { url: response, error: null };
     if (typeof response === "object" && response !== null) {
       const mediaResponse = response as Record<string, unknown>;

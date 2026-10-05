@@ -54,6 +54,19 @@ const mediaFields = new Set([
   "proofOfLicense",
 ]);
 
+function mediaReference(value: unknown) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  return ["url", "accessUrl", "deliveryUrl", "id", "mediaId"]
+    .map((key) => record[key])
+    .find((candidate): candidate is string => typeof candidate === "string" && Boolean(candidate));
+}
+
+function hasMediaReference(value: unknown) {
+  return Boolean(mediaReference(value));
+}
+
 function display(value: unknown, fieldKey?: string): ReactNode {
   if (value === null || value === undefined || value === "")
     return "Not provided";
@@ -133,12 +146,13 @@ function display(value: unknown, fieldKey?: string): ReactNode {
 }
 
 function mediaUnavailable(reference: unknown, error?: string | null): ReactNode {
-  if (typeof reference !== "string" || !reference.trim()) return "Not provided";
+  const normalizedReference = mediaReference(reference);
+  if (!normalizedReference) return "Not provided";
   return (
     <span className="block text-amber-900">
       {error || "The media service could not resolve this file."}
       <code className="mt-1 block break-all font-mono text-xs text-black/55">
-        Reference: {reference}
+        Reference: {normalizedReference}
       </code>
     </span>
   );
@@ -188,7 +202,7 @@ export default function AdminReviewPage() {
       setReview(detail);
       setReason(detail.rejectionReason ?? "");
       const references = Object.entries(detail.submittedData).filter(
-        ([key, value]) => mediaFields.has(key) && typeof value === "string",
+        ([key, value]) => mediaFields.has(key) && hasMediaReference(value),
       );
       const resolved = await Promise.all(
         references.map(async ([key, value]) => [key, await resolveAdminMediaUrl(value)] as const),
@@ -412,8 +426,7 @@ export default function AdminReviewPage() {
               ) : (
                 <div className="mt-4 space-y-3 text-sm text-black/60">
                   <p>{mediaUnavailable(review.submittedData.profilePicture, mediaErrors.profilePicture)}</p>
-                  {typeof review.submittedData.profilePicture === "string" &&
-                    review.submittedData.profilePicture && (
+                  {hasMediaReference(review.submittedData.profilePicture) && (
                       <button
                         type="button"
                         onClick={() => void load()}
@@ -443,7 +456,7 @@ export default function AdminReviewPage() {
                       ) : (
                         <span className="flex flex-col items-start gap-2">
                           {mediaUnavailable(review.submittedData[key], mediaErrors[key])}
-                          {typeof review.submittedData[key] === "string" && (
+                          {hasMediaReference(review.submittedData[key]) && (
                             <button
                               type="button"
                               onClick={() => void load()}
