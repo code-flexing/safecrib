@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { MediaService } from './media.service.js';
-import { MediaPolicyService } from './media-policy.service.js';
+import type { MediaPolicyService } from './media-policy.service.js';
 import type { StorageProvider, UploadSignatureResult } from '../providers/storage-provider.interface.js';
 import type { MediaRepository } from '../media.repository.js';
 import type { MediaPathBuilder } from './media-path-builder.service.js';
