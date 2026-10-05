@@ -171,11 +171,11 @@ export default function ConnectPage() {
         </label>
       </header>
       {error && <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
-      {query.trim() && loading && <SearchResultsSkeleton />}
-      {query.trim() && !loading && <>
       <nav aria-label="Search result types" className="mt-6 flex gap-2 overflow-x-auto border-b border-black/10 pb-3">
         {resultTypes.map((type) => <button key={type} type="button" aria-pressed={resultType === type} onClick={() => setResultType(type)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${resultType === type ? "bg-safecrib-green text-white" : "border border-black/10 bg-white text-black/65 hover:border-safecrib-green/40 hover:text-safecrib-green"}`}>{type}</button>)}
       </nav>
+      {query.trim() && loading && <SearchResultsSkeleton />}
+      {query.trim() && !loading && <>
       {resultType === "Posts" && <p className="mt-6 text-sm text-black/55">Posts are not available yet.</p>}
       {(resultType === "People" || resultType === "Profiles" || resultType === "Trending") && <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:items-start">
       <section aria-labelledby="campus-people-title">
