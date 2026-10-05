@@ -40,7 +40,7 @@ protected data requests:
 Do not rely on a role stored only in local storage. The backend role check is
 the security boundary; the frontend guard is for routing and user experience.
 
-## Authentication
+
 
 There is no separate backend `/admin/login` endpoint. The admin login page uses
 the shared auth endpoint:
