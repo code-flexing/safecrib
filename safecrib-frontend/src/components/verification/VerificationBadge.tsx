@@ -25,19 +25,16 @@ const stageConfig = {
     badge: "GREEN_CHECK",
     color: "green",
     label: "Verified",
-    tone: "border-[#2ECC71]/35 bg-[#2ECC71]/10 text-[#0B3D1E]",
   },
   AGENT_VERIFIED: {
     badge: "BLUE_SHIELD",
     color: "blue",
     label: "Verified provider",
-    tone: "border-[#3B82F6]/35 bg-[#3B82F6]/10 text-[#1E3A8A]",
   },
   TRUST_CROWN: {
     badge: "GOLD_CROWN",
     color: "gold",
     label: "Trusted provider",
-    tone: "border-[#F4C430]/45 bg-[#F4C430]/15 text-[#7A4B00]",
   },
 } as const;
 
@@ -103,17 +100,11 @@ export function VerificationBadge({ verification, verified = false, compact = fa
   const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "blue" : "green");
   const riskBlocked = verification?.riskBlocked === true;
   const label = badge === "GOLD_CROWN" ? "Trusted provider" : badge === "BLUE_SHIELD" ? (role === "STUDENT" ? "Verified student" : "Verified provider") : (role === "STUDENT" ? "Verified student" : "Verified");
-  const tone = badgeColor === "gold"
-    ? "border-[#F4C430]/45 bg-[#F4C430]/15 text-[#7A4B00]"
-    : badgeColor === "blue"
-      ? "border-[#3B82F6]/35 bg-[#3B82F6]/10 text-[#1E3A8A]"
-      : "border-[#2ECC71]/35 bg-[#2ECC71]/10 text-[#0B3D1E]";
-
   return (
     <span
       title={`${label}${riskBlocked ? ". Advanced badge upgrade is blocked for review." : ""}`}
       aria-label={`${label}${riskBlocked ? ", risk review required" : ""}`}
-      className={`inline-flex w-fit items-center gap-2 rounded-full border font-semibold ${tone} ${iconOnly ? "h-5 w-5 justify-center border-0 bg-transparent p-0" : compact ? "px-2 py-0.5 text-[0.7rem]" : "px-3 py-1.5 text-sm"}`}
+      className={`verification-badge verification-badge--${badgeColor} inline-flex w-fit items-center gap-2 rounded-full border font-semibold ${iconOnly ? "verification-badge--icon h-5 w-5 justify-center border-0 bg-transparent p-0" : compact ? "px-2 py-0.5 text-[0.7rem]" : "px-3 py-1.5 text-sm"}`}
     >
       {iconOnly ? <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path fill="currentColor" stroke="none" d="M12 1.25 14.1 3.1l2.8-.75L18 5.1l2.9.45-.45 2.9 2.3 2.05-1.9 2.3.75 2.9-2.75 1.15-.5 2.9-2.9-.45-2.1 2.7-2.3-1.9-2.85.75-1.15-2.75-2.9-.45.45-2.9L2.3 12.7l1.9-2.3-.75-2.9L6.2 6.35l.5-2.9 2.9.45Z" />

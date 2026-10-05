@@ -19,6 +19,15 @@
   --theme-text-warning: #7a4b00;
   --theme-text-error: #9f1239;
   --theme-text-info: #1e3a8a;
+  --verification-green-bg: #e9f8ef;
+  --verification-green-border: rgba(46, 204, 113, 0.35);
+  --verification-green-text: #0b3d1e;
+  --verification-blue-bg: #edf4ff;
+  --verification-blue-border: rgba(59, 130, 246, 0.35);
+  --verification-blue-text: #1e3a8a;
+  --verification-gold-bg: #fff8dc;
+  --verification-gold-border: rgba(244, 196, 48, 0.45);
+  --verification-gold-text: #7a4b00;
 
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -461,6 +470,15 @@ html[data-theme="dim"] {
   --theme-text-info: #b1caff;
   --theme-border: rgba(190, 209, 235, 0.18);
   --theme-field: #0f1e35;
+  --verification-green-bg: #143d2a;
+  --verification-green-border: rgba(143, 230, 183, 0.42);
+  --verification-green-text: #9be8bd;
+  --verification-blue-bg: #172d52;
+  --verification-blue-border: rgba(177, 202, 255, 0.42);
+  --verification-blue-text: #b1caff;
+  --verification-gold-bg: #493b12;
+  --verification-gold-border: rgba(255, 220, 145, 0.42);
+  --verification-gold-text: #ffdc91;
 }
 
 html[data-theme="dark"] {
@@ -480,6 +498,38 @@ html[data-theme="dark"] {
   --theme-text-info: #b8d3ff;
   --theme-border: rgba(220, 235, 226, 0.18);
   --theme-field: #111714;
+  --verification-green-bg: #163a29;
+  --verification-green-border: rgba(155, 232, 189, 0.42);
+  --verification-green-text: #9be8bd;
+  --verification-blue-bg: #182d4e;
+  --verification-blue-border: rgba(184, 211, 255, 0.42);
+  --verification-blue-text: #b8d3ff;
+  --verification-gold-bg: #493b12;
+  --verification-gold-border: rgba(247, 209, 138, 0.42);
+  --verification-gold-text: #f7d18a;
+}
+
+.verification-badge--green {
+  border-color: var(--verification-green-border);
+  background: var(--verification-green-bg);
+  color: var(--verification-green-text);
+}
+
+.verification-badge--blue {
+  border-color: var(--verification-blue-border);
+  background: var(--verification-blue-bg);
+  color: var(--verification-blue-text);
+}
+
+.verification-badge--gold {
+  border-color: var(--verification-gold-border);
+  background: var(--verification-gold-bg);
+  color: var(--verification-gold-text);
+}
+
+.verification-badge--icon {
+  border-color: transparent;
+  background: transparent;
 }
 
 html[data-theme="dim"] body,
