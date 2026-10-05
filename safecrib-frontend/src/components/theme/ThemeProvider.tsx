@@ -12,26 +12,20 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 function readThemeMode(): ThemeMode {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return value === "light" || value === "dim" || value === "dark" ? value : "system";
+    return value === "light" || value === "dim" || value === "dark" ? value : "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("system");
-  const [systemPrefersDark, setSystemPrefersDark] = useState(false);
+  const [mode, setMode] = useState<ThemeMode>("light");
   const [ready, setReady] = useState(false);
-  const resolvedTheme: ResolvedTheme = mode === "system" ? systemPrefersDark ? "dark" : "light" : mode;
+  const resolvedTheme: ResolvedTheme = mode === "system" ? "light" : mode;
 
   useEffect(() => {
     setMode(readThemeMode());
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const updatePreference = () => setSystemPrefersDark(media.matches);
-    updatePreference();
     setReady(true);
-    media.addEventListener("change", updatePreference);
-    return () => media.removeEventListener("change", updatePreference);
   }, []);
 
   useEffect(() => {

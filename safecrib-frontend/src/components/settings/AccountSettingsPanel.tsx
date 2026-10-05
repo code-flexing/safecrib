@@ -165,9 +165,9 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
         {notice && <p role="status" className="mb-5 border-l-4 border-[#2ECC71] bg-[#2ECC71]/10 px-4 py-3 text-sm leading-6 text-[#0B3D1E]">{notice}</p>}
         <fieldset>
           <legend className="font-medium text-safecrib-black">Appearance</legend>
-          <p className="mt-1 text-sm leading-6 text-black/55">Choose a theme or follow your device setting.</p>
+          <p className="mt-1 text-sm leading-6 text-black/55">Choose the theme used across SafeCrib.</p>
           <div role="radiogroup" aria-label="Appearance theme" className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {([{ value: "system", label: "Device" }, { value: "light", label: "Light" }, { value: "dim", label: "Dim" }, { value: "dark", label: "Dark" }] as const).map((option) => <button key={option.value} type="button" role="radio" aria-checked={mode === option.value} onClick={() => setMode(option.value as ThemeMode)} className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${mode === option.value ? "border-safecrib-green bg-safecrib-green/10 text-safecrib-green" : "border-black/15 text-black/60 hover:bg-black/[0.03]"}`}>{option.label}</button>)}
+            {([{ value: "light", label: "Light" }, { value: "dim", label: "Dim" }, { value: "dark", label: "Dark" }] as const).map((option) => <button key={option.value} type="button" role="radio" aria-checked={mode === option.value} onClick={() => setMode(option.value as ThemeMode)} className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${mode === option.value ? "border-safecrib-green bg-safecrib-green/10 text-safecrib-green" : "border-black/15 text-black/60 hover:bg-black/[0.03]"}`}>{option.label}</button>)}
           </div>
         </fieldset>
         <div className="grid gap-8 lg:grid-cols-2">
