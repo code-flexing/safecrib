@@ -33,6 +33,7 @@ type DiscoveryResult = { users: UserResult[]; pages: PageResult[] };
 type HomeResult = { id: string; title?: string; campus?: string; address?: string; price?: number; photos?: { url?: string }[]; recommendationScore?: number };
 type ResultType = "Posts" | "People" | "Pages" | "Homes" | "Profiles" | "Trending";
 const resultTypes: ResultType[] = ["Posts", "People", "Pages", "Homes", "Profiles", "Trending"];
+const recentSearchesKey = "safecrib:connect:recent-searches";
 
 function DiscoveryAvatar({ reference, seed, label }: { reference?: string | null; seed: string; label: string }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -78,6 +79,7 @@ function SearchResultsSkeleton() {
 export default function ConnectPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [result, setResult] = useState<DiscoveryResult>({ users: [], pages: [] });
   const [homes, setHomes] = useState<HomeResult[]>([]);
   const [resultType, setResultType] = useState<ResultType>("People");
@@ -86,8 +88,18 @@ export default function ConnectPage() {
   const [pending, setPending] = useState<string | null>(null);
 
   useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(recentSearchesKey) ?? "[]") as unknown;
+      if (Array.isArray(stored)) setRecentSearches(stored.filter((item): item is string => typeof item === "string").slice(0, 6));
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
-    if (!query.trim()) {
+    const searchTerm = query.trim();
+    if (!searchTerm) {
       setResult({ users: [], pages: [] });
       setLoading(false);
       setError("");
@@ -95,10 +107,15 @@ export default function ConnectPage() {
     }
     const timer = window.setTimeout(() => {
       setLoading(true);
-      void cachedApiFetch<unknown>(`/api/v1/users/discover?q=${encodeURIComponent(query.trim())}`)
+      void cachedApiFetch<unknown>(`/api/v1/users/discover?q=${encodeURIComponent(searchTerm)}`)
         .then((response) => {
           if (active) {
             setResult(unwrapData<DiscoveryResult>(response));
+            setRecentSearches((current) => {
+              const next = [searchTerm, ...current.filter((item) => item.toLocaleLowerCase() !== searchTerm.toLocaleLowerCase())].slice(0, 6);
+              localStorage.setItem(recentSearchesKey, JSON.stringify(next));
+              return next;
+            });
             setError("");
           }
         })
@@ -174,6 +191,15 @@ export default function ConnectPage() {
       <nav aria-label="Search result types" className="mt-6 flex gap-2 overflow-x-auto border-b border-black/10 pb-3">
         {resultTypes.map((type) => <button key={type} type="button" aria-pressed={resultType === type} onClick={() => setResultType(type)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${resultType === type ? "bg-safecrib-green text-white" : "border border-black/10 bg-white text-black/65 hover:border-safecrib-green/40 hover:text-safecrib-green"}`}>{type}</button>)}
       </nav>
+      {!query.trim() && recentSearches.length > 0 && <section className="mt-6" aria-labelledby="recent-searches-title">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="recent-searches-title" className="text-sm font-semibold text-safecrib-black">Recent searches</h2>
+          <button type="button" onClick={() => { localStorage.removeItem(recentSearchesKey); setRecentSearches([]); }} className="text-xs font-medium text-safecrib-green hover:underline">Clear</button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {recentSearches.map((search) => <button key={search} type="button" onClick={() => setQuery(search)} className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-black/65 transition-colors hover:border-safecrib-green/40 hover:text-safecrib-green">{search}</button>)}
+        </div>
+      </section>}
       {query.trim() && loading && <SearchResultsSkeleton />}
       {query.trim() && !loading && <>
       {resultType === "Posts" && <p className="mt-6 text-sm text-black/55">Posts are not available yet.</p>}
