@@ -313,9 +313,6 @@ export default function CompleteStudentProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] =
     useState(false);
 
-  const [uploadingCover, setUploadingCover] =
-    useState(false);
-
   const [step, setStep] =
     useState(0);
 

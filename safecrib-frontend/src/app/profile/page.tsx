@@ -134,7 +134,6 @@ export default function ProfilePage() {
   const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationStageResult | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
@@ -184,7 +183,6 @@ export default function ProfilePage() {
     if (cachedUser) {
       setUser(cachedUser);
       setVerification(normalizeVerificationStage(getPersistedVerification(cachedUser.id)));
-      setLoading(false);
     }
 
     let active = true;
@@ -249,8 +247,6 @@ export default function ProfilePage() {
         return;
       }
       if (active) setError(loadError instanceof Error ? loadError.message : "We could not load your profile.");
-    }).finally(() => {
-      if (active) setLoading(false);
     });
     return () => { active = false; };
   }, [router]);

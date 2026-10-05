@@ -80,9 +80,7 @@ export default function PublicProfilePage() {
   const profileId = params.id;
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarPending, setAvatarPending] = useState(false);
   const [avatarMissing, setAvatarMissing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
   const [followPending, setFollowPending] = useState(false);
   const [followError, setFollowError] = useState("");
@@ -111,7 +109,6 @@ export default function PublicProfilePage() {
       }
       setAvatarUrl(null);
       setAvatarMissing(!pictureReference);
-      setAvatarPending(Boolean(pictureReference));
       if (!pictureReference) {
         onSettled?.();
         return;
@@ -126,7 +123,6 @@ export default function PublicProfilePage() {
         }
         setAvatarUrl(loadedUrl);
         setAvatarMissing(!loadedUrl);
-        setAvatarPending(false);
         onSettled?.();
       };
       void resolveMediaUrl(pictureReference)
@@ -152,9 +148,8 @@ export default function PublicProfilePage() {
       if (path === publicProfilePath) {
         const refreshedProfile = unwrapData<PublicProfile>(value);
         if (!refreshedProfile) return;
-        setLoading(true);
         setProfile(refreshedProfile);
-        resolveAvatar(refreshedProfile.profilePicture, () => setLoading(false));
+        resolveAvatar(refreshedProfile.profilePicture);
       }
     });
     void cachedApiFetch<unknown>(publicProfilePath)
@@ -162,7 +157,7 @@ export default function PublicProfilePage() {
       .then((publicProfile) => {
         if (!active) return;
         setProfile(publicProfile);
-        resolveAvatar(publicProfile.profilePicture, () => setLoading(false));
+        resolveAvatar(publicProfile.profilePicture);
       })
       .catch((loadError: unknown) => {
         if (isUnauthorizedError(loadError)) {
@@ -172,7 +167,6 @@ export default function PublicProfilePage() {
         }
         if (active) {
           setUnavailable(true);
-          setLoading(false);
         }
       });
 
