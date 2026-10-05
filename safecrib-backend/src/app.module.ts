@@ -25,6 +25,7 @@ import { DuplicateSweepProcessor } from './infra/queue/duplicate-sweep.processor
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { SupportModule } from './modules/support/support.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { SupportModule } from './modules/support/support.module.js';
     StudentProfilesModule,
     MediaModule,
     SupportModule,
+    NotificationsModule,
   ],
   providers: [
     {

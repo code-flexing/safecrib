@@ -16,6 +16,7 @@ type UserResult = {
   isVerified?: boolean;
   role: string;
   school?: string | null;
+  shortBio?: string | null;
   followerCount: number;
   isFollowing: boolean;
 };
@@ -26,6 +27,7 @@ type PageResult = {
   profilePicture?: string | null;
   isVerified?: boolean;
   providerType?: string | null;
+  shortBio?: string | null;
   followerCount: number;
   isFollowing: boolean;
 };
@@ -228,6 +230,7 @@ export default function ConnectPage() {
                 {person.isVerified && <VerificationBadge verified compact iconOnly />}
               </div>
               <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>
+              {person.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{person.shortBio}</p>}
               <p className="mt-1 text-xs text-black/45">{person.followerCount} followers</p>
             </div>
             <button type="button" aria-pressed={person.isFollowing} onClick={() => void toggleFollow("user", person.id, person.isFollowing)} disabled={pending === `user:${person.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${person.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{person.isFollowing ? "Following" : "Follow"}</button>
@@ -243,7 +246,7 @@ export default function ConnectPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           {pages.map((page) => <article key={page.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 sm:p-4">
             <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} aria-label={`Open ${page.displayName}'s profile`} className="rounded-full"><DiscoveryAvatar reference={page.profilePicture} seed={page.ownerId} label={page.displayName} /></Link>
-            <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link><p className="mt-1 text-xs text-black/45">{page.followerCount} followers</p></div>
+            <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>{page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}<p className="mt-1 text-xs text-black/45">{page.followerCount} followers</p></div>
             <button type="button" aria-pressed={page.isFollowing} onClick={() => void toggleFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
           </article>)}
           {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
@@ -254,7 +257,7 @@ export default function ConnectPage() {
       {resultType === "Pages" && <section className="mt-6" aria-label="Pages">
         <div className="grid gap-3 sm:grid-cols-2">{pages.map((page) => <article key={page.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-4">
           <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} aria-label={`Open ${page.displayName}'s profile`}><DiscoveryAvatar reference={page.profilePicture} seed={page.ownerId} label={page.displayName} /></Link>
-          <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link><p className="mt-1 text-xs text-black/45">{page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · {page.followerCount} followers</p></div>
+          <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>{page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}<p className="mt-1 text-xs text-black/45">{page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · {page.followerCount} followers</p></div>
           <button type="button" aria-pressed={page.isFollowing} onClick={() => void toggleFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
         </article>)}</div>
         {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}

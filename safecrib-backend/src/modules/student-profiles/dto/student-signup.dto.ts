@@ -25,6 +25,18 @@ export class CompleteStudentProfileDto {
   @MaxLength(100)
   displayName?: string;
 
+  @ApiProperty({ example: 'Computer science student looking for a quiet home near campus.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  shortBio: string;
+
+  @ApiPropertyOptional({ example: 'I enjoy volunteering and building accessible software.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  longBio?: string;
+
   @ApiProperty({ example: 'student-id-front.jpg' })
   @IsString()
   @MinLength(1)

@@ -42,6 +42,11 @@ See `.env.example` for all available variables. Key ones:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `DIRECT_URL` | PostgreSQL connection for Prisma migrations |
 | `REDIS_URL` | Redis connection for BullMQ queues |
+| `NOTIFICATION_WORKER_CONCURRENCY` | Maximum concurrent notification persistence jobs per worker (default `10`, capped at `50`) |
+| `NOTIFICATION_WORKER_RATE` | Maximum notification jobs per second across workers (default `100`, capped at `1000`) |
+| `VAPID_PUBLIC_KEY` | Public Web Push VAPID key used by app-installed browser clients |
+| `VAPID_PRIVATE_KEY` | Private Web Push VAPID key (server secret; never expose to the frontend) |
+| `VAPID_SUBJECT` | VAPID contact URI, such as `mailto:notifications@safecrib.app` |
 | `REDIS_ENFORCE_NOEVICTION` | When `true`, verify/repair Redis `maxmemory-policy`; set `false` for managed providers that reject `CONFIG SET` |
 | `JWT_ACCESS_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
@@ -58,6 +63,18 @@ managed Redis provider that reports `allkeys-lru` or rejects `CONFIG SET`, set
 settings when possible. Changing `REDIS_URL` in the web service cannot change a
 Redis server policy. Restart the API and worker services after changing these
 settings.
+
+System notifications are persisted in PostgreSQL and delivered asynchronously
+through BullMQ. The Socket.IO `/notifications` namespace authenticates the
+access token and sends events only to that user's room; the Redis Socket.IO
+adapter distributes events across API instances. REST pagination is the source
+of truth and recovers events missed during disconnects. Deploy the
+`20261005000000_notifications` and `20261005230000_notification_push_bios`
+Prisma migrations before enabling the updated API. Phone push notifications
+require HTTPS and a VAPID keypair (`npx web-push generate-vapid-keys`); configure all three `VAPID_*` values on the API and
+worker. The public key is exposed to authenticated clients; the private key
+must remain a server-side secret. Short profile bios are limited to 160
+characters, while optional long bios are limited to 2,000.
 
 Brevo failures are logged with the HTTP status, Brevo error code/message, and
 Brevo request ID (when supplied), so delivery issues can be diagnosed without
@@ -118,6 +135,13 @@ All endpoints are under `/api/v1/`.
 - `POST /users/me/change-password` — Change password
 - `GET /users/me/trust` — Get your own trust score
 
+### Notifications
+- `GET /notifications?limit=30&before=<cursor>` — List the authenticated user's notifications (maximum 50 per page)
+- `GET /notifications/unread-count` — Get the authenticated user's unread count
+- `PATCH /notifications/:id/read` — Mark an owned notification as read
+- `PATCH /notifications/read-all` — Mark all of the authenticated user's notifications as read
+- Socket.IO namespace `/notifications` — Connect with `{ auth: { token: "<access token>" } }` and listen for `notification:new`
+
 ### Listings
 - `GET /listings` — Search listings (with location + price filters)
 - `GET /listings/my` — Get your listings
@@ -177,6 +201,7 @@ All endpoints are under `/api/v1/`.
 | Queue | Worker | Triggered By |
 |---|---|---|
 | `email` | EmailProcessor | Verification, password reset, welcome, and profile-review notifications |
+| `notifications` | NotificationsProcessor | Welcome, verification, listing, booking, support, and listing-engagement events |
 | `image-hash` | ImageHashProcessor | Photo upload |
 | `trust-recompute` | TrustRecomputeProcessor | New trust event |
 | `booking-hold-expiry` | BookingHoldExpiryProcessor | Booking enters HELD |

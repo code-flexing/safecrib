@@ -17,6 +17,7 @@ import { ProviderPagesService } from '../provider-pages/provider-pages.service.j
 import { MediaService } from '../media/services/media.service.js';
 import { computeProviderRecommendationScore } from '../trust/trust.service.js';
 import type { MediaPurpose, Prisma } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 export interface CreateListingInput {
   title: string;
@@ -42,6 +43,7 @@ export class ListingsService {
     @InjectQueue(IMAGE_HASH_QUEUE) private readonly imageHashQueue: Queue,
     private readonly providerPages: ProviderPagesService,
     private readonly mediaService: MediaService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createListing(
@@ -107,7 +109,7 @@ export class ListingsService {
   ): Promise<ListingResponse> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { ownerId: true, price: true, discountAmount: true },
+      select: { ownerId: true, price: true, discountAmount: true, status: true },
     });
 
     if (!listing) {
@@ -116,6 +118,9 @@ export class ListingsService {
 
     if (listing.ownerId !== ownerId) {
       throw new ForbiddenException('You do not own this listing');
+    }
+    if (!['DRAFT', 'REJECTED'].includes(listing.status)) {
+      throw new ConflictException('Only draft or rejected listings can be edited');
     }
 
     this.validateDiscount(
@@ -145,7 +150,12 @@ export class ListingsService {
   async deleteListing(listingId: string, ownerId: string): Promise<void> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { ownerId: true },
+      select: {
+        ownerId: true,
+        status: true,
+        photos: { select: { mediaId: true } },
+        video: { select: { mediaId: true } },
+      },
     });
 
     if (!listing) {
@@ -156,6 +166,15 @@ export class ListingsService {
       throw new ForbiddenException('You do not own this listing');
     }
 
+    if (listing.status !== 'DRAFT') {
+      throw new ConflictException('Only draft listings can be deleted');
+    }
+
+    const mediaIds = new Set([
+      ...listing.photos.map((photo) => photo.mediaId).filter((id): id is string => Boolean(id)),
+      ...(listing.video?.mediaId ? [listing.video.mediaId] : []),
+    ]);
+    await Promise.all([...mediaIds].map((mediaId) => this.mediaService.deleteMedia(mediaId, ownerId, 'AGENT')));
     await this.prisma.listing.delete({
       where: { id: listingId },
     });
@@ -291,11 +310,40 @@ export class ListingsService {
     if (!listing || listing.status !== 'VERIFIED') throw new NotFoundException('Home not found');
     if (listing.ownerId === userId) throw new ForbiddenException('You cannot like your own home');
 
+    const existingLike = await this.prisma.listingLike.findUnique({
+      where: { userId_listingId: { userId, listingId } },
+      select: { id: true },
+    });
     await this.prisma.listingLike.upsert({
       where: { userId_listingId: { userId, listingId } },
       create: { userId, listingId },
       update: {},
     });
+    if (!existingLike) {
+      const actor = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          displayName: true,
+          profilePicture: true,
+          studentProfile: { select: { profilePicture: true } },
+          providerPage: { select: { profilePicture: true } },
+        },
+      });
+      await this.notifications.enqueue(listing.ownerId, {
+        type: 'LISTING_LIKED',
+        title: 'Someone liked your home',
+        body: 'A SafeCrib user liked your listing.',
+        href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
+        data: {
+          listingId,
+          actorName: actor?.displayName,
+          actorProfilePicture: actor?.profilePicture
+            ?? actor?.studentProfile?.profilePicture
+            ?? actor?.providerPage?.profilePicture,
+        },
+        dedupeKey: `listing-like:${listingId}:${userId}`,
+      });
+    }
     return { liked: true };
   }
 
@@ -335,7 +383,7 @@ export class ListingsService {
     }
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { id: true, status: true },
+      select: { id: true, ownerId: true, title: true, status: true },
     });
     if (!listing || listing.status !== 'VERIFIED') throw new NotFoundException('Home not found');
     if (input.parentId) {
@@ -376,10 +424,52 @@ export class ListingsService {
         gifUrl: true,
         parentId: true,
         createdAt: true,
-        user: { select: { id: true, displayName: true, role: true } },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true,
+            profilePicture: true,
+            studentProfile: { select: { profilePicture: true } },
+            providerPage: { select: { profilePicture: true } },
+          },
+        },
         mentions: { select: { user: { select: { id: true, displayName: true } } } },
       },
     });
+    if (listing.ownerId !== userId) {
+      const actorPhoto = comment.user.profilePicture
+        ?? comment.user.studentProfile?.profilePicture
+        ?? comment.user.providerPage?.profilePicture;
+      await this.notifications.enqueue(listing.ownerId, {
+        type: 'LISTING_COMMENT',
+        title: 'New comment on your home',
+        body: 'A SafeCrib user commented on your listing.',
+        href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
+        data: {
+          listingId,
+          commentId: comment.id,
+          actorName: comment.user.displayName,
+          actorProfilePicture: actorPhoto,
+        },
+        dedupeKey: `listing-comment:${comment.id}:owner`,
+      });
+    }
+    await Promise.all(mentionIds.map((mentionedUserId) => this.notifications.enqueue(mentionedUserId, {
+      type: 'COMMENT_MENTION',
+      title: 'You were mentioned',
+      body: `You were mentioned in a comment on ${listing.title ?? 'a home'}.`,
+      href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
+      data: {
+        listingId,
+        commentId: comment.id,
+        actorName: comment.user.displayName,
+        actorProfilePicture: comment.user.profilePicture
+          ?? comment.user.studentProfile?.profilePicture
+          ?? comment.user.providerPage?.profilePicture,
+      },
+      dedupeKey: `listing-comment:${comment.id}:mention:${mentionedUserId}`,
+    })));
     return comment;
   }
 
@@ -478,6 +568,16 @@ export class ListingsService {
       const result = await tx.listing.update({ where: { id: listingId }, data: { status: approved ? 'VERIFIED' : 'REJECTED' }, include: this.listingInclude() });
       await tx.auditLog.create({ data: { actorId: adminId, action: approved ? 'LISTING_VERIFIED' : 'LISTING_REJECTED', entityType: 'listing', entityId: listingId, metadata: { notes } } });
       return result;
+    });
+    await this.notifications.enqueue(listing.ownerId, {
+      type: approved ? 'LISTING_APPROVED' : 'LISTING_REJECTED',
+      title: approved ? 'Home approved' : 'Home needs changes',
+      body: approved
+        ? 'Your home has been approved and is now visible to students.'
+        : `Your home was not approved. ${notes?.trim() || 'Review the listing and update the requested details.'}`,
+      href: `/page/homes/new?id=${encodeURIComponent(listingId)}`,
+      data: { listingId, status: approved ? 'VERIFIED' : 'REJECTED' },
+      dedupeKey: `listing-review:${listingId}:${approved ? 'approved' : 'rejected'}`,
     });
     return this.toResponse(updated, updated.photos);
   }

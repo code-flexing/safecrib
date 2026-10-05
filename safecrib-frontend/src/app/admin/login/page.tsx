@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { Button } from "@/components/ui/Button";
-import { ApiError, clearSession, verifyAdminSession } from "@/lib/api";
+import { ApiError, clearSession, setSessionTokens, verifyAdminSession } from "@/lib/api";
 
 function tokenFrom(value: unknown, key: "accessToken" | "refreshToken") {
   if (typeof value !== "object" || value === null) return null;
@@ -40,8 +40,7 @@ export default function AdminLoginPage() {
       const accessToken = tokenFrom(payload, "accessToken");
       const refreshToken = tokenFrom(payload, "refreshToken");
       if (!accessToken || !refreshToken) throw new Error("The server returned an invalid token response.");
-      localStorage.setItem("safecrib_access_token", accessToken);
-      localStorage.setItem("safecrib_refresh_token", refreshToken);
+      setSessionTokens({ accessToken, refreshToken });
       await verifyAdminSession();
       router.replace("/admin");
     } catch (loginError) {

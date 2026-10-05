@@ -20,6 +20,7 @@ import type {
   UpdateProviderPageDto,
 } from './dto/provider-page.dto.js';
 import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class ProviderPagesService {
@@ -30,6 +31,7 @@ export class ProviderPagesService {
     private readonly trustService: TrustService,
     private readonly studentProfiles: StudentProfileService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async getMine(ownerId: string) {
@@ -125,6 +127,8 @@ export class ProviderPagesService {
     const current = {
       displayName: dto.displayName ?? page.displayName,
       description: dto.description ?? page.description ?? undefined,
+      shortBio: dto.shortBio ?? page.shortBio ?? undefined,
+      longBio: dto.longBio ?? page.longBio ?? undefined,
       phone: dto.phone ?? page.phone ?? undefined,
       proofOfLicense: dto.proofOfLicense ?? page.proofOfLicense ?? undefined,
       profilePicture: dto.profilePicture ?? page.profilePicture ?? undefined,
@@ -169,7 +173,6 @@ export class ProviderPagesService {
     }
 
     const submittedData = this.toSubmissionData(page, owner.displayName);
-    this.validateSubmission(submittedData);
 
     const reviewId = randomUUID();
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -182,6 +185,7 @@ export class ProviderPagesService {
           'Your student profile is under review. Wait for its decision before submitting a provider Page.',
         );
       }
+      this.validateSubmission(submittedData);
 
       const result = await tx.providerPage.update({
         where: { id: page.id },
@@ -380,6 +384,16 @@ export class ProviderPagesService {
       page.owner.email,
       approved ? undefined : reason ?? 'No reason provided',
     );
+    await this.notifications.enqueue(page.ownerId, {
+      type: approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
+      title: approved ? 'Provider Page approved' : 'Provider Page needs changes',
+      body: approved
+        ? 'Your provider Page is verified. You can now publish homes.'
+        : `Your provider Page was not approved. ${reason ?? 'Please review and update your submission.'}`,
+      href: '/page',
+      data: { providerPageId: pageId, status: approved ? 'VERIFIED' : 'REJECTED' },
+      dedupeKey: `provider-page-review:${pageId}:${approved ? 'approved' : 'rejected'}`,
+    });
 
     if (approved) {
       try {
@@ -429,6 +443,8 @@ export class ProviderPagesService {
     return {
       displayName: dto.displayName?.trim(),
       description: dto.description?.trim() || null,
+      shortBio: dto.shortBio?.trim() ?? undefined,
+      longBio: dto.longBio?.trim() || null,
       phone: dto.phone?.trim() || null,
       proofOfLicense: dto.proofOfLicense?.trim() || null,
       profilePicture: dto.profilePicture?.trim() || null,
@@ -458,6 +474,8 @@ export class ProviderPagesService {
 
     return {
       displayName: page.displayName,
+      shortBio: page.shortBio,
+      longBio: page.longBio ?? page.description ?? null,
       proofOfLicense: page.proofOfLicense,
       payoutAccounts,
       profilePicture: page.profilePicture,
@@ -472,6 +490,7 @@ export class ProviderPagesService {
 
   private validateSubmission(data: ProviderProfileSubmission) {
     if (!data.displayName?.trim()) throw new BadRequestException('Page name is required');
+    if (!data.shortBio?.trim()) throw new BadRequestException('Short bio is required');
     if (!data.proofOfLicense?.trim()) throw new BadRequestException('Proof of authorization is required');
     if (!data.profilePicture?.trim()) throw new BadRequestException('Profile picture is required');
     this.validatePayoutAccounts(data.payoutAccounts);

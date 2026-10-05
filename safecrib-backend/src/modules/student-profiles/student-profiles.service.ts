@@ -55,6 +55,8 @@ export class StudentProfileService {
 
     const submittedData: StudentProfileSubmission = {
       displayName: dto.displayName?.trim() || null,
+      shortBio: dto.shortBio?.trim() ?? '',
+      longBio: dto.longBio?.trim() || null,
       proofOfStudentship: dto.proofOfStudentship.trim(),
       schoolOfStudy: dto.schoolOfStudy.trim(),
       courseOfStudy: dto.courseOfStudy.trim(),
@@ -77,12 +79,17 @@ export class StudentProfileService {
           'Your provider Page is under review. Wait for its decision before submitting a student profile.',
         );
       }
+      if (!submittedData.shortBio) {
+        throw new BadRequestException('Short bio is required');
+      }
 
       const profile = existing
         ? await tx.studentProfile.update({
             where: { id: existing.id },
             data: {
               displayName: submittedData.displayName,
+              shortBio: submittedData.shortBio,
+              longBio: submittedData.longBio,
               proofOfStudentship: submittedData.proofOfStudentship,
               schoolOfStudy: submittedData.schoolOfStudy,
               courseOfStudy: submittedData.courseOfStudy,
@@ -107,6 +114,8 @@ export class StudentProfileService {
             data: {
               userId,
               displayName: submittedData.displayName,
+              shortBio: submittedData.shortBio,
+              longBio: submittedData.longBio,
               proofOfStudentship: submittedData.proofOfStudentship,
               schoolOfStudy: submittedData.schoolOfStudy,
               courseOfStudy: submittedData.courseOfStudy,

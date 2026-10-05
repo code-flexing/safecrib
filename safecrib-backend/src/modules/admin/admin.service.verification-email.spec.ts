@@ -45,6 +45,7 @@ describe('AdminService.reviewSubmission verification email', () => {
       prisma,
       trustService as unknown as TrustService,
       emailQueue as unknown as Queue,
+      { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
     );
 
     await service.reviewSubmission('submission-id', 'admin-id', { status: 'APPROVED' });

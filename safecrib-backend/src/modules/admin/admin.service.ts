@@ -15,6 +15,7 @@ import type { CreateAdminDto, OnboardAgentDto } from './dto/admin.dto.js';
 import type { IdentityVerificationDto } from './dto/admin.dto.js';
 import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class AdminService {
@@ -24,6 +25,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createAdmin(dto: CreateAdminDto) {
@@ -391,6 +393,29 @@ export class AdminService {
       submission.email,
       newStatus === 'REJECTED' ? reason ?? 'No reason provided' : undefined,
     );
+
+    const notificationUserId = entityType === 'student_profile'
+      ? studentProfile?.userId
+      : providerPage?.ownerId;
+    if (notificationUserId) {
+      const approved = newStatus === 'APPROVED';
+      await this.notifications.enqueue(notificationUserId, {
+        type: entityType === 'student_profile'
+          ? approved ? 'STUDENT_PROFILE_APPROVED' : 'STUDENT_PROFILE_REJECTED'
+          : approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
+        title: entityType === 'student_profile'
+          ? approved ? 'Student profile approved' : 'Student profile needs changes'
+          : approved ? 'Provider Page approved' : 'Provider Page needs changes',
+        body: approved
+          ? entityType === 'student_profile'
+            ? 'Your student profile is approved. Your student account is ready to use.'
+            : 'Your provider Page is verified. You can now publish homes.'
+          : `Your submission was not approved. ${reason ?? 'Review your profile and update the requested details.'}`,
+        href: entityType === 'student_profile' ? '/profile' : '/page',
+        data: { submissionId, entityType, status: newStatus },
+        dedupeKey: `review:${submissionId}:${newStatus.toLowerCase()}`,
+      });
+    }
 
     if (newStatus === 'APPROVED' && approvedUserId) {
       try {

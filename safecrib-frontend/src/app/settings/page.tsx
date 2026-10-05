@@ -6,7 +6,6 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { AccountSettingsPanel } from "@/components/settings/AccountSettingsPanel";
 import { SettingsSignOutButton } from "@/components/settings/SettingsSignOutButton";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
-import { Button } from "@/components/ui/Button";
 import { VerificationOverview } from "@/components/verification/VerificationOverview";
 import { apiFetch, cachedCurrentUser, clearSession, isUnauthorizedError, normalizeAccountStatus, subscribeClientCacheUpdates, unwrapData, type AccountStatus } from "@/lib/api";
 
@@ -104,22 +103,6 @@ export default function SettingsPage() {
         <AccountSettingsPanel />
         <VerificationOverview />
 
-        {studentMode && status !== "pending" && status !== "approved" && (
-          <div className="mt-8 overflow-hidden rounded-[16px] border border-black/10 bg-white shadow-[0_20px_45px_rgba(11,12,14,0.06)]">
-            <div className="border-b border-black/10 bg-[#eaf7f1] px-5 py-4 sm:px-7">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Profile update</p>
-            </div>
-            <div className="p-5 sm:p-7">
-              <h2 className="text-2xl font-medium text-safecrib-black sm:text-3xl">A better profile starts here.</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-black/60">
-                Complete your student profile and submit it for review so your account is verified properly.
-              </p>
-              <Button type="button" className="mt-7 w-full sm:w-auto" onClick={() => router.push("/profile/complete")}>
-                Start profile update <span aria-hidden="true">→</span>
-              </Button>
-            </div>
-          </div>
-        )}
         <SettingsSignOutButton />
       </section>
     </main>

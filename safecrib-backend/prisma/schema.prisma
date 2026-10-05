@@ -50,6 +50,8 @@ model User {
   pageFollows PageFollow[]
   commentMentions CommentMention[]
   listingViews ListingView[]
+  notifications Notification[]
+  notificationPushSubscriptions NotificationPushSubscription[]
 
   @@index([role])
   @@map("users")
@@ -82,6 +84,8 @@ model StudentProfile {
   id                 String   @id @default(uuid())
   userId             String   @unique @map("user_id")
   displayName        String?
+  shortBio           String   @default("") @map("short_bio") @db.VarChar(160)
+  longBio            String?  @map("long_bio") @db.VarChar(2000)
   proofOfStudentship String?  @map("proof_of_studentship")
   schoolOfStudy      String?  @map("school_of_study")
   courseOfStudy      String?  @map("course_of_study")
@@ -277,6 +281,8 @@ model ProviderPage {
   ownerId           String @unique @map("owner_id")
   displayName       String @map("display_name")
   description       String?
+  shortBio          String   @default("") @map("short_bio") @db.VarChar(160)
+  longBio           String?  @map("long_bio") @db.VarChar(2000)
   phone             String?
   verificationState ProviderVerificationState @default(DRAFT) @map("verification_state")
   submittedAt       DateTime? @map("submitted_at")
@@ -754,6 +760,40 @@ model MediaAttachment {
   @@unique([mediaId, entityType, entityId, role])
   @@index([entityType, entityId, role, position])
   @@map("media_attachments")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String    @db.VarChar(160)
+  body      String    @db.VarChar(500)
+  href      String?   @db.VarChar(500)
+  data      Json?
+  dedupeKey String    @map("dedupe_key") @db.VarChar(200)
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationPushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique @db.VarChar(2048)
+  p256dh    String   @db.VarChar(256)
+  auth      String   @db.VarChar(256)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification_push_subscriptions")
 }
 
 // Access-log for sensitive media (delivery type PRIVATE / AUTHENTICATED)

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { connectNotificationSocket, disconnectNotificationSocket } from "@/lib/notifications";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -41,6 +42,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   const [navUser, setNavUser] = useState<NavUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationStageResult | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -131,6 +133,40 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
     return () => { active = false; unsubscribeCache(); };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshUnread = async () => {
+      if (!localStorage.getItem("safecrib_access_token")) return;
+      try {
+        const response = unwrapData<{ count: number }>(
+          await apiFetch<unknown>("/api/v1/notifications/unread-count"),
+        );
+        if (active && Number.isInteger(response?.count)) setUnreadNotifications(response.count);
+      } catch (error) {
+        if (active) console.error("Could not refresh notification count.", error);
+      }
+    };
+    const scheduleUnreadRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        void refreshUnread();
+      }, 250);
+    };
+    const socket = connectNotificationSocket();
+    void refreshUnread();
+    window.addEventListener("safecrib:notifications-read", refreshUnread);
+    socket?.on("connect", () => { void refreshUnread(); });
+    socket?.on("notification:new", scheduleUnreadRefresh);
+    return () => {
+      active = false;
+      window.removeEventListener("safecrib:notifications-read", refreshUnread);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      disconnectNotificationSocket(socket);
+    };
+  }, []);
+
   const accountName = getDisplayName(navUser) || getAuthenticatedDisplayName() || "Your profile";
   const profileLinkClass = `inline-flex items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${pathname === "/dashboard" ? "hidden md:inline-flex" : ""} ${pathname === "/profile" ? "ring-2 ring-safecrib-green ring-offset-2" : ""}`;
   const handleSignOut = () => {
@@ -145,10 +181,17 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
             <SafeCribLogo height={28} href={false} />
           </Link>
           <nav aria-label="Dashboard navigation" className="ml-auto hidden items-center gap-2 md:flex">
+            <Link href="/connect" aria-label="Search people" title="Search people" aria-current={pathname.startsWith("/connect") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/connect"))}>
+              <Icon name="search" />
+            </Link>
             {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href)}>
               <Icon name={item.icon} />
               {item.href === "/support" && <SupportCount count={supportCount} />}
             </Link>)}
+            <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/notifications"))}>
+              <Icon name="notifications" />
+              <NotificationCount count={unreadNotifications} />
+            </Link>
             {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive)}><Icon name="page" /></button>}
             <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={iconLinkClass(false)}><Icon name="logout" /></button>
           </nav>
@@ -163,12 +206,18 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
         <div className="mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border border-black/10 bg-white/25 p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.12)] backdrop-blur-2xl">
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname === "/dashboard" ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="home" className="h-5 w-5" /></Link>
+          <Link href="/connect" aria-label="Search people" title="Search people" aria-current={pathname.startsWith("/connect") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname.startsWith("/connect") ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="search" className="h-5 w-5" /></Link>
           <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname.startsWith("/support") ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
+          <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname.startsWith("/notifications") ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
           {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pageActive ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="page" className="h-5 w-5" /></button>}
           <Link href="/settings" aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ${pathname === "/settings" ? "bg-black/[0.05] text-current" : "text-current/70 hover:bg-black/[0.03]"}`}><Icon name="settings" className="h-5 w-5" /></Link>
-          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="flex h-12 flex-1 items-center justify-center rounded-[1.9rem] text-current/70 transition-all duration-200 hover:bg-red-500/10 hover:text-red-600"><Icon name="logout" className="h-5 w-5" /></button>
         </div>
       </nav>
     </>
   );
+}
+
+function NotificationCount({ count }: { count: number }) {
+  if (count < 1) return null;
+  return <span aria-label={`${count} unread notifications`} className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold text-white">{count > 99 ? "99+" : count}</span>;
 }

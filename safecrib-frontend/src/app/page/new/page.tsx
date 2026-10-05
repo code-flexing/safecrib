@@ -13,6 +13,8 @@ type PayoutAccountForm = { provider: string; accountName: string; accountNumber:
 type FormState = {
   displayName: string;
   description: string;
+  shortBio: string;
+  longBio: string;
   phone: string;
   proofOfLicense: string;
   profilePicture: string;
@@ -44,7 +46,7 @@ type ProviderDraft = { form: FormState; step: number; additionalPayoutAccounts?:
 const emptyPayoutAccount: PayoutAccountForm = { provider: "", accountName: "", accountNumber: "" };
 
 const emptyForm: FormState = {
-  displayName: "", description: "", phone: "", proofOfLicense: "", profilePicture: "", providerType: "AGENT",
+  displayName: "", description: "", shortBio: "", longBio: "", phone: "", proofOfLicense: "", profilePicture: "", providerType: "AGENT",
   businessName: "", businessAddress: "", additionalContactNumbers: "", linkedin: "", website: "",
   provider: "", accountName: "", accountNumber: "",
 };
@@ -59,6 +61,7 @@ function pageToForm(page: ProviderPage): FormState {
   return {
     ...emptyForm,
     ...page,
+    longBio: page.longBio ?? page.description ?? "",
     providerType: page.providerType === "LANDLORD" ? "LANDLORD" : "AGENT",
     provider: payout?.provider ?? "",
     accountName: payout?.accountName ?? "",
@@ -357,6 +360,9 @@ export default function NewProviderPage() {
 
   const validateStep = (target: number) => {
     if (target === 1 && form.displayName.trim().length < 3) return "Page display name must be at least 3 characters.";
+    if (target === 1 && !form.shortBio.trim()) return "Add a short bio for your provider Page.";
+    if (target === 1 && form.shortBio.trim().length > 160) return "Your short bio must be 160 characters or fewer.";
+    if (target === 1 && form.longBio.length > 2000) return "Your long bio must be 2,000 characters or fewer.";
     if (target === 2 && (!form.proofOfLicense || !form.profilePicture)) return "Upload both your license proof and a profile picture before continuing.";
     if (target === 3) {
       const accounts = [{ provider: form.provider, accountName: form.accountName, accountNumber: form.accountNumber }, ...additionalPayoutAccounts];
@@ -400,7 +406,7 @@ export default function NewProviderPage() {
     setNotice("");
     try {
       const payload = {
-        displayName: form.displayName.trim(), description: form.description.trim(), phone: form.phone.trim(),
+        displayName: form.displayName.trim(), shortBio: form.shortBio.trim(), longBio: form.longBio.trim(), description: form.longBio.trim(), phone: form.phone.trim(),
         proofOfLicense: form.proofOfLicense, profilePicture: form.profilePicture, providerType: form.providerType,
         businessName: form.businessName.trim(), businessAddress: form.businessAddress.trim(),
         additionalContactNumbers: form.additionalContactNumbers.split(",").map((number) => number.trim()).filter(Boolean),
@@ -477,7 +483,7 @@ export default function NewProviderPage() {
         <div className="mt-3 h-2 overflow-hidden bg-black/5"><div className="h-full bg-safecrib-green transition-[width] duration-300" style={{ width: `${(step / 3) * 100}%` }} /></div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-black/45"><span className={step === 1 ? "font-semibold text-safecrib-green" : ""}>Profile</span><span className={step === 2 ? "font-semibold text-safecrib-green" : ""}>Verification</span><span className={step === 3 ? "font-semibold text-safecrib-green" : ""}>Payout and review</span></div>
 
-        {step === 1 && <div className="mt-7 grid gap-5"><div className="grid gap-5 sm:grid-cols-2"><label className="block text-sm font-medium">Provider type<select value={form.providerType} onChange={(event) => update("providerType", event.target.value as FormState["providerType"])} className="mt-2 w-full border border-black/15 bg-white px-4 py-3 font-normal"><option value="AGENT">Agent</option><option value="LANDLORD">Landlord</option></select></label>{input("displayName", "Page display name", true, "text", 120)}</div><div className="grid gap-5 sm:grid-cols-2">{input("businessName", "Business name")}{input("businessAddress", "Business address")}</div>{input("phone", "Phone number", false, "tel", 30)}{input("additionalContactNumbers", "Additional phone numbers (comma separated)")}<label className="block text-sm font-medium">Description<textarea maxLength={2000} rows={4} value={form.description} onChange={(event) => update("description", event.target.value)} className="mt-2 w-full resize-y border border-black/15 px-4 py-3 font-normal focus:border-safecrib-green focus:outline-none" placeholder="Tell students about your accommodation service" /><span className="mt-1 block text-right text-xs font-normal text-black/45">{form.description.length}/2,000</span></label></div>}
+        {step === 1 && <div className="mt-7 grid gap-5"><div className="grid gap-5 sm:grid-cols-2"><label className="block text-sm font-medium">Provider type<select value={form.providerType} onChange={(event) => update("providerType", event.target.value as FormState["providerType"])} className="mt-2 w-full border border-black/15 bg-white px-4 py-3 font-normal"><option value="AGENT">Agent</option><option value="LANDLORD">Landlord</option></select></label>{input("displayName", "Page display name", true, "text", 120)}</div><div className="grid gap-5 sm:grid-cols-2">{input("businessName", "Business name")}{input("businessAddress", "Business address")}</div>{input("phone", "Phone number", false, "tel", 30)}{input("additionalContactNumbers", "Additional phone numbers (comma separated)")}<label className="block text-sm font-medium">Short bio * (shown in search, max 160 characters)<textarea required maxLength={160} rows={3} value={form.shortBio} onChange={(event) => update("shortBio", event.target.value)} className="mt-2 w-full resize-y border border-black/15 px-4 py-3 font-normal focus:border-safecrib-green focus:outline-none" placeholder="A brief introduction to your service" /><span className="mt-1 block text-right text-xs font-normal text-black/45">{form.shortBio.length}/160</span></label><label className="block text-sm font-medium">Long bio (optional, max 2,000 characters)<textarea maxLength={2000} rows={4} value={form.longBio} onChange={(event) => update("longBio", event.target.value)} className="mt-2 w-full resize-y border border-black/15 px-4 py-3 font-normal focus:border-safecrib-green focus:outline-none" placeholder="Tell students more about your accommodation service" /><span className="mt-1 block text-right text-xs font-normal text-black/45">{form.longBio.length}/2,000</span></label></div>}
 
         {step === 2 && <div className="mt-7 grid gap-5">
           <div><h2 className="text-lg font-medium">Verification documents</h2><p className="mt-2 text-sm leading-6 text-black/55">Upload a license or business proof and a profile image. Sensitive proof documents are uploaded through the media service.</p></div>

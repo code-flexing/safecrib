@@ -18,6 +18,7 @@ import type { Role } from '../../common/roles.decorator.js';
 import type { RegisterDto } from './dto/auth.dto.js';
 import type { LoginDto } from './dto/auth.dto.js';
 import type { JwtPayload } from './strategies/jwt.strategy.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 
@@ -61,6 +62,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    private readonly notifications: NotificationsService,
   ) {
     const accessTtl = this.configService.get<string>('ACCESS_TOKEN_TTL') ?? '14d';
     const refreshTtl = this.configService.get<string>('REFRESH_TOKEN_TTL') ?? '14d';
@@ -98,6 +100,21 @@ export class AuthService {
         emailVerified: true,
         identityVerified: false,
       },
+    });
+
+    await this.notifications.enqueue(user.id, {
+      type: 'WELCOME',
+      title: 'Welcome to SafeCrib',
+      body: 'Your account is ready. Complete your profile to get started.',
+      href: '/profile',
+      dedupeKey: `welcome:${user.id}`,
+    });
+    await this.notifications.enqueue(user.id, {
+      type: 'STUDENT_PROFILE_COMPLETION',
+      title: 'Complete your student profile',
+      body: 'Add your student details and submit them for verification.',
+      href: '/profile/complete',
+      dedupeKey: 'student-profile-completion',
     });
 
     await this.enqueueEmail(

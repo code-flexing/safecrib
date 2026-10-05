@@ -17,6 +17,33 @@ export function isUnauthorizedError(error: unknown): error is ApiError {
 
 export type AuthUser = { email?: string; role?: string; displayName?: unknown };
 
+function tokenSubject(token: string | null) {
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const encoded = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(padded)) as Record<string, unknown>;
+    return typeof claims.sub === "string" ? claims.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSessionTokens(tokens: { accessToken: string; refreshToken: string }) {
+  if (typeof window === "undefined") return;
+  const previousToken = localStorage.getItem("safecrib_access_token");
+  const previousSubject = tokenSubject(previousToken);
+  const nextSubject = tokenSubject(tokens.accessToken);
+  if (previousToken !== tokens.accessToken && (!previousSubject || !nextSubject || previousSubject !== nextSubject)) {
+    clearClientCache();
+    clearResolvedMediaUrlCache();
+  }
+  localStorage.setItem("safecrib_access_token", tokens.accessToken);
+  localStorage.setItem("safecrib_refresh_token", tokens.refreshToken);
+}
+
 export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("safecrib_access_token");
@@ -240,6 +267,12 @@ export async function cachedApiFetch<T>(path: string, init: RequestInit = {}) {
     return cached;
   }
   return request;
+}
+
+export async function refreshCachedApi<T>(path: string, init: RequestInit = {}) {
+  const value = await apiFetch<T>(path, init);
+  if (!init.method || init.method === "GET") writeClientCache(path, value);
+  return value;
 }
 
 export async function cachedCurrentUser<T>() {
@@ -547,10 +580,10 @@ export async function uploadSignedMedia(file: File, purpose: UploadPurpose, enti
   ].join(", ");
   let status = String(signature.status ?? media.status ?? "PENDING").toUpperCase();
   let completionError: string | undefined;
-  if (purpose !== "LISTING_VIDEO" && completionPayload && identityMismatch) {
+  if (completionPayload && identityMismatch) {
     status = "PENDING";
     completionError = `Cloudinary response does not match the signed upload (${identityCheckDetails}).`;
-  } else if (purpose !== "LISTING_VIDEO" && completionPayload) {
+  } else if (completionPayload) {
     try {
       status = await completeMediaUpload(mediaId, completionPayload);
     } catch (error) {
@@ -580,16 +613,25 @@ export async function uploadListingMedia(file: File, purpose: ListingMediaPurpos
 
 export async function waitForMediaReady(mediaId: string) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const uploads = await getPendingUploads().catch(() => []);
-    const item = uploads.find((upload) => upload.id === mediaId);
-    if (String(item?.status ?? "").toUpperCase() === "READY") return;
-    if (!item) {
-      const access = unwrapData<unknown>(await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/access`).catch(() => null));
-      if (typeof access === "string" || (typeof access === "object" && access !== null && ["url", "accessUrl", "deliveryUrl"].some((key) => typeof (access as Record<string, unknown>)[key] === "string"))) return;
+    const response = unwrapData<unknown>(await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/status`, { cache: "no-store" }));
+    const media = recordValue(response);
+    const status = String(media.status ?? "").toUpperCase();
+    if (status === "READY") return;
+    if (status === "FAILED") {
+      const reason = typeof media.failureReason === "string" && media.failureReason.trim()
+        ? `: ${media.failureReason}`
+        : "";
+      throw new Error(`The media upload failed${reason}`);
+    }
+    if (status === "DELETED" || status === "DELETING") {
+      throw new Error("The uploaded media is no longer available. Upload it again.");
+    }
+    if (status !== "PENDING") {
+      throw new Error("The media service returned an unrecognized upload status.");
     }
     await new Promise((resolve) => window.setTimeout(resolve, 2000));
   }
-  throw new Error("The upload is complete, but media processing is still in progress. Refresh before retrying.");
+  throw new Error("Media processing is taking longer than expected. Your draft is saved; refresh media before trying again.");
 }
 
 const resolvedMediaUrlPrefix = "safecrib_media_url:";

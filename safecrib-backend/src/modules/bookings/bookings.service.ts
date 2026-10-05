@@ -18,6 +18,7 @@ import {
 } from '../../domain/booking/booking-state-machine.js';
 type PrismaBookingStatus = Exclude<BookingStatus, 'AVAILABLE'>;
 import type { CreateBookingDto } from './dto/booking.dto.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 export interface BookingResult {
   id: string;
@@ -42,6 +43,7 @@ export class BookingsService {
     private readonly holdExpiryQueue: Queue,
     @InjectQueue(TRUST_RECOMPUTE_QUEUE)
     private readonly trustRecomputeQueue: Queue,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createBooking(studentId: string, dto: CreateBookingDto): Promise<BookingResult> {
@@ -95,6 +97,30 @@ export class BookingsService {
       { bookingId: booking.id, listingId: dto.listingId },
       { delay: HOLD_DURATION_MS },
     );
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: {
+        displayName: true,
+        profilePicture: true,
+        studentProfile: { select: { profilePicture: true } },
+        providerPage: { select: { profilePicture: true } },
+      },
+    });
+    await this.notifications.enqueue(listing.ownerId, {
+      type: 'BOOKING_HELD',
+      title: 'Your home is being booked',
+      body: 'A student has placed a temporary hold on your home.',
+      href: '/page',
+      data: {
+        bookingId: booking.id,
+        listingId: booking.listingId,
+        actorName: student?.displayName,
+        actorProfilePicture: student?.profilePicture
+          ?? student?.studentProfile?.profilePicture
+          ?? student?.providerPage?.profilePicture,
+      },
+      dedupeKey: `booking:${booking.id}:held:owner`,
+    });
 
     return this.toResult(booking);
   }
@@ -155,6 +181,14 @@ export class BookingsService {
           },
         });
         await this.trustRecomputeQueue.add('recompute', { userId: listingOwner.ownerId });
+        await this.notifications.enqueue(listingOwner.ownerId, {
+          type: 'BOOKING_CONFIRMED',
+          title: 'Booking confirmed',
+          body: 'A student confirmed the booking for your home.',
+          href: '/page',
+          data: { bookingId, listingId: booking.listingId },
+          dedupeKey: `booking:${bookingId}:confirmed:owner`,
+        });
       }
 
       return this.toResult(result);
@@ -174,6 +208,7 @@ export class BookingsService {
       select: {
         id: true,
         listingId: true,
+        studentId: true,
         status: true,
         holdExpiresAt: true,
         depositAmount: true,
@@ -216,6 +251,14 @@ export class BookingsService {
         data: { status: 'VERIFIED' },
       }),
     ]);
+    await this.notifications.enqueue(booking.studentId, {
+      type: 'BOOKING_HOLD_EXPIRED',
+      title: 'Booking hold expired',
+      body: 'Your temporary hold expired and the home is available again.',
+      href: '/dashboard',
+      data: { bookingId, listingId: booking.listingId },
+      dedupeKey: `booking:${bookingId}:hold-expired:student`,
+    });
   }
 
   async cancelBooking(bookingId: string, studentId: string): Promise<void> {
@@ -278,6 +321,20 @@ export class BookingsService {
         data: { status: 'VERIFIED' },
       }),
     ]);
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: booking.listingId },
+      select: { ownerId: true },
+    });
+    if (listing?.ownerId) {
+      await this.notifications.enqueue(listing.ownerId, {
+        type: 'BOOKING_CANCELLED',
+        title: 'Booking cancelled',
+        body: 'A booking for your home was cancelled and the home is available again.',
+        href: '/page',
+        data: { bookingId, listingId: booking.listingId },
+        dedupeKey: `booking:${bookingId}:cancelled:owner`,
+      });
+    }
   }
 
   async completeBooking(bookingId: string, studentId: string): Promise<BookingResult> {

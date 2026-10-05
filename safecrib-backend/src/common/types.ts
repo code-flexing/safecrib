@@ -12,6 +12,8 @@ export interface PayoutAccount {
 
 export interface StudentProfileSubmission {
   displayName?: string | null;
+  shortBio: string;
+  longBio?: string | null;
   proofOfStudentship: string;
   schoolOfStudy: string;
   courseOfStudy: string;
@@ -26,6 +28,8 @@ export interface StudentProfileSubmission {
 
 export interface ProviderProfileSubmission {
   displayName: string;
+  shortBio: string;
+  longBio?: string | null;
   proofOfLicense: string;
   payoutAccounts: PayoutAccount[];
   profilePicture: string;

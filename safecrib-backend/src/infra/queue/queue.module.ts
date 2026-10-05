@@ -9,6 +9,7 @@ import {
   MEDIA_CLEANUP_QUEUE,
   MEDIA_DELETION_QUEUE,
   MEDIA_WEBHOOK_QUEUE,
+  NOTIFICATION_QUEUE,
   TRUST_RECOMPUTE_QUEUE,
 } from './queue.constants.js';
 import { parseRedisConnection } from './redis-connection.util.js';
@@ -32,6 +33,7 @@ import { RedisPolicyService } from './redis-policy.service.js';
       { name: MEDIA_WEBHOOK_QUEUE },
       { name: MEDIA_DELETION_QUEUE },
       { name: MEDIA_CLEANUP_QUEUE },
+      { name: NOTIFICATION_QUEUE },
     ),
   ],
   providers: [RedisPolicyService],

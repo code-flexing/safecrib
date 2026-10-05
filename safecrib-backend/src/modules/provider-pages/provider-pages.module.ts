@@ -5,9 +5,10 @@ import { StudentProfilesModule } from '../student-profiles/student-profiles.modu
 import { ProviderPagesController } from './provider-pages.controller.js';
 import { ProvidersController } from './providers.controller.js';
 import { ProviderPagesService } from './provider-pages.service.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 
 @Module({
-  imports: [QueueModule, TrustModule, StudentProfilesModule],
+  imports: [QueueModule, TrustModule, StudentProfilesModule, NotificationsModule],
   controllers: [ProviderPagesController, ProvidersController],
   providers: [ProviderPagesService],
   exports: [ProviderPagesService],

@@ -46,9 +46,11 @@ describe('AuthService', () => {
   let authService: AuthService;
   let prisma: PrismaMock;
   let emailQueue: { add: Mock };
+  let notifications: { enqueue: Mock };
 
   beforeEach(() => {
     emailQueue = { add: vi.fn().mockResolvedValue(undefined) };
+    notifications = { enqueue: vi.fn().mockResolvedValue(undefined) };
 
     prisma = {
       user: {
@@ -87,6 +89,7 @@ describe('AuthService', () => {
       { sign: vi.fn().mockReturnValue('token'), verify: vi.fn().mockReturnValue({ sub: 'user-id', email: 'test@example.com', role: 'STUDENT' }) } as unknown as JwtService,
       { get: vi.fn((key: string) => ({ JWT_ACCESS_SECRET: 'secret', JWT_REFRESH_SECRET: 'refresh_secret' }[key])) } as unknown as ConfigService,
       emailQueue as unknown as Queue,
+      notifications as never,
     );
   });
 
@@ -119,6 +122,10 @@ describe('AuthService', () => {
           backoff: expect.any(Object),
         }),
       );
+      expect(notifications.enqueue).toHaveBeenCalledWith('user-123', expect.objectContaining({
+        type: 'WELCOME',
+        dedupeKey: 'welcome:user-123',
+      }));
 
       expect(result.message).toContain('welcome email');
       expect(result.userId).toBeTruthy();

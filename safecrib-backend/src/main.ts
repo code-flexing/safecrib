@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import dns from 'node:dns';
 
 import { AppModule } from './app.module.js';
+import { RedisSocketAdapter } from './infra/queue/redis-socket.adapter.js';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -48,6 +49,10 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
     rawBody: true, // Required for Cloudinary webhook signature verification
   });
+  const socketAdapter = new RedisSocketAdapter(app, process.env.REDIS_URL);
+  await socketAdapter.connectToRedis();
+  app.useWebSocketAdapter(socketAdapter);
+  app.enableShutdownHooks();
 
   const isProduction = process.env.NODE_ENV === 'production';
   const port = Number(process.env.PORT) || 3001;

@@ -8,7 +8,6 @@ import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIl
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
@@ -208,6 +207,10 @@ export default function DashboardPage() {
           if (!latestStatus) return;
           clearClientCache("/api/v1/student-profiles/status");
           setAccountStatus(latestStatus);
+          if (latestStatus === "not_submitted") {
+            void apiFetch("/api/v1/notifications/student-profile-reminder", { method: "POST" })
+              .catch((reminderError: unknown) => console.error("Could not add the student profile reminder to notifications.", reminderError));
+          }
         });
       }
       if (pictureReference) {
@@ -358,29 +361,9 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 text-sm font-medium">
-            <Link href="/connect" aria-label="Find campus mates" title="Find campus mates" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-safecrib-green/20 text-safecrib-green transition-colors hover:bg-safecrib-green/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
-              <Icon name="search" className="h-5 w-5" />
-            </Link>
             {canCreateProviderPage && <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="text-safecrib-green hover:underline">{pageStatus === "none" ? "Create a provider Page" : "View my Page"}</Link>}
           </div>
         </div>
-        {["UNVERIFIED", "STUDENT"].includes(String(profile?.role ?? "").toUpperCase()) && accountStatus !== "approved" && <section className="mt-6 flex flex-col gap-4 rounded-2xl border border-safecrib-green/15 bg-white p-5 shadow-[0_12px_30px_rgba(11,12,14,0.04)] sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-label="Student profile">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-safecrib-green">Student profile</p>
-            <h2 className="mt-1 text-lg font-semibold text-safecrib-black">
-              {accountStatus === "pending" ? "Your profile is under review" : accountStatus === "rejected" ? "Update your student profile" : "Complete your student profile"}
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-black/55">
-              {accountStatus === "pending" ? "You can check your submission status and review details." : "Add your student details and submit them for verification."}
-            </p>
-          </div>
-          <Link
-            href="/profile/complete"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-safecrib-green px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0a5f47] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green"
-          >
-            {accountStatus === "pending" ? "View submission" : accountStatus === "rejected" ? "Update profile" : "Complete profile"}
-          </Link>
-        </section>}
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {listings.map((listing) => {

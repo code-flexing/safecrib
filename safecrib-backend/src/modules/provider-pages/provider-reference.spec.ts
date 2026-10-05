@@ -71,6 +71,7 @@ function createService(
     trustService as unknown as TrustService,
     studentProfiles as unknown as StudentProfileService,
     emailQueue as unknown as Queue,
+    { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
   );
   return { prisma, service, tx, trustService };
 }

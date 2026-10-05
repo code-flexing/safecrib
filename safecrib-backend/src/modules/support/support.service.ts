@@ -12,6 +12,7 @@ import type {
   CreateSupportConversationDto,
   CreateSupportMessageDto,
 } from './dto/support.dto.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class SupportService {
@@ -20,6 +21,7 @@ export class SupportService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createConversation(userId: string, dto: CreateSupportConversationDto) {
@@ -42,7 +44,7 @@ export class SupportService {
       return created;
     });
 
-    await this.notifyAdmins(conversation.id, body);
+    await this.notifyAdmins(conversation.id, conversation.messages[0].id, body);
     return conversation;
   }
 
@@ -89,7 +91,7 @@ export class SupportService {
       return created;
     });
 
-    await this.notifyAdmins(conversationId, message.body);
+    await this.notifyAdmins(conversationId, message.id, message.body);
     return message;
   }
 
@@ -127,8 +129,8 @@ export class SupportService {
     conversationId: string,
     dto: CreateSupportMessageDto,
   ) {
-    await this.getAdminConversation(conversationId);
-    return this.prisma.$transaction(async (tx) => {
+    const conversation = await this.getAdminConversation(conversationId);
+    const message = await this.prisma.$transaction(async (tx) => {
       const message = await tx.supportMessage.create({
         data: {
           conversationId,
@@ -143,6 +145,15 @@ export class SupportService {
       });
       return message;
     });
+    await this.notifications.enqueue(conversation.user.id, {
+      type: 'SUPPORT_REPLY',
+      title: 'Support replied',
+      body: 'The SafeCrib support team replied to your conversation.',
+      href: '/support',
+      data: { conversationId },
+      dedupeKey: `support-reply:${message.id}`,
+    });
+    return message;
   }
 
   async resolveConversation(conversationId: string) {
@@ -153,28 +164,38 @@ export class SupportService {
     });
   }
 
-  private async notifyAdmins(conversationId: string, message: string) {
+  private async notifyAdmins(conversationId: string, messageId: string, message: string) {
     const admins = await this.prisma.user.findMany({
       where: { role: 'ADMIN', emailVerified: true },
-      select: { email: true },
+      select: { id: true, email: true },
     });
 
-    try {
-      await Promise.all(admins.map((admin) => this.emailQueue.add('support-message', {
-        type: 'support-message',
-        to: admin.email,
-        conversationId,
-        message,
-      }, {
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 1000 },
-        removeOnComplete: true,
-        removeOnFail: false,
-      })));
-    } catch (error) {
-      this.logger.error(
-        `Support notification could not be queued for ${conversationId}: ${(error as Error).message}`,
-      );
-    }
+    await Promise.all(admins.map(async (admin) => {
+      await this.notifications.enqueue(admin.id, {
+        type: 'SUPPORT_MESSAGE',
+        title: 'New support message',
+        body: 'A user sent a message to SafeCrib support.',
+        href: '/admin/support',
+        data: { conversationId },
+        dedupeKey: `support-message:${messageId}:${admin.id}`,
+      });
+      try {
+        await this.emailQueue.add('support-message', {
+          type: 'support-message',
+          to: admin.email,
+          conversationId,
+          message,
+        }, {
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 1000 },
+          removeOnComplete: true,
+          removeOnFail: false,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Support email could not be queued for ${conversationId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }));
   }
 }

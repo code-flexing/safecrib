@@ -169,13 +169,13 @@ describe('MediaService', () => {
       expect(repo.create).toHaveBeenCalledOnce();
       expect(storage.createUploadSignature).toHaveBeenCalledWith(
         expect.objectContaining({
-          publicId: 'uuid',
-          folder: 'prod/listings/photo/user_1',
+          publicId: 'prod/listings/photo/l1/new-uuid',
+          folder: 'prod/listings/photo/l1',
           resourceType: 'image',
         }),
       );
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ publicId: 'prod/listings/photo/user_1/uuid' }),
+        expect.objectContaining({ publicId: 'prod/listings/photo/l1/new-uuid' }),
       );
       expect(result.uploadUrl).toBe('https://api.cloudinary.com/v1_1/cloud/image/upload');
       expect(result.media).toEqual({
@@ -248,7 +248,7 @@ describe('MediaService', () => {
         file.buffer,
         'image/jpeg',
         expect.objectContaining({
-          publicId: 'new-uuid',
+          publicId: 'prod/listings/photo/l1/new-uuid',
           folder: 'prod/listings/photo/l1',
           resourceType: 'image',
         }),
@@ -346,6 +346,27 @@ describe('MediaService', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(
         expect.objectContaining({ id: 'stable_media_id', status: 'PENDING' }),
+      );
+    });
+  });
+
+  describe('getMediaStatus', () => {
+    it('returns upload status and failure reason to the owner', async () => {
+      const media = makeMedia({ status: 'FAILED', failureReason: 'Invalid upload signature' });
+      const svc = makeService({ repo: makeRepo(media) });
+
+      await expect(svc.getMediaStatus('media_1', 'user_1')).resolves.toEqual({
+        id: 'media_1',
+        status: 'FAILED',
+        failureReason: 'Invalid upload signature',
+      });
+    });
+
+    it('does not disclose upload status to another user', async () => {
+      const svc = makeService({ repo: makeRepo(makeMedia()) });
+
+      await expect(svc.getMediaStatus('media_1', 'other_user')).rejects.toThrow(
+        ForbiddenException,
       );
     });
   });

@@ -34,6 +34,8 @@ import {
 
 type StudentProfile = {
   displayName?: string;
+  shortBio?: string;
+  longBio?: string | null;
   schoolOfStudy?: string;
   courseOfStudy?: string;
   level?: string;
@@ -197,6 +199,8 @@ function UploadAccordion({
 
 const emptyForm: FormState = {
   displayName: "",
+  shortBio: "",
+  longBio: "",
   schoolOfStudy: "",
   courseOfStudy: "",
   level: "",
@@ -215,12 +219,16 @@ function hasRequiredStudentDetails(form: FormState) {
   const schoolOfStudy = String(form.schoolOfStudy ?? "").trim();
   const courseOfStudy = String(form.courseOfStudy ?? "").trim();
   const level = String(form.level ?? "").trim();
+  const shortBio = String(form.shortBio ?? "").trim();
 
   return Boolean(
     displayName &&
       schoolOfStudy &&
       courseOfStudy &&
-      level
+      level &&
+      shortBio.length > 0 &&
+      shortBio.length <= 160 &&
+      String(form.longBio ?? "").length <= 2000
   );
 }
 
@@ -245,6 +253,18 @@ function validateStep(
   stepNumber: number,
   formState: FormState
 ) {
+  if (stepNumber === 1 && !String(formState.shortBio ?? "").trim()) {
+    return "Add a short bio so other people can learn about you.";
+  }
+
+  if (stepNumber === 1 && String(formState.shortBio ?? "").trim().length > 160) {
+    return "Your short bio must be 160 characters or fewer.";
+  }
+
+  if (stepNumber === 1 && String(formState.longBio ?? "").length > 2000) {
+    return "Your long bio must be 2,000 characters or fewer.";
+  }
+
   if (
     stepNumber === 1 &&
     !hasRequiredStudentDetails(formState)
@@ -725,6 +745,12 @@ export default function CompleteStudentProfilePage() {
             displayName:
               form.displayName,
 
+            shortBio: form.shortBio?.trim(),
+
+            ...(form.longBio?.trim()
+              ? { longBio: form.longBio.trim() }
+              : {}),
+
             proofOfStudentship,
 
             schoolOfStudy:
@@ -1033,6 +1059,31 @@ export default function CompleteStudentProfilePage() {
                   "Display name",
                   true
                 )}
+                <label className="block text-sm font-medium text-safecrib-black sm:col-span-2">
+                  Short bio * (shown in search, max 160 characters)
+                  <textarea
+                    required
+                    maxLength={160}
+                    rows={3}
+                    value={form.shortBio ?? ""}
+                    onChange={(event) => update("shortBio", event.target.value)}
+                    className="mt-2 w-full resize-y rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none"
+                    placeholder="A short introduction about yourself"
+                  />
+                  <span className="mt-1 block text-right text-xs font-normal text-black/45">{(form.shortBio ?? "").length}/160</span>
+                </label>
+                <label className="block text-sm font-medium text-safecrib-black sm:col-span-2">
+                  Long bio (optional, max 2,000 characters)
+                  <textarea
+                    maxLength={2000}
+                    rows={4}
+                    value={form.longBio ?? ""}
+                    onChange={(event) => update("longBio", event.target.value)}
+                    className="mt-2 w-full resize-y rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none"
+                    placeholder="Share more about yourself"
+                  />
+                  <span className="mt-1 block text-right text-xs font-normal text-black/45">{(form.longBio ?? "").length}/2,000</span>
+                </label>
 
                 {input(
                   "schoolOfStudy",

@@ -53,6 +53,18 @@ export class CreateProviderPageDto {
   @MaxLength(120)
   displayName: string;
 
+  @ApiProperty({ example: 'Helping students find verified homes near campus.' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  shortBio: string;
+
+  @ApiPropertyOptional({ example: 'Our team has served students in the area for over five years.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  longBio?: string;
+
   @ApiPropertyOptional({ example: 'Verified student accommodation provider near campus.' })
   @IsOptional()
   @IsString()
@@ -130,6 +142,19 @@ export class UpdateProviderPageDto {
   @MinLength(3)
   @MaxLength(120)
   displayName?: string;
+
+  @ApiPropertyOptional({ example: 'Helping students find verified homes near campus.' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  shortBio?: string;
+
+  @ApiPropertyOptional({ example: 'Our team has served students in the area for over five years.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  longBio?: string;
 
   @ApiPropertyOptional({ example: 'Verified student accommodation provider near campus.' })
   @IsOptional()

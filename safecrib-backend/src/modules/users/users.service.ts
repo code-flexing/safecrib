@@ -96,7 +96,7 @@ export class UserService {
             badge: normalizedVerification.badge,
             badgeColor: normalizedVerification.badgeColor,
             riskBlocked: normalizedVerification.riskBlocked,
-            eligible: normalizedVerification.eligible,
+            eligible: true,
           },
       verificationStage,
     };
@@ -155,7 +155,7 @@ export class UserService {
           },
         },
         studentProfile: {
-          select: { status: true, profilePicture: true },
+          select: { status: true, profilePicture: true, shortBio: true, longBio: true },
         },
         _count: { select: { followers: true, recommendationsReceived: true } },
         followers: viewerId ? {
@@ -168,6 +168,8 @@ export class UserService {
             id: true,
             displayName: true,
             description: true,
+            shortBio: true,
+            longBio: true,
             providerType: true,
             businessName: true,
             profilePicture: true,
@@ -235,7 +237,7 @@ export class UserService {
           badge: computedVerification.badge,
           badgeColor: computedVerification.badgeColor,
           riskBlocked: computedVerification.riskBlocked,
-          eligible: computedVerification.eligible,
+          eligible: true,
         };
 
     return {
@@ -261,10 +263,14 @@ export class UserService {
         user.profilePicture ??
         providerPage?.profilePicture ??
         (studentVerified ? user.studentProfile?.profilePicture : null),
+      shortBio: providerPage?.shortBio ?? (studentVerified ? user.studentProfile?.shortBio : null),
+      longBio: providerPage?.longBio ?? providerPage?.description ?? (studentVerified ? user.studentProfile?.longBio : null),
       provider: providerPage
         ? {
             displayName: providerPage.displayName,
             description: providerPage.description,
+            shortBio: providerPage.shortBio,
+            longBio: providerPage.longBio ?? providerPage.description,
             providerType: providerPage.providerType,
             businessName: providerPage.businessName,
             verifiedAt: providerPage.verifiedAt,
@@ -305,7 +311,8 @@ export class UserService {
         displayName: true,
         profilePicture: true,
         role: true,
-        studentProfile: { select: { schoolOfStudy: true } },
+        studentProfile: { select: { schoolOfStudy: true, shortBio: true } },
+        providerPage: { select: { shortBio: true } },
         _count: { select: { followers: true } },
         followers: { where: { followerId: currentUserId }, select: { followerId: true }, take: 1 },
       },
@@ -324,15 +331,17 @@ export class UserService {
         displayName: true,
         profilePicture: true,
         providerType: true,
+        shortBio: true,
         _count: { select: { followers: true } },
         followers: { where: { followerId: currentUserId }, select: { followerId: true }, take: 1 },
       },
     });
     return {
-      users: users.map(({ _count, followers, studentProfile, ...user }) => ({
+      users: users.map(({ _count, followers, studentProfile, providerPage, ...user }) => ({
         ...user,
         isVerified: true,
         school: studentProfile?.schoolOfStudy ?? null,
+        shortBio: providerPage?.shortBio ?? studentProfile?.shortBio ?? null,
         followerCount: _count.followers,
         isFollowing: followers.length > 0,
       })),

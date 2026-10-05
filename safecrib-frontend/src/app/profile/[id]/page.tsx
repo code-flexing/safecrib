@@ -26,6 +26,8 @@ type Listing = {
 type PublicProfile = {
   id: string;
   displayName?: string;
+  shortBio?: string | null;
+  longBio?: string | null;
   profilePicture?: string | null;
   isVerified?: boolean;
   role?: string;
@@ -40,6 +42,8 @@ type PublicProfile = {
   provider?: {
     displayName?: string;
     description?: string;
+    shortBio?: string;
+    longBio?: string;
     providerType?: string;
     businessName?: string;
     verifiedAt?: string;
@@ -249,6 +253,7 @@ export default function PublicProfilePage() {
                     <VerificationBadge verified={profile.isVerified === true} compact iconOnly />
                   </div>
                   <p className="mt-2 text-sm text-black/55">{readable(profile.role)}{profile.createdAt ? ` · Member since ${new Date(profile.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long" })}` : ""}</p>
+                  {profile.shortBio && <p className="mt-3 max-w-2xl text-sm leading-6 text-black/65">{profile.shortBio}</p>}
                   <p className="mt-1 text-sm text-black/55">{profile.followerCount ?? 0} followers</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -271,8 +276,12 @@ export default function PublicProfilePage() {
                 <h2 id="provider-about-heading" className="text-xl font-semibold text-safecrib-black">{profile.provider.businessName || profile.provider.displayName || "About"}</h2>
               </div>
               {profile.provider.providerType && <p className="mt-1 text-sm text-black/50">{readable(profile.provider.providerType)}</p>}
-              {profile.provider.description && <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-6 text-black/65">{profile.provider.description}</p>}
+              {(profile.provider.longBio || profile.provider.description) && <p className="mt-4 max-w-3xl whitespace-pre-line text-sm leading-6 text-black/65">{profile.provider.longBio || profile.provider.description}</p>}
               <SafeLinks links={profile.provider.socialLinks} />
+            </section>}
+            {!profile.provider && profile.longBio && <section className="mt-6 rounded-xl border border-black/10 bg-white p-5 sm:p-6" aria-labelledby="profile-about-heading">
+              <h2 id="profile-about-heading" className="text-xl font-semibold text-safecrib-black">About</h2>
+              <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-6 text-black/65">{profile.longBio}</p>
             </section>}
 
             <section className="mt-7" aria-labelledby="public-posts-heading">

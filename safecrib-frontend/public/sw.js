@@ -57,3 +57,41 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
 });
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    console.error("Could not parse a SafeCrib push notification.", error);
+  }
+  const title = typeof payload.title === "string" ? payload.title : "SafeCrib update";
+  const body = typeof payload.body === "string" ? payload.body : "You have a new notification.";
+  const href = typeof payload.href === "string" && payload.href.startsWith("/") && !payload.href.startsWith("//")
+    ? payload.href
+    : "/notifications";
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: "/logo(black).png",
+    badge: "/logo(black).png",
+    data: { href },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const href = event.notification.data?.href;
+  const destination = new URL(
+    typeof href === "string" && href.startsWith("/") && !href.startsWith("//") ? href : "/notifications",
+    self.location.origin,
+  ).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    const existing = clients.find((client) => client.url === destination);
+    if (existing && "focus" in existing) return existing.focus();
+    const sameOrigin = clients.find((client) => new URL(client.url).origin === self.location.origin);
+    if (sameOrigin && "navigate" in sameOrigin && "focus" in sameOrigin) {
+      return sameOrigin.navigate(destination).then(() => sameOrigin.focus());
+    }
+    return self.clients.openWindow(destination);
+  }));
+});

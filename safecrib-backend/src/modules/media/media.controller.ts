@@ -138,6 +138,18 @@ export class MediaController {
     return this.mediaService.listPendingUploads(user.id);
   }
 
+  @Get(':id/status')
+  @ApiOperation({ summary: 'Get the current status of an owned media upload' })
+  @ApiResponse({ status: 200, description: 'Upload status returned' })
+  @ApiResponse({ status: 403, description: 'Media is not owned by the caller' })
+  @ApiResponse({ status: 404, description: 'Media not found' })
+  async getMediaStatus(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.mediaService.getMediaStatus(id, user.id);
+  }
+
   @Delete('pending/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Cancel a current user pending upload' })
