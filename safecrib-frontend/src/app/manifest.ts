@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "SafeCrib",
     description: "Student accommodation, built around trust.",
     id: "/login",
-    start_url: "/login",
+    start_url: "/splash",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

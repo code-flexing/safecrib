@@ -12,7 +12,7 @@ export default function Loading() {
         className="h-auto w-44 dark:hidden"
       />
       <Image
-        src="/logo(white).png"
+        src="/logo(light).png"
         alt="SafeCrib"
         width={220}
         height={80}
