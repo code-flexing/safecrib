@@ -87,7 +87,7 @@ export default function NewHomePage() {
     }).catch((loadError: unknown) => {
       if (loadError instanceof ApiError && loadError.status === 401) router.replace("/login?reason=session-expired");
       else setError(loadError instanceof Error ? loadError.message : "We could not load the home form.");
-    }).finally(() => setLoading(false));
+    });
   }, [router]);
 
   useEffect(() => {
