@@ -26,6 +26,12 @@ type ReviewSubmission = {
   reviewer?: unknown;
   reviewedAt?: string;
 };
+type OpenMedia = {
+  key: string;
+  url: string;
+  label: string;
+  isImage: boolean;
+};
 
 const labels: Record<string, string> = {
   displayName: "Display name",
@@ -182,6 +188,7 @@ export default function AdminReviewPage() {
   const [review, setReview] = useState<ReviewSubmission | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string | null>>({});
   const [mediaErrors, setMediaErrors] = useState<Record<string, string | null>>({});
+  const [openMedia, setOpenMedia] = useState<OpenMedia | null>(null);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<ReviewStatus | null>(null);
@@ -415,14 +422,26 @@ export default function AdminReviewPage() {
             <div className="rounded-[8px] border border-black/10 bg-white p-5">
               <h2 className="font-medium">Profile picture</h2>
               {mediaUrls.profilePicture ? (
-                <Image
-                  src={mediaUrls.profilePicture}
-                  alt="Applicant profile"
-                  width={280}
-                  height={280}
-                  unoptimized
-                  className="mt-4 aspect-square w-full rounded-[6px] object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => setOpenMedia({
+                    key: "profilePicture",
+                    url: mediaUrls.profilePicture ?? "",
+                    label: "Applicant profile picture",
+                    isImage: true,
+                  })}
+                  className="mt-4 block w-full cursor-zoom-in text-left"
+                  aria-label="Open applicant profile picture"
+                >
+                  <Image
+                    src={mediaUrls.profilePicture}
+                    alt="Applicant profile"
+                    width={280}
+                    height={280}
+                    unoptimized
+                    className="aspect-square w-full rounded-[6px] object-cover"
+                  />
+                </button>
               ) : (
                 <div className="mt-4 space-y-3 text-sm text-black/60">
                   <p>{mediaUnavailable(review.submittedData.profilePicture, mediaErrors.profilePicture)}</p>
@@ -445,14 +464,18 @@ export default function AdminReviewPage() {
                     <dt className="font-medium text-black/65">{label(key)}</dt>
                     <dd className="break-all text-black/55">
                       {mediaUrls[key] ? (
-                        <a
-                          href={mediaUrls[key] ?? undefined}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => setOpenMedia({
+                            key,
+                            url: mediaUrls[key] ?? "",
+                            label: label(key),
+                            isImage: key === "coverPhoto",
+                          })}
                           className="font-medium text-safecrib-green hover:underline"
                         >
                           Open file
-                        </a>
+                        </button>
                       ) : (
                         <span className="flex flex-col items-start gap-2">
                           {mediaUnavailable(review.submittedData[key], mediaErrors[key])}
@@ -516,6 +539,42 @@ export default function AdminReviewPage() {
             Confirm {confirmAction === "REJECTED" ? "rejection" : "approval"}
           </button>
         </div>
+      </Modal>
+      <Modal
+        open={openMedia !== null}
+        onClose={() => setOpenMedia(null)}
+        titleId="media-preview-title"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <h2 id="media-preview-title" className="text-xl font-medium">
+            {openMedia?.label}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setOpenMedia(null)}
+            className="rounded-[4px] border border-black/15 px-3 py-2 text-sm font-medium"
+          >
+            Close
+          </button>
+        </div>
+        {openMedia && (
+          openMedia.isImage ? (
+            <Image
+              src={openMedia.url}
+              alt={openMedia.label}
+              width={1200}
+              height={900}
+              unoptimized
+              className="mt-5 max-h-[70vh] w-full rounded-[6px] object-contain"
+            />
+          ) : (
+            <iframe
+              src={openMedia.url}
+              title={openMedia.label}
+              className="mt-5 h-[70vh] w-full rounded-[6px] border border-black/10"
+            />
+          )
+        )}
       </Modal>
     </>
   );
