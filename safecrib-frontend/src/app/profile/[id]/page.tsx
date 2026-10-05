@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { PageLoader } from "@/components/loading/PageLoader";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
 import { VerificationBadge } from "@/components/verification/VerificationBadge";
@@ -229,8 +228,6 @@ export default function PublicProfilePage() {
       setFollowPending(false);
     }
   };
-
-  if (loading || avatarPending) return <PageLoader label={avatarPending ? "Loading profile picture" : "Loading profile"} />;
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">

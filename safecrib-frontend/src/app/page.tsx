@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
-import { PageLoader } from "@/components/loading/PageLoader";
 
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { getCurrentUser } from "@/lib/api";
@@ -118,7 +117,7 @@ export default function Home() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [, setSessionChecked] = useState(false);
   const [audience, setAudience] = useState<Audience>("student");
   const accountHref = isAuthenticated ? "/dashboard" : "/signup";
 
@@ -160,8 +159,6 @@ export default function Home() {
     elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, []);
-
-  if (!sessionChecked) return <PageLoader label="Checking your session" />;
 
   const studentMode = audience === "student";
   const handleNavigate = () => setMenuOpen(false);

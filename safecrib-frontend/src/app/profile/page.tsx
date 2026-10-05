@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { PageLoader } from "@/components/loading/PageLoader";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearSession, displayName, getCachedCurrentUser, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
@@ -255,8 +254,6 @@ export default function ProfilePage() {
     });
     return () => { active = false; };
   }, [router]);
-
-  if (loading) return <PageLoader label="Loading your profile" />;
 
   const role = String(user?.role ?? "").toUpperCase();
   const studentStatus = normalizeAccountStatus(user?.studentProfileStatus);

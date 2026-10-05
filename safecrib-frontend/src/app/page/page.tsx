@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { PageLoader } from "@/components/loading/PageLoader";
 import { Button } from "@/components/ui/Button";
 import { ReviewPendingState } from "@/components/verification/ReviewPendingState";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -104,8 +103,6 @@ export default function ProviderWorkspacePage() {
     result[status] = (result[status] ?? 0) + 1;
     return result;
   }, {});
-
-  if (loading) return <PageLoader label="Loading provider workspace" />;
 
   const providerRole = ["AGENT", "LANDLORD"].includes(String(user?.role ?? "").toUpperCase());
   const studentReviewPending = studentStatus === "pending";

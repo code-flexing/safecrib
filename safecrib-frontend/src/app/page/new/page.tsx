@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { PageLoader } from "@/components/loading/PageLoader";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, ApiError, cancelPendingUpload, clearClientCache, completeMediaUpload, getPendingUploads, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, unwrapData, uploadSignedMedia, type AccountStatus, type CloudinaryCompletionPayload, type PageStatus, type PendingUpload } from "@/lib/api";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
@@ -446,8 +445,6 @@ export default function NewProviderPage() {
     setError("");
     setNotice("");
   };
-
-  if (loading) return <PageLoader label="Loading provider setup" />;
 
   const input = (field: keyof FormState, label: string, required = false, type = "text", maxLength?: number) => <label className="block text-sm font-medium text-safecrib-black">{label}{required ? " *" : ""}<input required={required} type={type} maxLength={maxLength} value={form[field]} onChange={(event) => update(field, event.target.value)} className="mt-2 w-full border border-black/15 px-4 py-3 font-normal focus:border-safecrib-green focus:outline-none" /></label>;
 

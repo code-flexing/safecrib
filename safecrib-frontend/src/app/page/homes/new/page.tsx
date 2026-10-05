@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { PageLoader } from "@/components/loading/PageLoader";
 import { Button } from "@/components/ui/Button";
 import { apiFetch, ApiError, clearClientCache, normalizePageStatus, unwrapData, uploadListingMedia, waitForMediaReady, type PageStatus } from "@/lib/api";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
@@ -43,7 +42,7 @@ export default function NewHomePage() {
   const [step, setStep] = useState(1);
   const [draftKey, setDraftKey] = useState("");
   const [restored, setRestored] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"photo" | "video" | null>(null);
   const [error, setError] = useState("");
