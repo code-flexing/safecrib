@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
@@ -35,31 +35,44 @@ type ResultType = "Posts" | "People" | "Pages" | "Homes" | "Profiles" | "Trendin
 const resultTypes: ResultType[] = ["Posts", "People", "Pages", "Homes", "Profiles", "Trending"];
 
 function DiscoveryAvatar({ reference, seed, label }: { reference?: string | null; seed: string; label: string }) {
-  const container = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(Boolean(reference));
 
   useEffect(() => {
-    const element = container.current;
-    if (!element || visible) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) {
-        setVisible(true);
-        observer.disconnect();
-      }
-    }, { rootMargin: "120px" });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [visible]);
-
-  useEffect(() => {
-    if (!visible || !reference) return;
+    setImageUrl(null);
+    setResolving(Boolean(reference));
+    if (!reference) return;
     let active = true;
-    void resolveMediaUrl(reference).then((url) => { if (active) setImageUrl(url); });
+    void resolveMediaUrl(reference).then((url) => {
+      if (!active) return;
+      setImageUrl(url);
+      setResolving(false);
+    });
     return () => { active = false; };
-  }, [reference, visible]);
+  }, [reference]);
 
-  return <div ref={container} className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" /></div>;
+  if (resolving) {
+    return <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-black/10" role="status" aria-label={`Loading ${label} profile picture`} />;
+  }
+
+  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" /></div>;
+}
+
+function SearchResultsSkeleton() {
+  return (
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading search results">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-4 animate-pulse">
+          <div className="h-12 w-12 shrink-0 rounded-full bg-black/10" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-3 w-2/3 rounded bg-black/10" />
+            <div className="h-2.5 w-1/2 rounded bg-black/[0.07]" />
+          </div>
+          <div className="h-8 w-16 rounded-full bg-black/[0.07]" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function ConnectPage() {
@@ -158,7 +171,7 @@ export default function ConnectPage() {
         </label>
       </header>
       {error && <p role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
-      {query.trim() && loading && <p role="status" className="mt-6 text-sm text-black/50">Searching...</p>}
+      {query.trim() && loading && <SearchResultsSkeleton />}
       {query.trim() && !loading && <>
       <nav aria-label="Search result types" className="mt-6 flex gap-2 overflow-x-auto border-b border-black/10 pb-3">
         {resultTypes.map((type) => <button key={type} type="button" aria-pressed={resultType === type} onClick={() => setResultType(type)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${resultType === type ? "bg-safecrib-green text-white" : "border border-black/10 bg-white text-black/65 hover:border-safecrib-green/40 hover:text-safecrib-green"}`}>{type}</button>)}
