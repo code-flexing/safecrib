@@ -693,6 +693,12 @@ const resolvedMediaUrlLimit = 200;
 const resolvedMediaUrls = new Map<string, { url: string; expiresAt?: number }>();
 const mediaUrlRequests = new Map<string, Promise<string | null>>();
 
+export function withMediaCacheBust(url: string, cacheBurst = Date.now()): string {
+  if (!url || /^(https?:|data:|blob:)/.test(url) === false) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}safecrib_force_load=${cacheBurst}`;
+}
+
 function mediaUrlCacheKey(reference: string, transformation?: string) {
   return `${reference}::${transformation ?? "default"}`;
 }
@@ -770,11 +776,12 @@ export async function resolveMediaUrl(reference: unknown, transformation?: strin
           .find((value): value is string => typeof value === "string");
       if (!url) return null;
 
+      const freshUrl = withMediaCacheBust(url);
       const expiresAtValue = mediaResponse?.expiresAt;
       const expiresAt = typeof expiresAtValue === "number"
         ? expiresAtValue < 1_000_000_000_000 ? expiresAtValue * 1000 : expiresAtValue
         : undefined;
-      const cacheEntry = { url, expiresAt };
+      const cacheEntry = { url: freshUrl, expiresAt };
       resolvedMediaUrls.set(requestKey, cacheEntry);
       if (typeof window !== "undefined") {
         try {
@@ -797,7 +804,7 @@ export async function resolveMediaUrl(reference: unknown, transformation?: strin
           }
         } catch { /* Storage may be unavailable or full. */ }
       }
-      return url;
+      return freshUrl;
     })
     .catch(() => null)
     .finally(() => {

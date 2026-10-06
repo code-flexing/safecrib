@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { withMediaCacheBust } from "@/lib/api";
 
 type ProfileAvatarProps = {
   src?: string | null;
@@ -26,6 +27,7 @@ export function ProfileAvatar({
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const renderedSource = useMemo(() => (src ? withMediaCacheBust(src) : null), [src]);
 
   useEffect(() => {
     setFailedSource(null);
@@ -61,19 +63,20 @@ export function ProfileAvatar({
   const containerClass = `${sizeClass} shrink-0 overflow-hidden rounded-full border border-black/10 ${className}`;
   const isPending = loading || (!failedSource && !imageLoaded && (!src || !showFallback));
 
-  if (src && failedSource !== src) {
+  if (renderedSource && failedSource !== src) {
     return (
       <div className="relative inline-flex" aria-busy={isPending}>
         {isPending && <Skeleton className={`${containerClass} absolute inset-0`} rounded="full" />}
         <Image
-          src={src}
+          key={renderedSource}
+          src={renderedSource}
           alt={alt}
           width={128}
           height={128}
           unoptimized
           onLoad={() => setImageLoaded(true)}
           onError={() => {
-            setFailedSource(src);
+            setFailedSource(src ?? null);
             onReady?.(false);
           }}
           className={`${containerClass} object-cover ${isPending ? "opacity-0" : "opacity-100"}`}
