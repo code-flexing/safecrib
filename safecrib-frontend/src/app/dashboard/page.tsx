@@ -482,21 +482,12 @@ export default function DashboardPage() {
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
         <div className="mx-auto mt-8 max-w-3xl space-y-4">
           {listings.map((listing) => {
-<<<<<<< HEAD
             const imageReference = getListingImageReference(listing);
             const image = isUsableImageSource(resolvedListingImages[listing.id])
               ? resolvedListingImages[listing.id]
               : isUsableImageSource(imageReference)
                 ? imageReference
                 : null;
-=======
-            const imageReference = listing.photos?.[0] ?? listing.images?.[0];
-            const image = isUsableImageSource(resolvedListingImages[listing.id])
-              ? resolvedListingImages[listing.id]
-              : isUsableImageSource(imageReference)
-                ? imageReference
-                : null;
->>>>>>> e8adeacdc0422394c74872a55986e00e0ddf859e
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             return (
               <article
