@@ -491,6 +491,8 @@ export type CloudinaryCompletionPayload = {
   signature: string;
 };
 
+export type MediaUploadProgress = (percent: number) => void;
+
 export async function completeMediaUpload(mediaId: string, payload: CloudinaryCompletionPayload) {
   const response = unwrapData<unknown>(await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/complete`, {
     method: "POST",
@@ -505,7 +507,12 @@ export async function completeMediaUpload(mediaId: string, payload: CloudinaryCo
   return status;
 }
 
-export async function uploadSignedMedia(file: File, purpose: UploadPurpose, entityId?: string) {
+export async function uploadSignedMedia(
+  file: File,
+  purpose: UploadPurpose,
+  entityId?: string,
+  onUploadProgress?: MediaUploadProgress,
+) {
   let signatureResponse: unknown = await apiFetch<unknown>("/api/v1/media/upload-signature", {
     method: "POST",
     body: JSON.stringify({ purpose, contentType: file.type, sizeBytes: file.size, ...(entityId ? { entityId } : {}) }),
@@ -555,9 +562,38 @@ export async function uploadSignedMedia(file: File, purpose: UploadPurpose, enti
     }
   });
 
-  const response = await fetch(uploadUrl, { method: "POST", body });
-  if (!response.ok) throw new ApiError(response.status, "The file could not be uploaded. Please retry.");
-  const uploadResult = recordValue(await response.json().catch(() => null));
+  const uploadResult = await new Promise<Record<string, unknown>>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", uploadUrl);
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        onUploadProgress?.(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
+    });
+    request.addEventListener("load", () => {
+      let result: unknown;
+      try {
+        result = request.responseText ? JSON.parse(request.responseText) as unknown : null;
+      } catch {
+        reject(new Error("Cloudinary returned an unreadable upload response."));
+        return;
+      }
+      if (request.status < 200 || request.status >= 300) {
+        const response = recordValue(result);
+        const error = recordValue(response.error);
+        const message = typeof error.message === "string"
+          ? error.message
+          : "The file could not be uploaded. Please retry.";
+        reject(new ApiError(request.status, message));
+        return;
+      }
+      onUploadProgress?.(100);
+      resolve(recordValue(result));
+    });
+    request.addEventListener("error", () => reject(new Error("The file upload could not reach Cloudinary. Check your connection and retry.")));
+    request.addEventListener("abort", () => reject(new Error("The file upload was canceled.")));
+    request.send(body);
+  });
   const secureUrl = uploadResult.secure_url;
   const completionValues = {
     asset_id: uploadResult.asset_id,
@@ -624,8 +660,13 @@ export async function uploadSignedMedia(file: File, purpose: UploadPurpose, enti
   };
 }
 
-export async function uploadListingMedia(file: File, purpose: ListingMediaPurpose, listingId: string) {
-  return uploadSignedMedia(file, purpose, listingId);
+export async function uploadListingMedia(
+  file: File,
+  purpose: ListingMediaPurpose,
+  listingId: string,
+  onUploadProgress?: MediaUploadProgress,
+) {
+  return uploadSignedMedia(file, purpose, listingId, onUploadProgress);
 }
 
 export async function waitForMediaReady(

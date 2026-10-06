@@ -15,6 +15,7 @@ type Listing = { id: string; title?: string; description?: string; price?: numbe
 type User = { id?: string; email?: string; role?: string; displayName?: unknown };
 type ListingForm = { title: string; description: string; price: string; discountAmount: string; campus: string; address: string; locationReference: string; lat: string; lng: string };
 type ListingDraft = { form: ListingForm; step: number; listingId: string };
+type MediaProgress = { kind: "photo" | "video"; stage: "uploading" | "processing" | "attaching" | "complete"; percent: number; failed?: boolean };
 
 const emptyForm: ListingForm = { title: "", description: "", price: "", discountAmount: "", campus: "", address: "", locationReference: "", lat: "", lng: "" };
 const MAX_PHOTOS = 5;
@@ -40,6 +41,7 @@ export default function NewHomePage() {
   const [restored, setRestored] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"photo" | "video" | null>(null);
+  const [mediaProgress, setMediaProgress] = useState<MediaProgress | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -176,18 +178,27 @@ export default function NewHomePage() {
       if (listing.video?.mediaId) { setError("This home already has a video. Remove it before adding another."); return false; }
     }
     setUploading(kind);
+    setMediaProgress({ kind, stage: "uploading", percent: 0 });
     setError("");
     setNotice("Uploading file. It will be attached only after media processing completes.");
     try {
-      const uploaded = await uploadListingMedia(file, kind === "photo" ? "LISTING_PHOTO" : "LISTING_VIDEO", listing.id);
+      const uploaded = await uploadListingMedia(
+        file,
+        kind === "photo" ? "LISTING_PHOTO" : "LISTING_VIDEO",
+        listing.id,
+        (percent) => setMediaProgress({ kind, stage: "uploading", percent }),
+      );
+      setMediaProgress({ kind, stage: "processing", percent: 100 });
       if (uploaded.status !== "READY") {
         await waitForMediaReady(uploaded.mediaId, {
           ...(kind === "photo" && uploaded.completionPayload ? { completionPayload: uploaded.completionPayload } : {}),
           webhookOnly: kind === "video",
         });
       }
+      setMediaProgress({ kind, stage: "attaching", percent: 100 });
       await apiFetch(`/api/v1/listings/${encodeURIComponent(listing.id)}/${kind === "photo" ? "photos/media" : "video"}`, { method: "POST", body: JSON.stringify({ mediaId: uploaded.mediaId }) });
       await refreshListing();
+      setMediaProgress({ kind, stage: "complete", percent: 100 });
       setNotice(kind === "photo" ? "Photo uploaded and attached." : "Video uploaded and attached.");
       return true;
     } catch (uploadError) {
@@ -195,6 +206,7 @@ export default function NewHomePage() {
         await refreshListing().catch(() => undefined);
         setError("The listing media changed or reached its limit. We refreshed the attached media; check it before trying again.");
       } else setError(uploadError instanceof Error ? uploadError.message : "We could not upload this file. Your listing draft is preserved.");
+      setMediaProgress((current) => current ? { ...current, failed: true } : current);
       setNotice("");
       return false;
     } finally { setUploading(null); }
@@ -251,6 +263,41 @@ export default function NewHomePage() {
       {restored && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border border-safecrib-green/20 bg-[#EAF7F1] px-4 py-3 text-sm text-safecrib-green"><span>Draft restored. Your progress is saved on this device.</span><button type="button" onClick={() => { if (draftKey) removeDraft(draftKey); setForm(emptyForm); setListing(null); setStep(1); setRestored(false); }} className="font-medium underline">Discard draft</button></div>}
       {error && <p className="mt-5 border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700" role="alert">{error}</p>}
       {notice && <p className="mt-5 border border-safecrib-green/20 bg-[#EAF7F1] p-4 text-sm leading-6 text-safecrib-green" role="status">{notice}</p>}
+      {mediaProgress && <section className="mt-5 border border-black/10 bg-white p-5 shadow-[0_12px_32px_rgba(11,12,14,0.05)]" aria-label={`${mediaProgress.kind === "video" ? "Video" : "Photo"} upload progress`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-safecrib-green">{mediaProgress.kind === "video" ? "Video upload" : "Photo upload"}</p><h2 className="mt-1 text-lg font-medium text-safecrib-black">{mediaProgress.failed ? "Upload needs attention" : mediaProgress.stage === "complete" ? "Upload complete" : mediaProgress.stage === "uploading" ? "Sending your file" : mediaProgress.stage === "processing" ? "Processing your media" : "Attaching to your home"}</h2></div>
+          <span className={`text-sm font-semibold ${mediaProgress.failed ? "text-red-700" : "text-safecrib-green"}`}>{mediaProgress.failed ? "Paused" : mediaProgress.stage === "uploading" ? `${mediaProgress.percent}%` : mediaProgress.stage === "complete" ? "Done" : "In progress"}</span>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden bg-black/5" role="progressbar" aria-label={mediaProgress.stage === "uploading" ? "File transfer progress" : "Media processing progress"} aria-valuemin={0} aria-valuemax={100} aria-valuenow={mediaProgress.stage === "uploading" ? mediaProgress.percent : undefined}>
+          <div className={`h-full bg-safecrib-green transition-[width] duration-300 ${mediaProgress.stage === "processing" && !mediaProgress.failed ? "w-full animate-pulse opacity-60" : ""}`} style={mediaProgress.stage === "processing" && !mediaProgress.failed ? undefined : { width: `${mediaProgress.stage === "uploading" ? mediaProgress.percent : 100}%` }} />
+        </div>
+        <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+          {([
+            ["uploading", "Upload file", "Transfer to secure storage"],
+            ["processing", "Process media", mediaProgress.kind === "video" ? "Cloudinary prepares the video" : "Verify the uploaded photo"],
+            ["attaching", "Attach to home", "Add it to your listing"],
+          ] as const).map(([stage, title, description], index) => {
+            const currentIndex = mediaProgress.stage === "complete" ? 3 : ["uploading", "processing", "attaching"].indexOf(mediaProgress.stage);
+            const complete = currentIndex > index;
+            const active = currentIndex === index;
+            return <li key={stage} className={`flex gap-3 text-sm ${active ? "text-safecrib-green" : complete ? "text-black/65" : "text-black/40"}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${complete ? "border-safecrib-green bg-safecrib-green text-white" : active ? "border-safecrib-green" : "border-black/20"}`} aria-hidden="true">{complete ? "✓" : index + 1}</span>
+              <span><span className="block font-medium">{title}</span><span className="mt-0.5 block text-xs leading-5 text-black/50">{description}</span></span>
+            </li>;
+          })}
+        </ol>
+        <p className="mt-4 text-xs leading-5 text-black/50" role="status">
+          {mediaProgress.failed
+            ? "Your home draft is preserved. Check the message above before retrying."
+            : mediaProgress.stage === "uploading"
+              ? `File transfer ${mediaProgress.percent}% complete. Keep this page open until the upload finishes.`
+              : mediaProgress.stage === "processing"
+                ? mediaProgress.kind === "video" ? "The file is uploaded. Cloudinary is processing it; larger videos can take a few minutes." : "The file is uploaded. SafeCrib is verifying it."
+                : mediaProgress.stage === "attaching"
+                  ? "Media is ready. Saving it to your home listing."
+                  : "Your media is attached to this home."}
+        </p>
+      </section>}
 
       {pendingReview ? <div className="mt-7 border border-black/10 bg-white p-6"><p className="text-sm font-medium">Status: {statusName(listing?.status)}</p><p className="mt-2 text-sm leading-6 text-black/60">This home is awaiting review. Editing and resubmission are disabled until the API reports a new status.</p><Link href="/page" className="mt-5 inline-block text-sm font-medium text-safecrib-green hover:underline">Return to homes</Link></div> : !isEditable ? <div className="mt-7 border border-black/10 bg-white p-6"><p className="text-sm font-medium">This home is {statusName(listing?.status).toLowerCase()}.</p><p className="mt-2 text-sm leading-6 text-black/60">The current service does not define an edit transition for this status.</p><Link href="/page" className="mt-5 inline-block text-sm font-medium text-safecrib-green hover:underline">Return to homes</Link></div> : <>
         {!reviewing && <div className="mt-8"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-safecrib-green">Step {step} of 3</p><span className="text-xs text-black/45">{Math.round((step / 3) * 100)}%</span></div><div className="mt-3 h-2 overflow-hidden bg-black/5"><div className="h-full bg-safecrib-green transition-[width] duration-300" style={{ width: `${(step / 3) * 100}%` }} /></div><div className="mt-4 grid grid-cols-3 gap-2 text-xs text-black/45"><span className={step === 1 ? "font-semibold text-safecrib-green" : ""}>Details</span><span className={step === 2 ? "font-semibold text-safecrib-green" : ""}>Location</span><span className={step === 3 ? "font-semibold text-safecrib-green" : ""}>Media and review</span></div></div>}
