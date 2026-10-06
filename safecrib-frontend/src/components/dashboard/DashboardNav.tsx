@@ -215,13 +215,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           </Link>
         </div>
       </header>
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-black/10 bg-white/90 px-4 pb-2 pt-3 backdrop-blur-md md:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-center">
-          <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="inline-flex items-center justify-center rounded-full">
-            <SafeCribLogo height={34} href={false} />
-          </Link>
-        </div>
-      </div>
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-black/10 bg-white/90 px-4 pb-2 pt-3 backdrop-blur-md md:hidden" />
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
         <div className="mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border border-black/10 bg-white/25 p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.12)] backdrop-blur-2xl">
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/dashboard" ? "bg-black/[0.05] text-current shadow-sm scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="home" className="h-5 w-5" /></Link>
