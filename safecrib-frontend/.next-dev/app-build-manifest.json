@@ -21,30 +21,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/backend/[...path]/route.js"
     ],
-    "/dashboard/page": [
+    "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
-    ],
-    "/connect/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/connect/page.js"
-    ],
-    "/profile/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/profile/page.js"
-    ],
-    "/notifications/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/notifications/page.js"
-    ],
-    "/manifest.webmanifest/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/manifest.webmanifest/route.js"
+      "static/chunks/app/login/page.js"
     ]
   }
 }

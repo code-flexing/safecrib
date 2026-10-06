@@ -308,7 +308,7 @@ export class ListingsService {
       select: { id: true, ownerId: true, status: true },
     });
     if (!listing || listing.status !== 'VERIFIED') throw new NotFoundException('Home not found');
-    if (listing.ownerId === userId) throw new ForbiddenException('You cannot like your own home');
+    if (!listing || listing.status !== 'VERIFIED') throw new NotFoundException('Home not found');
 
     const existingLike = await this.prisma.listingLike.findUnique({
       where: { userId_listingId: { userId, listingId } },
@@ -319,7 +319,7 @@ export class ListingsService {
       create: { userId, listingId },
       update: {},
     });
-    if (!existingLike) {
+    if (!existingLike && listing.ownerId !== userId) {
       const actor = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -365,7 +365,6 @@ export class ListingsService {
       select: {
         id: true,
         body: true,
-        gifUrl: true,
         parentId: true,
         createdAt: true,
         user: { select: { id: true, displayName: true, role: true } },
@@ -376,11 +375,7 @@ export class ListingsService {
 
   async addListingComment(listingId: string, userId: string, input: CreateListingCommentDto) {
     const body = input.body?.trim() ?? '';
-    const gifUrl = input.gifUrl?.trim() || null;
-    if (!body && !gifUrl) throw new BadRequestException('Write text or attach a GIF');
-    if (gifUrl && !this.isAllowedGifUrl(gifUrl)) {
-      throw new BadRequestException('GIFs must be hosted by Tenor or GIPHY');
-    }
+    if (!body) throw new BadRequestException('Write a comment');
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       select: { id: true, ownerId: true, title: true, status: true },
@@ -414,14 +409,12 @@ export class ListingsService {
         listingId,
         userId,
         body,
-        gifUrl,
         parentId: input.parentId ?? null,
         mentions: { create: mentionIds.map((mentionedUserId) => ({ userId: mentionedUserId })) },
       },
       select: {
         id: true,
         body: true,
-        gifUrl: true,
         parentId: true,
         createdAt: true,
         user: {
@@ -471,16 +464,6 @@ export class ListingsService {
       dedupeKey: `listing-comment:${comment.id}:mention:${mentionedUserId}`,
     })));
     return comment;
-  }
-
-  private isAllowedGifUrl(value: string): boolean {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'https:' &&
-        ['media.tenor.com', 'tenor.com', 'media.giphy.com', 'giphy.com'].includes(url.hostname.toLowerCase());
-    } catch {
-      return false;
-    }
   }
 
   async uploadPhoto(
@@ -742,15 +725,28 @@ export class ListingsService {
     return {
       photos: true,
       video: { include: { media: { select: { id: true, durationSec: true } } } },
-      _count: { select: { likes: true, views: true } },
-      ...(viewerId ? { likes: { where: { userId: viewerId }, select: { id: true }, take: 1 } } : {}),
-      ...(viewerId ? {
-        providerPage: {
-          select: {
-            followers: { where: { followerId: viewerId }, select: { followerId: true }, take: 1 },
-          },
+      _count: { select: { likes: true, views: true, comments: true, bookmarks: true } },
+      owner: {
+        select: {
+          id: true,
+          displayName: true,
+          profilePicture: true,
+          email: true,
+          studentProfile: { select: { displayName: true, profilePicture: true } },
+          providerPage: { select: { displayName: true, phone: true, additionalContacts: true } },
+          verification: { select: { badgeColor: true } },
         },
-      } : {}),
+      },
+      providerPage: {
+        select: {
+          displayName: true,
+          phone: true,
+          additionalContacts: true,
+          ...(viewerId ? { followers: { where: { followerId: viewerId }, select: { followerId: true }, take: 1 } } : {}),
+        },
+      },
+      ...(viewerId ? { likes: { where: { userId: viewerId }, select: { id: true }, take: 1 } } : {}),
+      ...(viewerId ? { bookmarks: { where: { userId: viewerId }, select: { id: true }, take: 1 } } : {}),
       bookings: {
         where: {
           OR: [
@@ -765,6 +761,20 @@ export class ListingsService {
   }
 
   private toResponse(listing: any, photos: any[]): ListingResponse {
+    const owner = listing.owner;
+    const providerPage = listing.providerPage;
+    const studentProfile = owner?.studentProfile;
+    const verification = owner?.verification;
+    
+    const ownerDisplayName = owner?.displayName ?? studentProfile?.displayName ?? providerPage?.displayName ?? null;
+    const ownerProfilePicture = owner?.profilePicture ?? studentProfile?.profilePicture ?? providerPage?.profilePicture ?? null;
+    const ownerPhone = providerPage?.phone ?? null;
+    const additionalContacts = providerPage?.additionalContacts as Record<string, string> | null;
+    const whatsApp = additionalContacts?.['whatsApp'] ?? additionalContacts?.['whatsapp'] ?? null;
+    const agencyName = providerPage?.displayName ?? null;
+    const badgeColor = verification?.badgeColor ?? 'green';
+    const verificationStage = verification?.stage ?? 'PROFILE_VERIFIED';
+
     return {
       id: listing.id,
       title: listing.title,
@@ -783,14 +793,32 @@ export class ListingsService {
           ? 'SECURED'
           : 'AVAILABLE',
       ownerId: listing.ownerId,
+      owner: {
+        id: owner?.id ?? listing.ownerId,
+        displayName: ownerDisplayName,
+        profilePicture: ownerProfilePicture,
+        phone: ownerPhone,
+        whatsApp,
+        agencyName,
+        verification: {
+          stage: verificationStage,
+          badgeColor,
+        },
+      },
+      bedrooms: listing.bedrooms ?? null,
+      bathrooms: listing.bathrooms ?? null,
+      propertyType: listing.propertyType ?? null,
       likeCount: listing._count?.likes ?? 0,
       likedByCurrentUser: Boolean(listing.likes?.length),
+      commentCount: listing._count?.comments ?? 0,
+      shareCount: listing._count?.bookmarks ?? 0,
+      isBookmarked: Boolean(listing.bookmarks?.length),
       providerTrustScore: 0,
       providerActiveDays: 0,
       providerRecommendationCount: 0,
       recommendationScore: 0,
       viewCount: listing._count?.views ?? 0,
-      followedPage: Boolean(listing.providerPage?.followers?.length),
+      followedPage: Boolean(providerPage?.followers?.length),
       photos: photos.map((p) => ({
         id: p.id,
         mediaId: p.mediaId ?? null,

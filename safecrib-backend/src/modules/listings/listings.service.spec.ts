@@ -94,12 +94,17 @@ function makeService() {
 }
 
 describe('ListingsService listing media and pricing rules', () => {
-  it('prevents listing owners from liking their own home', async () => {
-    const { service, prisma } = makeService();
+  it('allows listing owners to like their own home without notifying themselves', async () => {
+    const { service, prisma, notifications } = makeService();
     prisma.listing.findUnique.mockResolvedValueOnce({ id: 'listing_1', ownerId: 'agent_1', status: 'VERIFIED' });
 
-    await expect(service.likeListing('listing_1', 'agent_1')).rejects.toThrow('You cannot like your own home');
-    expect(prisma.listingLike.upsert).not.toHaveBeenCalled();
+    await expect(service.likeListing('listing_1', 'agent_1')).resolves.toEqual({ liked: true });
+    expect(prisma.listingLike.upsert).toHaveBeenCalledWith({
+      where: { userId_listingId: { userId: 'agent_1', listingId: 'listing_1' } },
+      create: { userId: 'agent_1', listingId: 'listing_1' },
+      update: {},
+    });
+    expect(notifications.enqueue).not.toHaveBeenCalled();
   });
 
   it('stores a trimmed comment on a verified home', async () => {
@@ -113,11 +118,10 @@ describe('ListingsService listing media and pricing rules', () => {
         listingId: 'listing_1',
         userId: 'student_1',
         body: 'Is this available?',
-        gifUrl: null,
         parentId: null,
         mentions: { create: [] },
       },
-      select: expect.objectContaining({ body: true, gifUrl: true, parentId: true }),
+      select: expect.objectContaining({ body: true, parentId: true }),
     });
     expect(comment.body).toBe('Is this available?');
     expect(notifications.enqueue).toHaveBeenCalledWith('agent_1', expect.objectContaining({
@@ -127,6 +131,19 @@ describe('ListingsService listing media and pricing rules', () => {
         actorProfilePicture: 'student-photo',
       }),
     }));
+  });
+
+  it('allows an agent to comment on their own home without notifying themselves', async () => {
+    const { service, prisma, notifications } = makeService();
+    prisma.listing.findUnique.mockResolvedValueOnce({ id: 'listing_1', ownerId: 'agent_1', title: 'A nice home', status: 'VERIFIED' });
+
+    await expect(service.addListingComment('listing_1', 'agent_1', { body: '  More details soon.  ' }))
+      .resolves.toMatchObject({ body: 'More details soon.' });
+
+    expect(prisma.listingComment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ userId: 'agent_1', body: 'More details soon.' }),
+    }));
+    expect(notifications.enqueue).not.toHaveBeenCalled();
   });
 
   it('includes the liker profile picture in the home notification', async () => {

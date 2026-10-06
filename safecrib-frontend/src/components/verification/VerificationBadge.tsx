@@ -81,7 +81,7 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
   return {
     userId: typeof response.userId === "string" ? response.userId : undefined,
     role: typeof response.role === "string" ? response.role : undefined,
-    eligible: response.eligible === true || Boolean(originalStage),
+    eligible: response.eligible === true,
     stage,
     badge,
     badgeColor,

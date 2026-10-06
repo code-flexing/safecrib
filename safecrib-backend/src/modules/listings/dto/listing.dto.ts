@@ -119,6 +119,24 @@ export class UpdateListingDto {
   @IsString()
   @MaxLength(500)
   locationReference?: string;
+
+  @ApiPropertyOptional({ example: 2, description: 'Number of bedrooms' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  bedrooms?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'Number of bathrooms' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  bathrooms?: number;
+
+  @ApiPropertyOptional({ example: 'Self-contain', description: 'Property type label' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  propertyType?: string;
 }
 
 export class SearchListingsDto {
@@ -180,12 +198,6 @@ export class CreateListingCommentDto {
   @MaxLength(1000)
   body?: string;
 
-  @ApiPropertyOptional({ example: 'https://media.tenor.com/example.gif' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  gifUrl?: string;
-
   @ApiPropertyOptional({ example: 'comment-uuid', description: 'Parent comment ID for a reply' })
   @IsOptional()
   @IsUUID()
@@ -215,8 +227,33 @@ export interface ListingResponse {
   status: string;
   availabilityStatus: 'AVAILABLE' | 'SECURED';
   ownerId: string;
+  /** Owner profile fields for social-post card display */
+  owner: {
+    id: string;
+    displayName: string | null;
+    profilePicture: string | null;
+    /** Resolved from ProviderPage.phone — null when no provider page */
+    phone: string | null;
+    /** WhatsApp number from provider page additional contacts */
+    whatsApp: string | null;
+    /** Agency / provider page display name */
+    agencyName: string | null;
+    verification: {
+      stage: string;
+      badgeColor: 'green' | 'blue' | 'gold';
+    } | null;
+  };
+  /** Optional property details — null when provider has not filled them in */
+  bedrooms: number | null;
+  bathrooms: number | null;
+  propertyType: string | null;
   likeCount: number;
   likedByCurrentUser: boolean;
+  commentCount: number;
+  /** Number of users who have bookmarked (saved) this listing */
+  shareCount: number;
+  /** Whether the current viewer has bookmarked this listing (false for unauthenticated) */
+  isBookmarked: boolean;
   providerTrustScore: number;
   providerActiveDays: number;
   providerRecommendationCount: number;

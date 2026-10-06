@@ -4,9 +4,51 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
-
 import { InstallButton } from "@/components/pwa/InstallButton";
-import { getCurrentUser } from "@/lib/api";
+import { apiFetch, getCurrentUser } from "@/lib/api";
+import { ListingPost } from "@/components/listings/ListingPost";
+import { ListingPostSkeleton } from "@/components/listings/ListingPostSkeleton";
+import { fetchPublicListings } from "@/lib/api";
+import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
+
+type PublicListing = {
+  id: string;
+  title?: string;
+  description?: string | null;
+  price?: number;
+  discountAmount?: number | null;
+  campus?: string | null;
+  address?: string | null;
+  photos?: Array<{ id: string; mediaId?: string | null; url: string }>;
+  video?: { mediaId: string; durationSec?: number | null } | null;
+  likeCount?: number;
+  likedByCurrentUser?: boolean;
+  commentCount?: number;
+  shareCount?: number;
+  viewCount?: number;
+  _count?: { comments?: number; shares?: number; views?: number };
+  ownerId?: string;
+  ownerDisplayName?: string;
+  ownerHandle?: string;
+  ownerAvatarMediaId?: string;
+  ownerAvatarUrl?: string;
+  ownerIsVerified?: boolean;
+  ownerVerificationBadge?: "green" | "blue" | "gold";
+  ownerAgencyName?: string;
+  ownerPhone?: string;
+  ownerWhatsApp?: string;
+  owner?: {
+    id: string;
+    displayName?: string;
+    username?: string;
+    profilePicture?: string;
+    phone?: string;
+    whatsApp?: string;
+    verification?: { stage?: string; badgeColor?: "green" | "blue" | "gold" } | null;
+    providerPage?: { displayName?: string } | null;
+  };
+  createdAt?: string | Date;
+};
 
 type Audience = "student" | "provider";
 
@@ -121,6 +163,11 @@ export default function Home() {
   const [audience, setAudience] = useState<Audience>("student");
   const accountHref = isAuthenticated ? "/dashboard" : "/signup";
 
+  // Public listings feed state
+  const [listings, setListings] = useState<PublicListing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsError, setListingsError] = useState<string | null>(null);
+
   useEffect(() => {
     const hasSession = Boolean(
       window.localStorage.getItem("safecrib_access_token") ||
@@ -145,6 +192,34 @@ export default function Home() {
     return () => { active = false; };
   }, [router]);
 
+  // Fetch public listings for the feed
+  useEffect(() => {
+    let active = true;
+    setListingsLoading(true);
+    fetchPublicListings({ limit: 10 })
+      .then((data: unknown) => {
+        if (active) {
+          const items = Array.isArray(data) ? data : (data as Record<string, unknown>)?.data as PublicListing[] ?? (data as Record<string, unknown>)?.listings as PublicListing[] ?? [];
+          setListings(items);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        // 401 means the visitor is not logged in — the backend requires auth for listing search.
+        // Treat it as an empty feed, not an error, so the home page doesn't look broken.
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          setListings([]);
+        } else {
+          setListingsError((err as { message?: string })?.message ?? "Failed to load listings");
+        }
+      })
+      .finally(() => {
+        if (active) setListingsLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     const elements = document.querySelectorAll("[data-reveal]");
     if (!elements.length) return;
@@ -162,6 +237,36 @@ export default function Home() {
 
   const studentMode = audience === "student";
   const handleNavigate = () => setMenuOpen(false);
+
+  const handleLike = async (listingId: string, liked: boolean) => {
+    await apiFetch(`/api/v1/listings/${encodeURIComponent(listingId)}/like`, {
+      method: liked ? "POST" : "DELETE",
+    });
+  };
+
+  const handleComment = (listingId: string) => {
+    router.push(`/dashboard/listings/${listingId}#comments`);
+  };
+
+  const prefetchListing = (listingId: string) => {
+    router.prefetch(`/dashboard/listings/${listingId}`);
+  };
+
+  const handleShare = async (listingId: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "SafeCrib Listing",
+          url: `${window.location.origin}/dashboard/listings/${listingId}`,
+        });
+      } catch {}
+    }
+  };
+
+  const handleBookmark = async (listingId: string) => {
+    // TODO: Implement bookmark via API
+    console.log("Bookmark:", listingId);
+  };
 
   return (
     <main id="top" className="min-h-screen bg-white text-safecrib-black">
@@ -286,6 +391,72 @@ export default function Home() {
           <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Your next chapter starts here</p><h2 className="mt-2 font-display text-2xl font-semibold">Find your place with SafeCrib.</h2></div>
           <div className="flex flex-wrap items-center gap-3"><InstallButton /><RouteLink href={accountHref} className="inline-flex min-h-11 items-center justify-center rounded-full bg-safecrib-green px-5 py-3 text-sm font-semibold text-white hover:bg-[#095E47]">{isAuthenticated ? "Open dashboard" : "Get started"}</RouteLink></div>
         </div>
+      </section>
+
+      {/* Public Listings Feed */}
+      <section id="listings-feed" className="mx-auto max-w-6xl px-4 py-14 sm:px-7" data-reveal>
+        <div className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Available homes</p>
+          <h2 className="mt-3 font-display text-3xl font-semibold leading-tight sm:text-4xl">Browse verified homes</h2>
+        </div>
+
+        {listingsLoading ? (
+          <div className="space-y-5" role="status" aria-label="Loading listings">
+            {[...Array(3)].map((_, i) => (
+              <ListingPostSkeleton key={i} />
+            ))}
+          </div>
+        ) : listingsError ? (
+          <div className="text-center py-12 text-black/50">
+            <p>{listingsError}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 text-sm font-medium text-safecrib-green hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8" aria-label="No listings available">
+            <EmptyListingsIllustration />
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {listings.map((listing: PublicListing) => (
+              <ListingPost
+                key={listing.id}
+                listing={{
+                  ...listing,
+                  photos: listing.photos ?? [],
+                  video: listing.video ?? null,
+                  likeCount: listing.likeCount ?? 0,
+                  likedByCurrentUser: listing.likedByCurrentUser ?? false,
+                  ownerId: listing.ownerId ?? listing.owner?.id ?? "unknown",
+                  createdAt: listing.createdAt ?? new Date().toISOString(),
+                  commentCount: listing._count?.comments ?? listing.commentCount ?? 0,
+                  shareCount: listing._count?.shares ?? listing.shareCount ?? 0,
+                  viewCount: listing._count?.views ?? listing.viewCount ?? 0,
+                  isBookmarked: false,
+                  ownerDisplayName: listing.owner?.displayName ?? listing.ownerDisplayName ?? "Agent",
+                  ownerHandle: listing.owner?.username ?? listing.ownerHandle,
+                  ownerAvatarMediaId: listing.owner?.profilePicture ?? listing.ownerAvatarMediaId,
+                  ownerAvatarUrl: listing.owner?.profilePicture ?? listing.ownerAvatarUrl,
+                  ownerIsVerified: (listing.owner?.verification?.stage ?? "PROFILE_VERIFIED") !== "PROFILE_VERIFIED" ? true : (listing.ownerIsVerified ?? false),
+                  ownerVerificationBadge: listing.owner?.verification?.badgeColor ?? listing.ownerVerificationBadge,
+                  ownerAgencyName: listing.owner?.providerPage?.displayName ?? listing.ownerAgencyName,
+                  ownerPhone: listing.owner?.phone ?? listing.ownerPhone,
+                  ownerWhatsApp: listing.owner?.whatsApp ?? listing.ownerWhatsApp,
+                }}
+                onLike={handleLike}
+                onComment={handleComment}
+                onCommentPrefetch={prefetchListing}
+                onShare={handleShare}
+                onBookmark={handleBookmark}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 text-xs text-black/50 sm:flex-row sm:items-center sm:justify-between sm:px-7">

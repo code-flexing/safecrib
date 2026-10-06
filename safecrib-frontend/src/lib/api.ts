@@ -935,6 +935,21 @@ export function normalizeAccountStatus(value: unknown): AccountStatus {
   return "not_submitted";
 }
 
+export async function fetchPublicListings<T = unknown>(params: Record<string, string | number | boolean> = {}): Promise<T> {
+  const searchParams = new URLSearchParams();
+  // The backend does not expose a /listings/public endpoint.
+  // The standard GET /api/v1/listings endpoint requires authentication and
+  // filters by status=VERIFIED by default. When unauthenticated this will
+  // return a 401; the home page handles that gracefully by showing an empty feed.
+  // Remove the "status" param that the caller passes — the backend already
+  // filters to VERIFIED listings in its searchListings handler.
+  Object.entries(params).forEach(([key, value]) => {
+    if (key !== "status") searchParams.set(key, String(value));
+  });
+  const path = `/api/v1/listings${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  return apiFetch<T>(path);
+}
+
 export function normalizePageStatus(value: unknown): PageStatus {
   const status = typeof value === "string" ? value.toLowerCase() : "none";
   if (["approved", "verified"].includes(status)) return "approved";

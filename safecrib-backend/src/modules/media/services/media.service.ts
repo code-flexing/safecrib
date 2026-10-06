@@ -392,13 +392,15 @@ export class MediaService {
       });
       expiresAt = Math.floor(Date.now() / 1000) + ttl;
 
-      // Log every access to sensitive documents
-      await this.mediaRepo.logAccess({
-        mediaId,
-        accessorId: requesterId,
-        ip,
-        userAgent,
-      });
+      // Log every access to sensitive documents (only for authenticated users)
+      if (requesterId && requesterRole !== 'GUEST') {
+        await this.mediaRepo.logAccess({
+          mediaId,
+          accessorId: requesterId,
+          ip,
+          userAgent,
+        });
+      }
     } else {
       url = this.storage.getDeliveryUrl(media.publicId, {
         transformation: resolvedTransformation,

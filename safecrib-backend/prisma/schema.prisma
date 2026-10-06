@@ -241,6 +241,9 @@ model Listing {
   address   String?
   locationReference String? @map("location_reference")
   status    ListingStatus @default(DRAFT)
+  bedrooms     Int?    @map("bedrooms")
+  bathrooms    Int?    @map("bathrooms")
+  propertyType String? @map("property_type")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

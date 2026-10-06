@@ -19,7 +19,6 @@ type ReportType = "FAKE_LISTING" | "MISREPRESENTED" | "DOUBLE_BOOKING" | "SCAM_A
 type ListingComment = {
   id: string;
   body: string;
-  gifUrl?: string | null;
   parentId?: string | null;
   createdAt: string;
   user: { id: string; displayName?: string | null; role?: string };
@@ -38,7 +37,6 @@ export default function ListingDetailPage() {
   const [providerVerification, setProviderVerification] = useState<VerificationStageResult | null>(null);
   const [providerBadgeUnavailable, setProviderBadgeUnavailable] = useState(false);
   const [role, setRole] = useState("");
-  const [currentUserId, setCurrentUserId] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("not_submitted");
   const [pageStatus, setPageStatus] = useState<PageStatus>("none");
@@ -53,7 +51,6 @@ export default function ListingDetailPage() {
   const [recommendationPending, setRecommendationPending] = useState(false);
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [commentBody, setCommentBody] = useState("");
-  const [commentGifUrl, setCommentGifUrl] = useState("");
   const [commentMentionIds, setCommentMentionIds] = useState<string[]>([]);
   const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
@@ -73,7 +70,8 @@ export default function ListingDetailPage() {
       apiFetch<Listing>(`/api/v1/listings/${id}`),
       apiFetch<Profile>("/api/v1/users/me"),
       apiFetch<ProviderPage>("/api/v1/provider-pages/me").catch(() => null),
-    ]).then(async ([homeResponse, userResponse, pageResponse]) => {
+      apiFetch<ListingComment[]>(`/api/v1/listings/${encodeURIComponent(id)}/comments`).catch(() => null),
+    ]).then(async ([homeResponse, userResponse, pageResponse, commentsResponse]) => {
       const home = unwrapData<Listing>(homeResponse);
       const user = unwrapData<Profile>(userResponse);
       const page = unwrapData<ProviderPage>(pageResponse);
@@ -81,9 +79,8 @@ export default function ListingDetailPage() {
       setLiked(home.likedByCurrentUser === true);
       setLikeCount(home.likeCount ?? 0);
       setRecommendationCount(home.providerRecommendationCount ?? 0);
-      void apiFetch<ListingComment[]>(`/api/v1/listings/${encodeURIComponent(id)}/comments`)
-        .then((response) => setComments(unwrapData<ListingComment[]>(response)))
-        .catch(() => setCommentError("We could not load home comments. Please refresh to retry."));
+      if (commentsResponse) setComments(unwrapData<ListingComment[]>(commentsResponse));
+      else setCommentError("We could not load home comments. Please refresh to retry.");
       if (home.ownerId) {
         const verificationPath = `/api/v1/trust/users/${encodeURIComponent(home.ownerId)}/verification-stage`;
         setProviderVerification(normalizeVerificationStage(getPersistedVerification(home.ownerId)));
@@ -101,7 +98,6 @@ export default function ListingDetailPage() {
           });
       }
       const accountRole = String(user.role ?? "").toUpperCase();
-      setCurrentUserId(String(user.id ?? ""));
       const providerRole = ["AGENT", "LANDLORD"].includes(accountRole);
       setRole(accountRole);
       if (accountRole === "STUDENT") {
@@ -168,9 +164,8 @@ export default function ListingDetailPage() {
   };
   const submitComment = async () => {
     const body = commentBody.trim();
-    const gifUrl = commentGifUrl.trim();
-    if ((!body && !gifUrl) || body.length > 1000) {
-      setCommentError("Write a comment up to 1,000 characters or add a GIF.");
+    if (!body || body.length > 1000) {
+      setCommentError("Write a comment up to 1,000 characters.");
       return;
     }
     setCommentSubmitting(true);
@@ -180,14 +175,12 @@ export default function ListingDetailPage() {
         method: "POST",
         body: JSON.stringify({
           body,
-          gifUrl: gifUrl || undefined,
           parentId: replyParentId ?? undefined,
           mentionUserIds: commentMentionIds,
         }),
       });
       setComments((current) => [unwrapData<ListingComment>(response), ...current]);
       setCommentBody("");
-      setCommentGifUrl("");
       setCommentMentionIds([]);
       setReplyParentId(null);
     } catch (error) {
@@ -294,7 +287,7 @@ export default function ListingDetailPage() {
             <Button type="button" variant="secondary" onClick={() => setReportOpen(true)}>Report listing</Button>
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-black/10 pt-4">
-            <button type="button" onClick={() => void toggleLike()} disabled={!listing.ownerId || listing.ownerId === currentUserId || likePending} aria-pressed={liked} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${liked ? "bg-safecrib-green/10 font-semibold text-safecrib-green" : "text-black/65 hover:bg-black/[0.04]"}`}>
+            <button type="button" onClick={() => void toggleLike()} disabled={!listing.ownerId || likePending} aria-pressed={liked} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${liked ? "bg-safecrib-green/10 font-semibold text-safecrib-green" : "text-black/65 hover:bg-black/[0.04]"}`}>
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 11h9.2a3 3 0 0 0 2.9-2.2l2-7A3 3 0 0 0 18.2 8H14l.7-3.2A2.4 2.4 0 0 0 12.4 2L7 10v11Z" /></svg> Like <span>{likeCount}</span>
             </button>
             <a href="#comments" className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-black/65 transition hover:bg-black/[0.04]">
@@ -306,12 +299,10 @@ export default function ListingDetailPage() {
           </div>
           <section id="comments" className="mt-7 border-t border-black/10 pt-6" aria-labelledby="home-comments-title">
             <h2 id="home-comments-title" className="text-lg font-semibold text-safecrib-black">Home comments</h2>
-            <p className="mt-1 text-xs text-black/50">Comments support text, GIFs, and tagged members. Photos aren’t supported.</p>
+            <p className="mt-1 text-xs text-black/50">Comments support text and tagged members.</p>
             <label htmlFor="home-comment" className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
             <textarea id="home-comment" value={commentBody} onChange={(event) => updateCommentBody(event.target.value)} maxLength={1000} rows={3} placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."} className="mt-4 w-full rounded-lg border border-black/15 px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
             {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-lg border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">{person.displayName || "SafeCrib member"} <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
-            <label htmlFor="home-comment-gif" className="mt-3 block text-xs font-medium text-black/55">GIF URL (Tenor or GIPHY)</label>
-            <input id="home-comment-gif" type="url" value={commentGifUrl} onChange={(event) => setCommentGifUrl(event.target.value)} placeholder="https://media.tenor.com/..." className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
             {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-xs text-black/45">{commentBody.length}/1000</span>
@@ -330,9 +321,8 @@ export default function ListingDetailPage() {
                       <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
                     </p>
                     {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/65">{item.body}</p>}
-                    {item.gifUrl && <Image src={item.gifUrl} alt="GIF in comment" width={480} height={270} unoptimized className="mt-2 max-h-64 max-w-full rounded-lg object-contain" />}
                     {item.mentions?.length ? <p className="mt-2 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
-                    <button type="button" onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentGifUrl(""); setCommentError(""); document.getElementById("home-comment")?.focus(); }} className="mt-2 text-xs font-semibold text-safecrib-green hover:underline">Reply</button>
+                    <button type="button" onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById("home-comment")?.focus(); }} className="mt-2 text-xs font-semibold text-safecrib-green hover:underline">Reply</button>
                     {replies.length > 0 && <ul className="mt-2 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
                   </li>;
                 };

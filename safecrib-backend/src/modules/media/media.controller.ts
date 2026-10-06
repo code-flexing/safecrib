@@ -17,6 +17,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { Public } from '../../common/public.decorator.js';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -28,7 +29,6 @@ import { memoryStorage } from 'multer';
 import type { Request } from 'express';
 import type { MediaPurpose } from '@prisma/client';
 import { Throttle } from '@nestjs/throttler';
-import { Public } from '../../common/public.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { MediaService } from './services/media.service.js';
 import {
@@ -204,26 +204,26 @@ export class MediaController {
   // ─── GET /media/:id/access ─────────────────────────────────────────────────
 
   @Get(':id/access')
+  @Public()
   @ApiOperation({
     summary:
-      'Get a delivery URL. Returns a short-lived signed URL for private/authenticated assets.',
+      'Get a delivery URL. Returns a short-lived signed URL for private/authenticated assets. Public assets return a permanent CDN URL.',
   })
   @ApiResponse({ status: 200, description: 'URL returned' })
   @ApiResponse({ status: 403, description: 'Access denied' })
   @ApiResponse({ status: 404, description: 'Media not found or not ready' })
   async getAccessUrl(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: string },
+    @CurrentUser() user: { id: string; role: string } | null,
     @Query() query: GetSignedUrlDto,
     @Req() req: Request,
   ) {
-    if (!user) throw new UnauthorizedException();
     const ip = req.ip;
     const ua = req.get('user-agent');
     return this.mediaService.getAccessUrl(
       id,
-      user.id,
-      user.role,
+      user?.id ?? '',
+      user?.role ?? 'GUEST',
       ip,
       ua,
       query.transformation,

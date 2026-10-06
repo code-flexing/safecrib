@@ -68,6 +68,10 @@ export class UserService {
       recentFraudCount: 0,
       flaggedForReview: false,
     });
+    const adminApproved =
+      (user.role === 'STUDENT' && studentProfile?.status === 'APPROVED') ||
+      (['AGENT', 'LANDLORD'].includes(user.role) && user.providerPage?.verificationState === 'VERIFIED') ||
+      user.role === 'ADMIN';
 
     const normalizedVerification = user.verification ?? {
       stage: verificationStage.stage,
@@ -81,23 +85,14 @@ export class UserService {
       ...rest,
       studentProfileStatus: studentProfile?.status ?? 'NOT_SUBMITTED',
       followerCount: _count.followers,
-      verification: user.verification
-        ? {
-            isVerified: Boolean(user.verification.badge || user.verification.stage),
-            stage: user.verification.stage,
-            badge: user.verification.badge,
-            badgeColor: user.verification.badgeColor,
-            riskBlocked: user.verification.riskBlocked,
-            eligible: Boolean(user.verification.badge || user.verification.stage),
-          }
-        : {
-            isVerified: Boolean(verificationStage.stage || verificationStage.badge),
-            stage: normalizedVerification.stage,
-            badge: normalizedVerification.badge,
-            badgeColor: normalizedVerification.badgeColor,
-            riskBlocked: normalizedVerification.riskBlocked,
-            eligible: true,
-          },
+      verification: {
+        isVerified: adminApproved && verificationStage.eligible,
+        stage: normalizedVerification.stage,
+        badge: normalizedVerification.badge,
+        badgeColor: normalizedVerification.badgeColor,
+        riskBlocked: normalizedVerification.riskBlocked,
+        eligible: adminApproved && verificationStage.eligible,
+      },
       verificationStage,
     };
   }
@@ -224,12 +219,12 @@ export class UserService {
 
     const verification = user.verification
       ? {
-          isVerified: Boolean(user.verification.badge || user.verification.stage),
+          isVerified: true,
           stage: user.verification.stage,
           badge: user.verification.badge,
           badgeColor: user.verification.badgeColor,
           riskBlocked: user.verification.riskBlocked,
-          eligible: Boolean(user.verification.badge || user.verification.stage),
+          eligible: true,
         }
       : {
           isVerified: true,

@@ -81,6 +81,7 @@ export class MediaPolicyService {
    * Check whether a user is allowed to read a given media item.
    * Owners can always read their own. Admins can read everything.
    * For private documents, only owner + admin.
+   * For public assets (deliveryType UPLOAD), anyone can read (including unauthenticated).
    */
   assertCanRead(
     requesterId: string,
@@ -88,6 +89,15 @@ export class MediaPolicyService {
     ownerId: string,
     purpose: MediaPurpose,
   ): void {
+    // Unauthenticated users (GUEST) can only access public media
+    if (!requesterId || requesterRole === 'GUEST') {
+      const policy = this.getPolicy(purpose);
+      if (policy.deliveryType !== 'UPLOAD') {
+        throw new ForbiddenException('Access denied to this protected media asset');
+      }
+      return;
+    }
+
     if (requesterRole === 'ADMIN') return;
     if (requesterId === ownerId) return;
 

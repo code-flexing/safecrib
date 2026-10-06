@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../../common/roles.decorator.js';
+import { Public } from '../../common/public.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { ListingsService } from './listings.service.js';
 import { CreateListingCommentDto, CreateListingDto } from './dto/listing.dto.js';
@@ -36,11 +37,19 @@ export class ListingsController {
 
   @Get()
   @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
-  @ApiOperation({ summary: 'Search listings' })
+  @ApiOperation({ summary: 'Search listings (authenticated)' })
   @ApiResponse({ status: 200, type: [Object] })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   searchListings(@Query() query: SearchListingsDto, @CurrentUser() user: { id: string }) {
     return this.listingsService.searchListings(query, user.id);
+  }
+
+  @Get('public')
+  @Public()
+  @ApiOperation({ summary: 'Search listings (public, no auth required)' })
+  @ApiResponse({ status: 200, type: [Object] })
+  publicSearchListings(@Query() query: SearchListingsDto) {
+    return this.listingsService.searchListings(query, undefined);
   }
 
   @Get('admin/pending-review')
@@ -69,6 +78,15 @@ export class ListingsController {
   @ApiOperation({ summary: 'Get my saved listings' })
   getBookmarks(@CurrentUser() user: { id: string }) {
     return this.listingsService.getBookmarks(user.id);
+  }
+
+  @Get('public/:id')
+  @Public()
+  @ApiOperation({ summary: 'Get a listing by ID (public, no auth required)' })
+  @ApiResponse({ status: 200, type: Object })
+  @ApiResponse({ status: 404, description: 'Listing not found' })
+  publicGetListing(@Param('id') id: string) {
+    return this.listingsService.getListing(id, undefined);
   }
 
   @Get(':id/comments')
@@ -105,7 +123,7 @@ export class ListingsController {
 
   @Get(':id')
   @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
-  @ApiOperation({ summary: 'Get a listing by ID' })
+  @ApiOperation({ summary: 'Get a listing by ID (authenticated)' })
   @ApiResponse({ status: 200, type: Object })
   @ApiResponse({ status: 404, description: 'Listing not found' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
