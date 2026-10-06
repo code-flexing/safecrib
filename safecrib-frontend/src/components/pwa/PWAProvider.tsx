@@ -15,6 +15,7 @@ import {
   type PWAPlatform,
 } from "@/lib/pwa";
 import { getCurrentUser } from "@/lib/api";
+import { enableBrowserPushNotifications } from "@/lib/notifications";
 
 export function PWAProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -54,6 +55,17 @@ export function PWAProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     registerServiceWorker();
+
+    const shouldEnablePush =
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted" &&
+      Boolean(window.localStorage.getItem("safecrib_access_token"));
+
+    if (shouldEnablePush) {
+      void enableBrowserPushNotifications();
+    }
+
     setPlatform(detectPlatform());
     setEngine(detectBrowserEngine());
     setIsInstalled(isRunningStandalone());
