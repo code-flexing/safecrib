@@ -7,8 +7,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../../infra/queue/queue.service.js';
 import type { Media, MediaPurpose } from '@prisma/client';
 import {
   STORAGE_PROVIDER,
@@ -41,8 +41,8 @@ export class MediaService {
     private readonly mediaRepo: MediaRepository,
     private readonly pathBuilder: MediaPathBuilder,
     private readonly policyService: MediaPolicyService,
-    @InjectQueue(MEDIA_WEBHOOK_QUEUE) private readonly webhookQueue: Queue,
-    @InjectQueue(MEDIA_DELETION_QUEUE) private readonly deletionQueue: Queue,
+    @InjectJobQueue(MEDIA_WEBHOOK_QUEUE) private readonly webhookQueue: JobQueueClient,
+    @InjectJobQueue(MEDIA_DELETION_QUEUE) private readonly deletionQueue: JobQueueClient,
   ) {}
 
   /**

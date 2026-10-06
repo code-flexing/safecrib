@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { NOTIFICATION_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { NotificationInput, NotificationQueuePayload } from './notification.types.js';
 
@@ -14,7 +14,9 @@ const MAX_DEDUPE_KEY_LENGTH = 200;
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(@InjectQueue(NOTIFICATION_QUEUE) private readonly queue: Queue) {}
+  constructor(
+    @InjectJobQueue(NOTIFICATION_QUEUE) private readonly queue: JobQueueClient,
+  ) {}
 
   async enqueue(userId: string, input: NotificationInput): Promise<void> {
     const payload: NotificationQueuePayload = {

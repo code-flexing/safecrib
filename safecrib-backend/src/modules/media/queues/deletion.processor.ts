@@ -1,8 +1,6 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { parseRedisConnection } from '../../../infra/queue/redis-connection.util.js';
 import { MEDIA_DELETION_QUEUE } from '../../../infra/queue/queue.constants.js';
+import { QueueService } from '../../../infra/queue/queue.service.js';
 import { MediaRepository } from '../media.repository.js';
 import {
   STORAGE_PROVIDER,
@@ -19,45 +17,20 @@ export interface DeletionJobData {
 @Injectable()
 export class MediaDeletionProcessor implements OnModuleInit {
   private readonly logger = new Logger(MediaDeletionProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly mediaRepo: MediaRepository,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   onModuleInit(): void {
-    const redisUrl =
-      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<DeletionJobData>(
+    this.queues.registerWorker<DeletionJobData>(
       MEDIA_DELETION_QUEUE,
-      async (job: Job<DeletionJobData>) => {
-        await this.process(job.data);
-      },
-      {
-        connection: parseRedisConnection(redisUrl),
-        concurrency: 3,
-        limiter: {
-          max: 10,       // max 10 concurrent deletions
-          duration: 1000, // per second (Admin API rate limit protection)
-        },
-      },
+      3,
+      async (job) => this.process(job.data),
+      { max: 10, durationMs: 1000 },
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(
-        `Deletion job ${job?.id} (mediaId=${job?.data?.mediaId}) failed after ${job?.attemptsMade} attempts: ${err?.message}`,
-        err?.stack,
-      );
-    });
-
-    this.worker.on('completed', (job) => {
-      this.logger.log(
-        `Deletion job ${job.id} completed: mediaId=${job.data.mediaId}`,
-      );
-    });
   }
 
   private async process(data: DeletionJobData): Promise<void> {
@@ -83,7 +56,7 @@ export class MediaDeletionProcessor implements OnModuleInit {
         `Failed to delete asset publicId=${publicId}: ${(err as Error).message}`,
         (err as Error).stack,
       );
-      throw err; // BullMQ will retry
+      throw err;
     }
   }
 }

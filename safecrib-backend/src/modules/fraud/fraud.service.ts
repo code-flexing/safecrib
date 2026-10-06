@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { TRUST_RECOMPUTE_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { ReportFraudDto } from './dto/fraud.dto.js';
@@ -14,7 +14,7 @@ import type { Prisma } from '@prisma/client';
 export class FraudService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(TRUST_RECOMPUTE_QUEUE) private readonly trustQueue: Queue,
+    @InjectJobQueue(TRUST_RECOMPUTE_QUEUE) private readonly trustQueue: JobQueueClient,
   ) {}
 
   async reportFraud(reporterId: string, dto: ReportFraudDto) {

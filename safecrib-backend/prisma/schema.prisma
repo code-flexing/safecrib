@@ -62,7 +62,7 @@ model UserVerification {
   userId                 String    @unique @map("user_id")
   stage                  VerificationStage @default(PROFILE_VERIFIED)
   badge                  VerificationBadge @default(GREEN_CHECK)
-  badgeColor             VerificationBadgeColor @default(green)
+  badgeColor             VerificationBadgeColor @default(green) @map("badge_color")
   riskBlocked            Boolean   @default(false) @map("risk_blocked")
   identityVerified       Boolean   @default(false) @map("identity_verified")
   providerVerified       Boolean   @default(false) @map("provider_verified")

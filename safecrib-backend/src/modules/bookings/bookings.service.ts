@@ -4,8 +4,8 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import {
   BOOKING_HOLD_EXPIRY_QUEUE,
@@ -39,10 +39,10 @@ const HOLD_DURATION_MS = 24 * 60 * 60 * 1000;
 export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(BOOKING_HOLD_EXPIRY_QUEUE)
-    private readonly holdExpiryQueue: Queue,
-    @InjectQueue(TRUST_RECOMPUTE_QUEUE)
-    private readonly trustRecomputeQueue: Queue,
+    @InjectJobQueue(BOOKING_HOLD_EXPIRY_QUEUE)
+    private readonly holdExpiryQueue: JobQueueClient,
+    @InjectJobQueue(TRUST_RECOMPUTE_QUEUE)
+    private readonly trustRecomputeQueue: JobQueueClient,
     private readonly notifications: NotificationsService,
   ) {}
 

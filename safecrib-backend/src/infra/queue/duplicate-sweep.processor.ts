@@ -1,9 +1,7 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { DUPLICATE_SWEEP_QUEUE } from '../../infra/queue/queue.constants.js';
-import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import { QueueService } from './queue.service.js';
 import {
   evaluateDuplicateRisk,
   type ListingFingerprint,
@@ -17,19 +15,17 @@ export interface DuplicateSweepJobData {
 @Injectable()
 export class DuplicateSweepProcessor implements OnModuleInit {
   private readonly logger = new Logger(DuplicateSweepProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
   ) {}
 
   onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<DuplicateSweepJobData>(
+    this.queues.registerWorker<DuplicateSweepJobData>(
       DUPLICATE_SWEEP_QUEUE,
-      async (job: Job<DuplicateSweepJobData>) => {
+      1,
+      async (job) => {
         const { batchSize, offset } = job.data;
 
         const listings = await this.prisma.listing.findMany({
@@ -101,13 +97,6 @@ export class DuplicateSweepProcessor implements OnModuleInit {
 
         this.logger.log(`Duplicate sweep batch processed: ${flagCount} flags`);
       },
-      {
-        connection: parseRedisConnection(redisUrl),
-      },
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(`Duplicate sweep failed: ${err?.message}`, err?.stack);
-    });
   }
 }

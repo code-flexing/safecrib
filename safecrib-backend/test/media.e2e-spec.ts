@@ -339,7 +339,7 @@ describe('Media Module (E2E)', () => {
         .expect(200)
         .expect({ ok: true });
 
-      // 3. Wait briefly for BullMQ worker to process (or use confirm as proxy)
+      // 3. Wait briefly for the pg-boss worker to process (or use confirm as proxy)
       // Since the worker runs async, we verify via confirm endpoint which is idempotent
       const confirmRes = await request(app.getHttpServer())
         .post(`/api/v1/media/${media.id}/confirm`)

@@ -1,8 +1,6 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { parseRedisConnection } from '../../../infra/queue/redis-connection.util.js';
 import { MEDIA_WEBHOOK_QUEUE } from '../../../infra/queue/queue.constants.js';
+import { QueueService } from '../../../infra/queue/queue.service.js';
 import { MediaRepository } from '../media.repository.js';
 import type { WebhookNotificationPayload } from '../dto/media.dto.js';
 import { PURPOSE_POLICIES } from '../policies/purpose-policies.js';
@@ -14,39 +12,19 @@ import {
 @Injectable()
 export class MediaWebhookProcessor implements OnModuleInit {
   private readonly logger = new Logger(MediaWebhookProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly mediaRepo: MediaRepository,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   onModuleInit(): void {
-    const redisUrl =
-      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<object>(
+    this.queues.registerWorker<object>(
       MEDIA_WEBHOOK_QUEUE,
-      async (job: Job<object>) => {
-        await this.process(job.data as WebhookNotificationPayload);
-      },
-      {
-        connection: parseRedisConnection(redisUrl),
-        concurrency: 5,
-      },
+      5,
+      async (job) => this.process(job.data as WebhookNotificationPayload),
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(
-        `Webhook job ${job?.id ?? 'unknown'} failed after ${job?.attemptsMade ?? 0} attempts: ${err?.message}`,
-        err?.stack,
-      );
-    });
-
-    this.worker.on('completed', (job) => {
-      this.logger.debug(`Webhook job ${job.id} completed`);
-    });
   }
 
   private async process(payload: WebhookNotificationPayload): Promise<void> {

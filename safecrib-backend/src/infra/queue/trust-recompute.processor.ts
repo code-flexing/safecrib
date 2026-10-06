@@ -1,9 +1,7 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { TRUST_RECOMPUTE_QUEUE } from '../../infra/queue/queue.constants.js';
-import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import { QueueService } from './queue.service.js';
 import { computeTrustScore } from '../../domain/trust/trust-score.engine.js';
 import type { TrustEvent } from '../../domain/trust/trust-score.engine.js';
 
@@ -14,19 +12,17 @@ export interface TrustRecomputeJobData {
 @Injectable()
 export class TrustRecomputeProcessor implements OnModuleInit {
   private readonly logger = new Logger(TrustRecomputeProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
   ) {}
 
   onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<TrustRecomputeJobData>(
+    this.queues.registerWorker<TrustRecomputeJobData>(
       TRUST_RECOMPUTE_QUEUE,
-      async (job: Job<TrustRecomputeJobData>) => {
+      1,
+      async (job) => {
         const { userId } = job.data;
 
         const events = await this.prisma.trustEvent.findMany({
@@ -55,13 +51,6 @@ export class TrustRecomputeProcessor implements OnModuleInit {
           `Recomputed trust score for user ${userId}: ${result.score} (flagged: ${result.flaggedForReview})`,
         );
       },
-      {
-        connection: parseRedisConnection(redisUrl),
-      },
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(`Trust recompute failed: ${err?.message}`, err?.stack);
-    });
   }
 }

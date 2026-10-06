@@ -1,9 +1,7 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { IMAGE_HASH_QUEUE } from '../../infra/queue/queue.constants.js';
-import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import { QueueService } from './queue.service.js';
 import {
   evaluateDuplicateRisk,
   type ListingFingerprint,
@@ -19,19 +17,17 @@ export interface ImageHashJobData {
 @Injectable()
 export class ImageHashProcessor implements OnModuleInit {
   private readonly logger = new Logger(ImageHashProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
   ) {}
 
   onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<ImageHashJobData>(
+    this.queues.registerWorker<ImageHashJobData>(
       IMAGE_HASH_QUEUE,
-      async (job: Job<ImageHashJobData>) => {
+      1,
+      async (job) => {
         const { listingId, phash } = job.data;
 
         const listing = await this.prisma.listing.findUnique({
@@ -113,20 +109,6 @@ export class ImageHashProcessor implements OnModuleInit {
           );
         }
       },
-      {
-        connection: parseRedisConnection(redisUrl),
-      },
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(
-        `Image hash job failed for listing ${job?.data?.listingId}: ${err?.message}`,
-        err?.stack,
-      );
-    });
-
-    this.worker.on('completed', (job) => {
-      this.logger.log(`Image hash check completed for listing ${job.data.listingId}`);
-    });
   }
 }

@@ -1,17 +1,16 @@
-import { Worker, Queue, Job } from 'bullmq';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { parseRedisConnection } from '../../../infra/queue/redis-connection.util.js';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import {
   MEDIA_CLEANUP_QUEUE,
   MEDIA_DELETION_QUEUE,
 } from '../../../infra/queue/queue.constants.js';
+import { QueueService } from '../../../infra/queue/queue.service.js';
+import { InjectJobQueue } from '../../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../../infra/queue/queue.service.js';
 import { MediaRepository } from '../media.repository.js';
 import {
   STORAGE_PROVIDER,
   type StorageProvider,
 } from '../providers/storage-provider.interface.js';
-import { InjectQueue } from '@nestjs/bullmq';
 import type { Media } from '@prisma/client';
 
 /**
@@ -23,51 +22,22 @@ import type { Media } from '@prisma/client';
 const ORPHAN_AGE_MS = 30 * 60 * 1000;
 
 @Injectable()
-export class MediaCleanupProcessor implements OnModuleDestroy, OnModuleInit {
+export class MediaCleanupProcessor implements OnModuleInit {
   private readonly logger = new Logger(MediaCleanupProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly mediaRepo: MediaRepository,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
-    @InjectQueue(MEDIA_DELETION_QUEUE) private readonly deletionQueue: Queue,
-    @InjectQueue(MEDIA_CLEANUP_QUEUE) private readonly cleanupQueue: Queue,
+    @InjectJobQueue(MEDIA_DELETION_QUEUE) private readonly deletionQueue: JobQueueClient,
   ) {}
 
   onModuleInit(): void {
-    const redisUrl =
-      this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<Record<string, never>>(
+    this.queues.registerWorker<Record<string, never>>(
       MEDIA_CLEANUP_QUEUE,
-      async (_job: Job) => {
-        await this.runCleanup();
-      },
-      {
-        connection: parseRedisConnection(redisUrl),
-        concurrency: 1,
-      },
+      1,
+      async () => this.runCleanup(),
     );
-
-    void this.cleanupQueue.add('run-cleanup', {}, {
-      jobId: 'media-cleanup-scheduled',
-      repeat: { every: 5 * 60 * 1000 },
-      removeOnComplete: 10,
-      removeOnFail: 50,
-    });
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(`Cleanup job ${job?.id} failed: ${err?.message}`, err?.stack);
-    });
-
-    this.worker.on('completed', (job) => {
-      this.logger.log(`Cleanup job ${job.id} completed`);
-    });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    if (this.worker) await this.worker.close();
   }
 
   private async runCleanup(): Promise<void> {

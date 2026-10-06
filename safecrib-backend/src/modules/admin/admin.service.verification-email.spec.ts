@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Queue } from 'bullmq';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import type { TrustService } from '../trust/trust.service.js';
 import { AdminService } from './admin.service.js';
@@ -44,7 +44,7 @@ describe('AdminService.reviewSubmission verification email', () => {
     const service = new AdminService(
       prisma,
       trustService as unknown as TrustService,
-      emailQueue as unknown as Queue,
+      emailQueue as unknown as JobQueueClient,
       { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
     );
 

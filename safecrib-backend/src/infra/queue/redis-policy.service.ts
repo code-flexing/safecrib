@@ -1,46 +1,29 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
+import { Injectable, Logger } from '@nestjs/common';
+import { getRedis } from '../../lib/redis.js';
 
 @Injectable()
-export class RedisPolicyService implements OnModuleInit, OnModuleDestroy {
+export class RedisPolicyService {
   private readonly logger = new Logger(RedisPolicyService.name);
-  private client: Redis | null = null;
+  private checked = false;
 
-  constructor(private readonly configService: ConfigService) {}
-
-  async onModuleInit() {
-    const enforceNoEviction = this.configService
-      .get<string>('REDIS_ENFORCE_NOEVICTION')
-      ?.trim()
-      .toLowerCase();
-    if (enforceNoEviction === 'false') return;
-
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-    this.client = new Redis(redisUrl, {
-      lazyConnect: true,
-      maxRetriesPerRequest: null,
-      enableReadyCheck: true,
-      retryStrategy: (times) => Math.min(times * 250, 5000),
-    });
+  async checkPolicy(): Promise<void> {
+    if (this.checked) return;
+    this.checked = true;
 
     try {
-      await this.client.connect();
-      const current = await this.client.config('GET', 'maxmemory-policy');
-      const policy = Array.isArray(current) ? current[1] : undefined;
+      const response = await getRedis().config('GET', 'maxmemory-policy');
+      const policy = Array.isArray(response) ? response[1] : undefined;
       if (policy !== 'noeviction') {
-        await this.client.config('SET', 'maxmemory-policy', 'noeviction');
-        this.logger.warn(`Redis maxmemory-policy changed from ${policy ?? 'unknown'} to noeviction`);
+        this.logger.warn(
+          `Redis maxmemory-policy is ${policy ?? 'unknown'}; configure noeviction in Render Key Value settings`,
+        );
+      } else {
+        this.logger.log('Redis maxmemory-policy is noeviction');
       }
-      this.logger.log('Redis maxmemory-policy is noeviction');
     } catch (error) {
-      this.logger.error(
-        `Redis maxmemory-policy could not be verified or changed: ${(error as Error).message}. Configure maxmemory-policy=noeviction in the Redis service settings.`,
+      this.logger.warn(
+        `Could not inspect Redis maxmemory-policy: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }
-
-  async onModuleDestroy() {
-    if (this.client) await this.client.quit().catch(() => undefined);
   }
 }

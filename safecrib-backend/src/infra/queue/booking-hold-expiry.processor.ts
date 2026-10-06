@@ -1,11 +1,9 @@
-import { Worker, Job } from 'bullmq';
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import {
   BOOKING_HOLD_EXPIRY_QUEUE,
 } from '../../infra/queue/queue.constants.js';
-import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import { QueueService } from './queue.service.js';
 import {
   applyTransition,
   IllegalStateTransitionError,
@@ -20,19 +18,17 @@ export interface BookingHoldExpiryJobData {
 @Injectable()
 export class BookingHoldExpiryProcessor implements OnModuleInit {
   private readonly logger = new Logger(BookingHoldExpiryProcessor.name);
-  private worker: Worker | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly queues: QueueService,
   ) {}
 
   onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
-    this.worker = new Worker<BookingHoldExpiryJobData>(
+    this.queues.registerWorker<BookingHoldExpiryJobData>(
       BOOKING_HOLD_EXPIRY_QUEUE,
-      async (job: Job<BookingHoldExpiryJobData>) => {
+      1,
+      async (job) => {
         const { bookingId, listingId } = job.data;
 
         const booking = await this.prisma.booking.findUnique({
@@ -90,13 +86,6 @@ export class BookingHoldExpiryProcessor implements OnModuleInit {
 
         this.logger.log(`Booking ${bookingId} hold expired and cancelled`);
       },
-      {
-        connection: parseRedisConnection(redisUrl),
-      },
     );
-
-    this.worker.on('failed', (job, err) => {
-      this.logger.error(`Booking hold expiry failed: ${err?.message}`, err?.stack);
-    });
   }
 }

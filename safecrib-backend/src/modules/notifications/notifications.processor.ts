@@ -1,9 +1,8 @@
-import { Worker, type Job } from 'bullmq';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { NOTIFICATION_QUEUE } from '../../infra/queue/queue.constants.js';
-import { parseRedisConnection } from '../../infra/queue/redis-connection.util.js';
+import { QueueService } from '../../infra/queue/queue.service.js';
 import { NotificationsGateway } from './notifications.gateway.js';
 import type { NotificationQueuePayload } from './notification.types.js';
 import { NotificationPushService } from './notification-push.service.js';
@@ -20,12 +19,10 @@ const notificationSelect = {
 } as const;
 
 @Injectable()
-export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(NotificationsProcessor.name);
-  private worker: Worker<NotificationQueuePayload> | null = null;
-
+export class NotificationsProcessor implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
+    private readonly queues: QueueService,
     private readonly prisma: PrismaService,
     private readonly gateway: NotificationsGateway,
     private readonly push: NotificationPushService,
@@ -41,26 +38,12 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       ? Math.max(1, Math.min(configuredRate, 1000))
       : 100;
 
-    this.worker = new Worker<NotificationQueuePayload>(
+    this.queues.registerWorker<NotificationQueuePayload>(
       NOTIFICATION_QUEUE,
-      async (job: Job<NotificationQueuePayload>) => this.deliver(job.data),
-      {
-        connection: parseRedisConnection(this.config.get<string>('REDIS_URL')),
-        concurrency,
-        limiter: { max: rate, duration: 1000 },
-      },
+      concurrency,
+      async (job) => this.deliver(job.data),
+      { max: rate, durationMs: 1000 },
     );
-    this.worker.on('failed', (job, error) => {
-      this.logger.error(
-        `Notification job ${job?.id ?? 'unknown'} failed after ${job?.attemptsMade ?? 0} attempts: ${error.message}`,
-        error.stack,
-      );
-    });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.worker?.close();
-    this.worker = null;
   }
 
   private async deliver(payload: NotificationQueuePayload): Promise<void> {

@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import type { Queue } from 'bullmq';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { describe, expect, it, vi } from 'vitest';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
@@ -70,7 +70,7 @@ function createService(
     prisma as unknown as PrismaService,
     trustService as unknown as TrustService,
     studentProfiles as unknown as StudentProfileService,
-    emailQueue as unknown as Queue,
+    emailQueue as unknown as JobQueueClient,
     { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
   );
   return { prisma, service, tx, trustService };

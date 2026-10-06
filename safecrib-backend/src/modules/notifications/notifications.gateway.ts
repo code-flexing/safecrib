@@ -6,6 +6,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -41,6 +42,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   @WebSocketServer()
   private server!: Server;
   private readonly expiryTimers = new Map<string, NodeJS.Timeout>();
+  private readonly logger = new Logger(NotificationsGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -48,34 +50,57 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     private readonly prisma: PrismaService,
   ) {}
 
+  afterInit(server: Server): void {
+    server.use((client, next) => {
+      void this.authenticate(client).then(
+        () => next(),
+        (error: unknown) => {
+          this.logger.warn(
+            `Rejected unauthenticated Socket.IO handshake: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          next(new Error('Unauthorized'));
+        },
+      );
+    });
+  }
+
   async handleConnection(@ConnectedSocket() client: Socket): Promise<void> {
-    const token = client.handshake.auth?.token;
-    if (typeof token !== 'string' || token.length > 4096) {
+    if (typeof client.data?.authenticatedUserId !== 'string') {
+      try {
+        await this.authenticate(client);
+      } catch {
+        client.disconnect(true);
+        return;
+      }
+    }
+    const userId = client.data.authenticatedUserId;
+    if (typeof userId !== 'string') {
       client.disconnect(true);
       return;
     }
-    try {
-      const payload = await this.jwtService.verifyAsync<NotificationSocketUser>(token, {
-        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
-      });
-      if (typeof payload.sub !== 'string' || typeof payload.exp !== 'number') {
-        client.disconnect(true);
-        return;
-      }
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: { id: true, emailVerified: true },
-      });
-      if (!user?.emailVerified) {
-        client.disconnect(true);
-        return;
-      }
-      await client.join(this.userRoom(user.id));
-      this.scheduleExpiry(client, payload.exp * 1000);
-      client.emit('notifications:ready', { userId: user.id });
-    } catch {
-      client.disconnect(true);
+    await client.join(this.userRoom(userId));
+    client.emit('notifications:ready', { userId });
+  }
+
+  private async authenticate(client: Socket): Promise<void> {
+    const token = client.handshake.auth?.token;
+    if (typeof token !== 'string' || token.length > 4096) {
+      throw new Error('Missing or invalid token');
     }
+    const payload = await this.jwtService.verifyAsync<NotificationSocketUser>(token, {
+      secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+    });
+    if (typeof payload.sub !== 'string' || typeof payload.exp !== 'number') {
+      throw new Error('Invalid token claims');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, emailVerified: true },
+    });
+    if (!user?.emailVerified) throw new Error('Account is not verified');
+    client.data ??= {};
+    client.data.authenticatedUserId = user.id;
+    this.scheduleExpiry(client, payload.exp * 1000);
   }
 
   handleDisconnect(client: Socket): void {

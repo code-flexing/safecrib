@@ -33,9 +33,8 @@ safecrib-backend/
 │   │   │   ├── mail.service.ts             # Brevo Transactional Email API sender
 │   │   │   └── mail.module.ts
 │   │   └── queue/
-│   │       ├── queue.module.ts             # BullMQ global config
+│   │       ├── queue.module.ts             # Shared pg-boss queue providers
 │   │       ├── queue.constants.ts          # Queue name constants
-│   │       ├── redis-connection.util.ts    # Redis URL -> connection options parser
 │   │       ├── email.processor.ts          # Worker: sends verification/reset emails
 │   │       ├── image-hash.processor.ts     # Worker: pHash duplicate detection on photo upload
 │   │       ├── trust-recompute.processor.ts # Worker: recomputes user trust score

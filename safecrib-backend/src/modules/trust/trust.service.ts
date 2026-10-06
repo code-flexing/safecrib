@@ -1,10 +1,9 @@
-import { InjectQueue } from '@nestjs/bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { Queue } from 'bullmq';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { computeTrustScore } from '../../domain/trust/trust-score.engine.js';
-import type { EmailJobData } from '../../infra/mail/mail-job.types.js';
 import type { TrustEvent } from '../../domain/trust/trust-score.engine.js';
 
 export type VerificationStageName = 'PROFILE_VERIFIED' | 'AGENT_VERIFIED' | 'TRUST_CROWN';
@@ -171,7 +170,7 @@ export class TrustService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue<EmailJobData>,
+    @InjectJobQueue(EMAIL_QUEUE) private readonly emailQueue: JobQueueClient,
   ) {}
 
   async getVerificationStage(userId: string): Promise<VerificationStageResult> {

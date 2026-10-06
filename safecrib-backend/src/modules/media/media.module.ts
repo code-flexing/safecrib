@@ -1,11 +1,5 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
-import {
-  MEDIA_CLEANUP_QUEUE,
-  MEDIA_DELETION_QUEUE,
-  MEDIA_WEBHOOK_QUEUE,
-} from '../../infra/queue/queue.constants.js';
 import { CloudinaryStorageProvider } from './providers/cloudinary.provider.js';
 import { STORAGE_PROVIDER } from './providers/storage-provider.interface.js';
 import { MediaPathBuilder } from './services/media-path-builder.service.js';
@@ -21,12 +15,6 @@ import { MediaCleanupProcessor } from './queues/cleanup.processor.js';
   imports: [
     ConfigModule,
 
-    // Register the three media queues
-    BullModule.registerQueue(
-      { name: MEDIA_WEBHOOK_QUEUE },
-      { name: MEDIA_DELETION_QUEUE },
-      { name: MEDIA_CLEANUP_QUEUE },
-    ),
   ],
   controllers: [MediaController],
   providers: [

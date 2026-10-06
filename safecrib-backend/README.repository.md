@@ -49,14 +49,14 @@ same NestJS API — they never talk to Postgres/Redis directly.
            |            |  - Booking state machine   |   |  events, reviews |
            v            |  - Trust score engine      |   +------------------+
  +------------------+     |  - Fraud & duplicate       |   +------------------+
- |  AI Agents       |     |    detection               |-->|  Redis (cache /  |
- |  (fraud scanning, |     +---------------+-------------+   |  job queue)      |
+ |  AI Agents       |     |    detection               |-->|  Redis (rate     |
+ |  (fraud scanning, |     +---------------+-------------+   |  limiting / WS)  |
  |   text analysis)  |                     |                  +------------------+
  +--------------------+                    | reads/writes
                                            v
                                   +---------------------------+
                                   |  Background Workers        |
-                                  |  (BullMQ: email, image-    |
+                                  |  (pg-boss: email, image-    |
                                   |   hash, trust-recompute,   |
                                   |   booking-hold-expiry,     |
                                   |   duplicate-sweep)          |
@@ -75,7 +75,8 @@ NestJS API as background AI agents. No direct database access from the frontend.
 | Web frontend | Next.js (App Router) + TypeScript + Tailwind CSS | Server Components for fast page loads |
 | Backend API | NestJS + TypeScript | Modular structure maps 1:1 onto trust-domain boundaries |
 | Database | PostgreSQL (via Prisma) | Relational data with strong consistency guarantees |
-| Cache / queue | Redis + BullMQ | Background jobs: email, pHash, trust-recompute, hold expiry, duplicate sweep |
+| Queue | pg-boss + PostgreSQL | Durable background jobs: email, pHash, trust-recompute, hold expiry, duplicate sweep |
+| Cache / realtime / rate limiting | Redis + Socket.IO adapter | Redis is not used for queues |
 | Auth | JWT (access + rotated refresh tokens) + Argon2id | Short-lived access tokens; refresh tokens rotated and stored hashed |
 | Images | Sharp + pHash (DCT-based) | Perceptual hashing catches stolen listing photos |
 | Rate limiting | @nestjs/throttler | Per-IP + per-endpoint limits on auth and fraud endpoints |
@@ -100,7 +101,7 @@ safecrib/
 │   │   ├── app.module.ts      # Root module — wires all modules + processors
 │   │   ├── common/            # Guards, decorators, filters
 │   │   ├── domain/            # Pure logic (trust, fraud, booking) — no framework imports
-│   │   ├── infra/             # PrismaService, MailService, BullMQ queue processors
+│   │   ├── infra/             # PrismaService, MailService, pg-boss queue processors
 │   │   └── modules/           # NestJS controllers + thin services wrapping domain engines
 │   ├── prisma/                # Schema + migrations
 │   ├── test/                  # E2e tests
@@ -229,7 +230,8 @@ All endpoints are under `/api/v1/`. API documentation is available at
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `DIRECT_URL` | PostgreSQL connection for Prisma migrations |
-| `REDIS_URL` | Redis connection for BullMQ queues |
+| `REDIS_URL` | Redis URL for rate limiting and Socket.IO |
+| `PGBOSS_DATABASE_URL` | Supabase session-pooler URL on port 5432 (never transaction pooler port 6543) |
 | `JWT_ACCESS_SECRET` | Access token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` | Gmail SMTP credentials for transactional emails |
@@ -260,7 +262,6 @@ Never commit real values — `.env.example` files should list keys only.
 ```bash
 npm install          # Install dependencies
 npm run start:dev    # Start API server (watch mode)
-npm run start:worker:dev  # Start BullMQ workers (separate terminal)
 npm test             # Unit tests (domain engines)
 npm run test:e2e    # End-to-end tests
 npm run lint        # Lint (oxlint)
@@ -298,7 +299,7 @@ npm run test:cov      # Coverage report
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.12+
 - Docker (for local Postgres + Redis)
 
 ### Setup
@@ -315,11 +316,9 @@ docker run -d --name redis-safecrib -p 6379:6379 redis:7-alpine
 # Backend
 cd safecrib-backend
 npm install
-cp .env.example .env   # fill in JWT secrets
+cp .env.example .env   # fill in JWT secrets and PGBOSS_DATABASE_URL
 npx prisma migrate dev
 npm run start:dev       # API on http://localhost:3001
-# In a separate terminal:
-npm run start:worker:dev  # BullMQ workers
 
 # Frontend
 cd ../apps/web

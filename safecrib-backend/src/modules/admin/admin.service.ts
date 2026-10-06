@@ -5,8 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
@@ -24,7 +24,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    @InjectJobQueue(EMAIL_QUEUE) private readonly emailQueue: JobQueueClient,
     private readonly notifications: NotificationsService,
   ) {}
 

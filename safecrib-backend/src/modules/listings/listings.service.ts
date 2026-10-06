@@ -5,8 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { IMAGE_HASH_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { CreateListingCommentDto, UpdateListingDto } from './dto/listing.dto.js';
@@ -40,7 +40,7 @@ export interface PhotoInput {
 export class ListingsService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(IMAGE_HASH_QUEUE) private readonly imageHashQueue: Queue,
+    @InjectJobQueue(IMAGE_HASH_QUEUE) private readonly imageHashQueue: JobQueueClient,
     private readonly providerPages: ProviderPagesService,
     private readonly mediaService: MediaService,
     private readonly notifications: NotificationsService,

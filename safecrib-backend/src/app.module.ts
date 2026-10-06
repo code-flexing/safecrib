@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { MailModule } from './infra/mail/mail.module.js';
 import { QueueModule } from './infra/queue/queue.module.js';
+import { ResilientThrottlerStorage } from './infra/redis/resilient-throttler-storage.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { ListingsModule } from './modules/listings/listings.module.js';
@@ -26,6 +26,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { SupportModule } from './modules/support/support.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { HealthController } from './health/health.controller.js';
 
 @Module({
   imports: [
@@ -35,8 +36,6 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redisUrl = config.get<string>('REDIS_URL') || 'redis://localhost:6379';
-
         const shortTtl = (config.get<number>('THROTTLE_TTL') || 60) * 1000;
         const shortLimit = config.get<number>('THROTTLE_LIMIT') || 10;
 
@@ -52,7 +51,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
             { name: 'auth', ttl: authTtl, limit: authLimit },
             { name: 'strict', ttl: strictTtl, limit: strictLimit },
           ],
-          storage: new ThrottlerStorageRedisService(redisUrl),
+          storage: new ResilientThrottlerStorage(),
         };
       },
     }),
@@ -75,6 +74,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     SupportModule,
     NotificationsModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: APP_FILTER,

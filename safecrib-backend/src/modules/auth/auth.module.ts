@@ -3,14 +3,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { APP_GUARD } from '@nestjs/core';
-import { BullModule } from '@nestjs/bullmq';
 
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/roles.guard.js';
-import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import { MailModule } from '../../infra/mail/mail.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 
@@ -28,9 +26,6 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
       }),
     }),
 
-    BullModule.registerQueue({
-      name: EMAIL_QUEUE,
-    }),
   ],
   controllers: [AuthController],
   providers: [

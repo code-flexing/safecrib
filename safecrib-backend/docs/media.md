@@ -52,7 +52,7 @@ Client                  SafeCrib API              Cloudinary
   │                          │     {notification_type: │
   │                          │      "upload", …}       │
   │                          │ — verify signature      │
-  │                          │ — enqueue BullMQ job    │
+  │                          │ — enqueue pg-boss job   │
   │                          │ ──► { ok: true }        │
   │                          │                        │
   │  POST /media/:id/complete│                        │
@@ -484,18 +484,8 @@ dashboard (they are never committed to version control).
 
 ### Orphan cleanup cron
 
-The `MEDIA_CLEANUP_QUEUE` expects a recurring job. Schedule it externally or add
-a repeatable job at app startup:
-
-```ts
-// In your bootstrap or a startup hook:
-import { Queue } from 'bullmq';
-const cleanupQueue = app.get<Queue>(getQueueToken(MEDIA_CLEANUP_QUEUE));
-await cleanupQueue.add('cleanup', {}, {
-  repeat: { pattern: '*/30 * * * *' }, // every 30 minutes
-  jobId: 'media-cleanup-cron',
-});
-```
+The shared pg-boss service registers the `MEDIA_CLEANUP_QUEUE` schedule at
+five-minute intervals; it is stored in Postgres and survives process restarts.
 
 ---
 
@@ -503,7 +493,7 @@ await cleanupQueue.add('cleanup', {}, {
 
 | Limit | Impact | Mitigation |
 |---|---|---|
-| Cloudinary Admin API: 500 req/min (free), 2000/min (paid) | `deleteAsset` uses the Admin API | BullMQ deletion queue with `limiter: { max: 10, duration: 1000 }`; never call Admin API in request path |
+| Cloudinary Admin API: 500 req/min (free), 2000/min (paid) | `deleteAsset` uses the Admin API | pg-boss deletion worker limits each app instance to 10 starts/sec; never call Admin API in request path |
 | Cloudinary bandwidth: depends on plan | High video delivery | Use Cloudinary's built-in CDN (100+ PoPs); upgrade plan as needed |
 | Cloudinary storage: depends on plan | Accumulation of orphaned PENDING records | 30-minute orphan cleanup cron |
 | Cloudinary transformations: derived assets cached but billed by count | Unbounded transformation strings | Strict Transformations enabled; named-only policy |

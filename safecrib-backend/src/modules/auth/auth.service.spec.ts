@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { AuthService } from './auth.service.js';
 import type { PrismaService } from '../../infra/prisma/prisma.service.js';
-import type { Queue } from 'bullmq';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 
 const { mockArgonHash, mockArgonVerify } = vi.hoisted(() => ({
   mockArgonHash: vi.fn().mockResolvedValue('hashed'),
@@ -88,7 +88,7 @@ describe('AuthService', () => {
       prisma as unknown as PrismaService,
       { sign: vi.fn().mockReturnValue('token'), verify: vi.fn().mockReturnValue({ sub: 'user-id', email: 'test@example.com', role: 'STUDENT' }) } as unknown as JwtService,
       { get: vi.fn((key: string) => ({ JWT_ACCESS_SECRET: 'secret', JWT_REFRESH_SECRET: 'refresh_secret' }[key])) } as unknown as ConfigService,
-      emailQueue as unknown as Queue,
+      emailQueue as unknown as JobQueueClient,
       notifications as never,
     );
   });

@@ -9,7 +9,7 @@ TypeScript domain code** that knows nothing about NestJS, HTTP, or Prisma.
 src/
   domain/              ← pure logic, zero framework/DB imports, fully unit-testable
   modules/             ← NestJS glue: controllers, DTOs, Prisma calls, queues
-  infra/               ← PrismaService, MailService, BullMQ workers
+  infra/               ← PrismaService, MailService, pg-boss workers
 ```
 
 Each `modules/*` service is thin: fetch data via Prisma → call the matching
@@ -21,7 +21,7 @@ never sees a Prisma model or an HTTP request.
 **Flow:**
 1. `POST /auth/register` — validates input (class-validator), hashes password
    with **argon2id**, creates an active account, returns the user plus access and
-   refresh tokens, and queues a welcome email through BullMQ. Mail delivery is
+   refresh tokens, and queues a welcome email through pg-boss. Mail delivery is
    never an account-access gate.
 2. `POST /auth/verify-email` — consumes a SHA-256 hashed token stored in DB.
 3. `POST /auth/login` — verifies password with argon2, issues short-lived
@@ -79,7 +79,7 @@ Explicit state machine prevents double-selling:
 ```
 AVAILABLE → HELD (on deposit-intent, sets hold_expires_at)
 HELD → BOOKED (on deposit confirmed)
-HELD → AVAILABLE (on hold expiry or cancellation — by BullMQ delayed job)
+HELD → AVAILABLE (on hold expiry or cancellation — by pg-boss delayed job)
 HELD → CANCELLED
 BOOKED → COMPLETED (unlock review eligibility)
 BOOKED → DISPUTED
@@ -131,7 +131,7 @@ visibility are separate from the provider Page lifecycle: `DRAFT → SUBMITTED �
 VERIFIED | REJECTED`. A verified Page is required to create a listing, but a
 verified Page never publishes a listing by itself.
 
-## 4. Background Jobs (BullMQ)
+## 4. Background Jobs (pg-boss)
 
 | Queue | Trigger | Job |
 |---|---|---|
@@ -168,7 +168,8 @@ verified Page never publishes a listing by itself.
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection (pooler) |
 | `DIRECT_URL` | PostgreSQL for migrations |
-| `REDIS_URL` | Redis for BullMQ |
+| `REDIS_URL` | Redis for rate limiting and Socket.IO |
+| `PGBOSS_DATABASE_URL` | Supabase session pooler on port 5432; port 6543 is not supported |
 | `JWT_ACCESS_SECRET` | Access token signing key |
 | `JWT_REFRESH_SECRET` | Refresh token signing key |
 | `BREVO_API_KEY` | Brevo Transactional Email API key |

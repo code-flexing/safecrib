@@ -7,6 +7,7 @@ services:
     preDeployCommand: npm run prisma:migrate:deploy
     startCommand: node dist/main
     rootDir: safecrib-backend
+    healthCheckPath: /healthz
     autoDeploy: true
     envVars:
       # ── Cloudinary (Media System) ──────────────────────────────────────────
@@ -33,6 +34,9 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+      # Supabase SESSION pooler URL on port 5432; transaction pooler :6543 is unsupported.
+      - key: PGBOSS_DATABASE_URL
+        sync: false
       - key: NODE_ENV
         value: production
       # ── Auth & mail ─────────────────────────────────────────────────────────
@@ -51,38 +55,3 @@ services:
     # Create / update Cloudinary upload presets + named transformations on
     # every deploy so the signed upload flow always targets existing presets.
     postdeploy: npm run cloudinary:sync-presets
-
-  # BullMQ worker: processes Cloudinary webhooks, asset deletions, and orphan
-  # media cleanup. Runs in its own process (see package.json start:worker).
-  - type: worker
-    name: safecrib-backend-worker
-    region: omaha
-    runtime: node
-    buildCommand: npm ci && npm run build
-    preDeployCommand: npm run prisma:migrate:deploy
-    startCommand: node dist/infra/queue/worker
-    rootDir: safecrib-backend
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: CLOUDINARY_ENV_PREFIX
-        value: prod
-      - key: CLOUDINARY_WEBHOOK_URL
-        sync: false
-      - key: NODE_ENV
-        value: production
-      - key: JWT_ACCESS_SECRET
-        sync: false
-      - key: JWT_REFRESH_SECRET
-        sync: false
-    autoDeploy: true

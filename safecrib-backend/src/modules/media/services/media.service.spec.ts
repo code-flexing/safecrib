@@ -9,7 +9,7 @@ import { MediaPolicyService } from './media-policy.service.js';
 import type { StorageProvider, UploadSignatureResult } from '../providers/storage-provider.interface.js';
 import type { MediaRepository } from '../media.repository.js';
 import type { MediaPathBuilder } from './media-path-builder.service.js';
-import type { Queue } from 'bullmq';
+import type { JobQueueClient } from '../../../infra/queue/queue.service.js';
 import type { Media } from '@prisma/client';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ function makePathBuilder(): MediaPathBuilder {
 }
 
 function makeQueue(): Queue {
-  return { add: vi.fn(async () => {}) } as unknown as Queue;
+  return { add: vi.fn(async () => {}) } as unknown as JobQueueClient;
 }
 
 function makeService(overrides: {
@@ -137,8 +137,8 @@ function makeService(overrides: {
   repo?: MediaRepository;
   policy?: MediaPolicyService;
   path?: MediaPathBuilder;
-  webhookQueue?: Queue;
-  deletionQueue?: Queue;
+  webhookQueue?: JobQueueClient;
+  deletionQueue?: JobQueueClient;
 } = {}): MediaService {
   const service = new MediaService(
     overrides.storage ?? makeStorage(),

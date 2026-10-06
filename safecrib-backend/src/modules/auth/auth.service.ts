@@ -9,8 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'node:crypto';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
@@ -61,7 +61,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    @InjectJobQueue(EMAIL_QUEUE) private readonly emailQueue: JobQueueClient,
     private readonly notifications: NotificationsService,
   ) {
     const accessTtl = this.configService.get<string>('ACCESS_TOKEN_TTL') ?? '14d';

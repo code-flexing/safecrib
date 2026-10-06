@@ -6,8 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
+import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -30,7 +30,7 @@ export class ProviderPagesService {
     private readonly prisma: PrismaService,
     private readonly trustService: TrustService,
     private readonly studentProfiles: StudentProfileService,
-    @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue,
+    @InjectJobQueue(EMAIL_QUEUE) private readonly emailQueue: JobQueueClient,
     private readonly notifications: NotificationsService,
   ) {}
 
