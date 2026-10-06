@@ -119,7 +119,7 @@ export function ListingPost({
   ];
 
   return (
-    <article className="overflow-hidden rounded-[16px] border border-black/10 bg-white shadow-[0_4px_24px_rgba(11,12,14,0.04)]">
+    <article className="overflow-hidden rounded-[22px] border border-black/8 bg-[#FFFFFF] shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
       {/* Header */}
       <PostHeader
         agent={{
@@ -137,38 +137,38 @@ export function ListingPost({
       />
 
       {/* Body */}
-      <div className="px-4 mt-3 pb-3">
+      <div className="px-4 pb-2 pt-3">
         {/* Title */}
-        <h2 className="font-semibold text-safecrib-black text-base leading-snug">
+        <h2 className="text-[1.05rem] font-semibold leading-snug text-safecrib-black">
           {displayTitle}
         </h2>
 
         {/* Location */}
         {(listing.campus ?? listing.address) && (
-          <div className="mt-1 flex items-center gap-1 text-sm text-black/55">
+          <div className="mt-1.5 flex items-center gap-1.5 text-sm text-black/55">
             <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
             <span>{listing.campus ?? listing.address}</span>
           </div>
         )}
 
         {/* Feature chips */}
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {typeof listing.bedrooms === "number" && listing.bedrooms > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
+            <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-black/[0.02] px-2.5 py-1 text-[11px] font-medium text-black/70">
               <Icon name="bed" className="h-3 w-3" />
               <span>{listing.bedrooms}</span>
             </span>
           )}
 
           {typeof listing.bathrooms === "number" && listing.bathrooms > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
+            <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-black/[0.02] px-2.5 py-1 text-[11px] font-medium text-black/70">
               <Icon name="droplet" className="h-3 w-3" />
               <span>{listing.bathrooms}</span>
             </span>
           )}
 
           {listing.propertyType && (
-            <span className="inline-flex items-center rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
+            <span className="inline-flex items-center rounded-full border border-black/10 bg-black/[0.02] px-2.5 py-1 text-[11px] font-medium text-black/70">
               {listing.propertyType}
             </span>
           )}
@@ -176,7 +176,7 @@ export function ListingPost({
 
         {/* Description */}
         {descriptionText && (
-          <div className="mt-2.5 text-sm leading-6 text-black/70">
+          <div className="mt-3 text-[0.95rem] leading-6 text-black/70">
             <p className={showMore ? "whitespace-pre-line" : "line-clamp-3 whitespace-pre-line"}>
               {renderDescriptionWithLinks(showMore ? descriptionText : clampedText)}
             </p>
@@ -195,17 +195,17 @@ export function ListingPost({
 
       {/* Media */}
       {mediaItems.length > 0 && (
-        <div className="relative px-4 pb-4">
-          <div className="relative">
+        <div className="relative px-4 pb-3">
+          <div className="relative overflow-hidden rounded-[18px] border border-black/6 bg-black/5 shadow-[0_18px_36px_rgba(15,23,42,0.08)]">
             <PostMedia media={mediaItems} />
             {listing.price != null ? (
-              <div className="pointer-events-none absolute bottom-3 left-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-1.5 shadow-[0_10px_24px_rgba(11,12,14,0.12)] backdrop-blur-sm">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">From</span>
+              <div className="pointer-events-none absolute bottom-3 left-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/90 bg-white/88 px-3 py-1.5 shadow-[0_12px_32px_rgba(17,24,39,0.18)] backdrop-blur-sm">
+                <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-black/45">From</span>
                 <span className="text-base font-semibold text-safecrib-black">{formatPrice(listing.price, listing.discountAmount)}</span>
                 <span className="text-[11px] text-black/45">/yr</span>
               </div>
             ) : (
-              <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-sm font-medium text-black/60 shadow-[0_10px_24px_rgba(11,12,14,0.12)] backdrop-blur-sm">
+              <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full border border-white/90 bg-white/88 px-3 py-1.5 text-sm font-medium text-black/70 shadow-[0_12px_32px_rgba(17,24,39,0.18)] backdrop-blur-sm">
                 Price on request
               </div>
             )}
@@ -214,7 +214,7 @@ export function ListingPost({
       )}
 
       {/* Actions */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 pt-1">
         <PostActions
           listingId={listing.id}
           likeCount={listing.likeCount}

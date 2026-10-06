@@ -85,14 +85,14 @@ export function PostActions({
   return (
     <div className="border-t border-black/10 pt-3">
       {/* Reaction summary */}
-      <div className="mb-3 flex flex-wrap items-center gap-5 text-sm text-black/60">
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-black/60 sm:gap-4">
         <button
           type="button"
           onClick={handleLike}
           disabled={isLiking}
           aria-pressed={optimisticIsLiked}
           aria-label={optimisticIsLiked ? "Unlike" : "Like"}
-          className="flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Icon name="heart" className={`h-4 w-4 ${optimisticIsLiked ? "fill-current text-red-500" : "text-black/50"}`} />
           <span>{optimisticLikeCount.toLocaleString()}</span>
@@ -103,16 +103,16 @@ export function PostActions({
           onMouseEnter={() => onCommentPrefetch?.(listingId)}
           onFocus={() => onCommentPrefetch?.(listingId)}
           aria-label={`View ${commentCount} comments`}
-          className="flex items-center gap-2 rounded-full px-2 py-1 text-sm transition-colors hover:bg-black/[0.03]"
+          className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition-colors hover:bg-black/[0.03]"
         >
           <Icon name="message-circle" className="h-4 w-4" />
           <span>{commentCount.toLocaleString()}</span>
         </button>
-        <span className="flex items-center gap-2" aria-label={`${shareCount} shares`}>
+        <span className="flex items-center gap-2 rounded-full px-2.5 py-1.5" aria-label={`${shareCount} shares`}>
           <Icon name="share-2" className="h-4 w-4" />
           <span>{shareCount.toLocaleString()}</span>
         </span>
-        <span className="flex items-center gap-2" aria-label={`${viewCount} views`}>
+        <span className="flex items-center gap-2 rounded-full px-2.5 py-1.5" aria-label={`${viewCount} views`}>
           <Icon name="eye" className="h-4 w-4" />
           <span>{viewCount.toLocaleString()}</span>
         </span>
