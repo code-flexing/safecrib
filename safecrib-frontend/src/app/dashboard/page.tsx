@@ -9,6 +9,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
@@ -46,6 +47,7 @@ export default function DashboardPage() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
     if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
@@ -116,8 +118,10 @@ export default function DashboardPage() {
   }), []);
 
   useEffect(() => {
+    setDashboardLoading(true);
     if (!localStorage.getItem("safecrib_access_token")) {
       router.replace("/login");
+      setDashboardLoading(false);
       return;
     }
 
@@ -230,6 +234,7 @@ export default function DashboardPage() {
       if (isUnauthorizedError(loadError)) {
         clearSession();
         router.replace("/login?reason=session-expired");
+        setDashboardLoading(false);
         return;
       }
       setProfile(null);
@@ -238,6 +243,8 @@ export default function DashboardPage() {
       setPageStatus("none");
       setListings([]);
       setBookmarkedIds([]);
+    }).finally(() => {
+      setDashboardLoading(false);
     });
   }, [router]);
 
@@ -346,6 +353,45 @@ export default function DashboardPage() {
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
   const accountName = resolveAccountName(profile);
   const canCreateProviderPage = ["AGENT", "LANDLORD"].includes(String(profile?.role ?? "").toUpperCase());
+
+  if (dashboardLoading) {
+    return (
+      <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
+        <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
+        <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-40" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            </div>
+            <Skeleton className="h-10 w-36" />
+          </div>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="overflow-hidden rounded-[12px] border border-black/10 bg-white shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
+                <Skeleton className="h-44 w-full rounded-none" />
+                <div className="space-y-3 p-5">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-6 w-2/3" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-6 w-28" />
+                  <div className="flex gap-2 pt-2">
+                    <Skeleton className="h-10 flex-1" />
+                    <Skeleton className="h-10 w-20" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
