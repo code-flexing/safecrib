@@ -443,7 +443,7 @@ export default function DashboardPage() {
             const imageReference = listing.photos?.[0] ?? listing.images?.[0];
             const image = resolvedListingImages[listing.id] ?? imageReference ?? null;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
-            return <article key={listing.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+            return <article key={listing.id} className="relative z-10 overflow-visible rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
               <div className="flex items-start gap-3">
                 <div className="shrink-0">
                   <ProfileAvatar src={profileImage} seed={listing.ownerId ?? listing.id ?? "home-listing-avatar"} alt={listing.title ?? "Home listing"} size="small" />
