@@ -525,28 +525,8 @@ export default function DashboardPage() {
                         </button>
                         {openMenuId === listing.id && (
                           <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-                            <Link href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View details</Link>
-                            {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
-                            {["UNVERIFIED", "STUDENT"].includes(String(profile?.role ?? "").toUpperCase()) && (
-                              <button type="button" onClick={() => { void toggleBookmark(listing.id); setOpenMenuId(null); }} className="block w-full border-b border-black/5 px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03]">
-                                {bookmarkedIds.includes(listing.id) ? "Remove save" : "Save listing"}
-                              </button>
-                            )}
-                            {listing.ownerId && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const ownerId = listing.ownerId;
-                                  if (!ownerId) return;
-                                  void toggleRecommendation(ownerId);
-                                  setOpenMenuId(null);
-                                }}
-                                disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                                className="block w-full px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {recommendedProviderIds.includes(listing.ownerId) ? "Remove recommendation" : "Recommend provider"}
-                              </button>
-                            )}
+                            <Link href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
+                            {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
                           </div>
                         )}
                       </div>
@@ -557,13 +537,13 @@ export default function DashboardPage() {
                     </p>
 
                     {image && (
-                      <div className="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                        <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-56 w-full object-cover sm:h-[360px]" />
-                      </div>
+                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-3 block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
+                        <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
+                      </Link>
                     )}
 
                     <div className="mt-3 border-t border-black/10 pt-3">
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-black/60 sm:text-sm">
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-black/60 sm:text-sm">
                         <button
                           type="button"
                           onClick={() => void toggleLike(listing)}
@@ -593,26 +573,6 @@ export default function DashboardPage() {
                         </button>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-black/70 sm:text-sm">
-                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex items-center justify-center rounded-full bg-safecrib-green px-3 py-1.5 font-medium text-safecrib-white hover:bg-[#0a5f47]" style={{ lineHeight: '1.2' }}>
-                          View details
-                        </Link>
-
-                        {listing.ownerId && (
-                          <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="inline-flex items-center justify-center font-medium text-safecrib-green hover:underline" style={{ lineHeight: '1.2' }}>
-                            View provider
-                          </Link>
-                        )}
-
-                        {[
-                          "UNVERIFIED",
-                          "STUDENT",
-                        ].includes(String(profile?.role ?? "").toUpperCase()) && (
-                          <Button type="button" variant="secondary" className="px-3 py-1.5 text-[11px] sm:text-xs" onClick={() => void toggleBookmark(listing.id)} style={{ lineHeight: '1.2' }}>
-                            {bookmarkedIds.includes(listing.id) ? "Saved" : "Save"}
-                          </Button>
-                        )}
-                      </div>
                     </div>
 
                     <p className="mt-3 text-sm font-semibold text-safecrib-black sm:text-[15px]" style={{ lineHeight: '1.3' }}>
