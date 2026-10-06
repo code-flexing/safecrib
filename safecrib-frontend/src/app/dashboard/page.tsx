@@ -13,7 +13,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
-type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: string[]; images?: string[]; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
+type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
+type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
 type StudentProfile = { profilePicture?: string } | null;
 type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
@@ -33,10 +34,49 @@ function resolveAccountName(profile: Profile | null) {
   return displayName(profile) || getAuthenticatedDisplayName() || emailNameFallback(profile?.email);
 }
 
+<<<<<<< HEAD
 function isUsableImageSource(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
 }
 
+function extractListingImageReference(value: unknown): string | null {
+  if (typeof value === "string") return value.trim() || null;
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["url", "accessUrl", "deliveryUrl", "imageUrl", "src"]) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  for (const key of ["mediaId", "media_id", "id"]) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return null;
+}
+
+function getListingImageReference(listing: Listing): string | null {
+  const candidates: unknown[] = [
+    ...(Array.isArray(listing.photos) ? listing.photos : []),
+    ...(Array.isArray(listing.images) ? listing.images : []),
+    listing.photo,
+    listing.image,
+  ];
+
+  for (const candidate of candidates) {
+    const extracted = extractListingImageReference(candidate);
+    if (extracted) return extracted;
+  }
+
+  return null;
+}
+
+=======
+function isUsableImageSource(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
+}
+
+>>>>>>> e8adeacdc0422394c74872a55986e00e0ddf859e
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -257,7 +297,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const nextImageMap: Record<string, string | null> = {};
     listings.forEach((listing) => {
-      const imageReference = listing.photos?.[0] ?? listing.images?.[0];
+      const imageReference = getListingImageReference(listing);
       if (!imageReference) return;
       if (isUsableImageSource(imageReference)) {
         nextImageMap[listing.id] = imageReference;
@@ -449,12 +489,21 @@ export default function DashboardPage() {
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
         <div className="mx-auto mt-8 max-w-3xl space-y-4">
           {listings.map((listing) => {
+<<<<<<< HEAD
+            const imageReference = getListingImageReference(listing);
+            const image = isUsableImageSource(resolvedListingImages[listing.id])
+              ? resolvedListingImages[listing.id]
+              : isUsableImageSource(imageReference)
+                ? imageReference
+                : null;
+=======
             const imageReference = listing.photos?.[0] ?? listing.images?.[0];
             const image = isUsableImageSource(resolvedListingImages[listing.id])
               ? resolvedListingImages[listing.id]
               : isUsableImageSource(imageReference)
                 ? imageReference
                 : null;
+>>>>>>> e8adeacdc0422394c74872a55986e00e0ddf859e
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             return (
               <article
