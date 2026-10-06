@@ -18,7 +18,7 @@ type SafeCribLogoProps = {
  * Renders the official SafeCrib logo using the variant that matches the active theme.
  */
 export function SafeCribLogo({
-  height = 42,
+  height = 48,
   href = "/",
   className,
   priority = true,

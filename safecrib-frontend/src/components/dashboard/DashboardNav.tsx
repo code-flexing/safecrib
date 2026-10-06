@@ -25,7 +25,10 @@ const items = [
 
 type NavUser = { id?: string; email?: string; displayName?: unknown; role?: string; profilePicture?: string; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
 
-function iconLinkClass(active: boolean) {
+function iconLinkClass(active: boolean, desktopVertical = false) {
+  if (desktopVertical) {
+    return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "bg-black/[0.04] text-safecrib-black shadow-[0_0_0_1px_rgba(15,23,42,0.04)]" : "text-black/70 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
+  }
   return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green shadow-[0_0_0_1px_rgba(12,115,85,0.08)] scale-[1.02]" : "border-transparent text-black/60 hover:-translate-y-0.5 hover:border-black/10 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
 }
 
@@ -168,41 +171,57 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   }, []);
 
   const accountName = getDisplayName(navUser) || getAuthenticatedDisplayName() || "Your profile";
-  const profileLinkClass = `inline-flex items-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${pathname === "/dashboard" ? "hidden md:inline-flex" : ""} ${pathname === "/profile" ? "ring-2 ring-safecrib-green ring-offset-2" : ""}`;
+  const profileLinkClass = `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${pathname === "/profile" ? "bg-black/[0.04]" : "hover:bg-black/[0.03]"}`;
   const handleSignOut = () => {
     void logoutSession().finally(() => router.replace("/login"));
   };
 
   return (
     <>
-      <header className="hidden border-b border-safecrib-green/20 bg-safecrib-green text-white backdrop-blur-xl md:sticky md:top-0 md:z-40 md:block md:border-b md:border-safecrib-green/20 md:bg-safecrib-green md:text-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
-          <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="hidden md:block">
-            <SafeCribLogo height={28} href={false} />
+      <header className="hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:border-black/10 md:bg-white md:text-safecrib-black md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
+        <div className="flex h-full flex-col px-4 py-5">
+          <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="mb-6 flex items-center gap-2 px-2">
+            <SafeCribLogo height={32} href={false} />
           </Link>
-          <nav aria-label="Dashboard navigation" className="ml-auto hidden items-center gap-2 md:flex">
-            <Link href="/connect" aria-label="Search people" title="Search people" aria-current={pathname.startsWith("/connect") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/connect"))}>
-              <Icon name="search" />
+
+          <nav aria-label="Desktop dashboard navigation" className="flex flex-1 flex-col gap-1.5">
+            <Link href="/connect" aria-label="Search people" title="Search people" aria-current={pathname.startsWith("/connect") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/connect"), true)}>
+              <span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="search" className="h-5 w-5" /></span>
+              <span>Search</span>
             </Link>
-            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href)}>
-              <Icon name={item.icon} />
-              {item.href === "/support" && <SupportCount count={supportCount} />}
+            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href, true)}>
+              <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name={item.icon} className="h-5 w-5" />{item.href === "/support" && <SupportCount count={supportCount} />}</span>
+              <span>{item.label}</span>
             </Link>)}
-            <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/notifications"))}>
-              <Icon name="notifications" />
-              <NotificationCount count={unreadNotifications} />
+            <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/notifications"), true)}>
+              <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></span>
+              <span>Notifications</span>
             </Link>
-            {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive)}><Icon name="page" /></button>}
-            <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={iconLinkClass(false)}><Icon name="logout" /></button>
+            {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive, true)}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="page" className="h-5 w-5" /></span><span>{pageStatus === "none" ? "Create Page" : "My Page"}</span></button>}
+            <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={`${iconLinkClass(false, true)} mt-auto`}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="logout" className="h-5 w-5" /></span><span>Log out</span></button>
           </nav>
-          <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={profileLinkClass}>
-            <span className="relative inline-flex">
-              <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
-              {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
+
+          <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={`${profileLinkClass} mt-5 w-full justify-between border-t border-black/10 pt-4`}>
+            <span className="flex items-center gap-3">
+              <span className="relative inline-flex">
+                <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
+                {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-safecrib-black">{accountName}</span>
+                <span className="block text-xs text-black/45">View profile</span>
+              </span>
             </span>
           </Link>
         </div>
       </header>
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-black/10 bg-white/90 px-4 pb-2 pt-3 backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-center">
+          <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="inline-flex items-center justify-center rounded-full">
+            <SafeCribLogo height={34} href={false} />
+          </Link>
+        </div>
+      </div>
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
         <div className="mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border border-black/10 bg-white/25 p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.12)] backdrop-blur-2xl">
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/dashboard" ? "bg-black/[0.05] text-current shadow-sm scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="home" className="h-5 w-5" /></Link>

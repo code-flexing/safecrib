@@ -1,4 +1,7 @@
+"use client";
+
 import type { Metadata, Viewport } from "next";
+import { usePathname } from "next/navigation";
 import { NetworkMonitor } from "@/components/network/NetworkMonitor";
 import { PWAProvider } from "@/components/pwa/PWAProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -24,6 +27,21 @@ export const viewport: Viewport = {
   themeColor: "#0c7355",
 };
 
+function AppLayoutShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const shouldPadDesktopSidebar = [
+    "/dashboard",
+    "/connect",
+    "/notifications",
+    "/settings",
+    "/support",
+    "/profile",
+    "/page",
+  ].some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+  return <div className={shouldPadDesktopSidebar ? "md:pl-72" : ""}>{children}</div>;
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -32,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PWAProvider>
             <Analytics />
             <NetworkMonitor />
-            {children}
+            <AppLayoutShell>{children}</AppLayoutShell>
             <InstallPrompt />
           </PWAProvider>
         </ThemeProvider>

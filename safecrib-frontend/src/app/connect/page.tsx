@@ -37,20 +37,25 @@ type ResultType = "Posts" | "People" | "Pages" | "Homes" | "Profiles" | "Trendin
 const resultTypes: ResultType[] = ["Posts", "People", "Pages", "Homes", "Profiles", "Trending"];
 const recentSearchesKey = "safecrib:connect:recent-searches";
 
-function DiscoveryAvatar({ reference, seed, label }: { reference?: string | null; seed: string; label: string }) {
+function DiscoveryAvatar({ reference, seed, label, onReady }: { reference?: string | null; seed: string; label: string; onReady?: (ready: boolean) => void }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [resolving, setResolving] = useState(Boolean(reference));
 
   useEffect(() => {
+    setImageUrl(null);
+    setResolving(Boolean(reference));
+    if (!reference) {
+      onReady?.(true);
+      return;
+    }
+
     const cachedUrl = getCachedMediaUrl(reference);
     if (cachedUrl) {
       setImageUrl(cachedUrl);
       setResolving(false);
       return;
     }
-    setImageUrl(null);
-    setResolving(Boolean(reference));
-    if (!reference) return;
+
     let active = true;
     void resolveMediaUrl(reference).then((url) => {
       if (!active) return;
@@ -58,13 +63,13 @@ function DiscoveryAvatar({ reference, seed, label }: { reference?: string | null
       setResolving(false);
     });
     return () => { active = false; };
-  }, [reference]);
+  }, [reference, onReady]);
 
   if (resolving) {
     return <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-black/10" role="status" aria-label={`Loading ${label} profile picture`} />;
   }
 
-  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" /></div>;
+  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" loading={resolving} onReady={onReady} /></div>;
 }
 
 function SearchResultsSkeleton() {
@@ -81,6 +86,70 @@ function SearchResultsSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+function UserResultCard({ person, pending, onFollow }: { person: UserResult; pending: string | null; onFollow: (kind: "user" | "page", id: string, following: boolean) => void }) {
+  const [avatarReady, setAvatarReady] = useState(Boolean(!person.profilePicture));
+
+  useEffect(() => {
+    setAvatarReady(Boolean(!person.profilePicture));
+  }, [person.profilePicture]);
+
+  return (
+    <article className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 transition-colors hover:border-safecrib-green/25 sm:p-4">
+      <Link href={`/profile/${encodeURIComponent(person.id)}`} aria-label={`Open ${person.displayName || "SafeCrib member"}'s profile`} className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+        <DiscoveryAvatar reference={person.profilePicture} seed={person.id} label={person.displayName || "SafeCrib member"} onReady={setAvatarReady} />
+      </Link>
+      {!avatarReady ? (
+        <div className="min-w-0 flex-1 space-y-2 py-1" aria-label="Loading profile details">
+          <div className="h-3 w-2/3 rounded bg-black/10" />
+          <div className="h-2.5 w-1/2 rounded bg-black/[0.07]" />
+        </div>
+      ) : (
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Link href={`/profile/${encodeURIComponent(person.id)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{person.displayName || "SafeCrib member"}</Link>
+            {person.isVerified && <VerificationBadge verified compact iconOnly />}
+          </div>
+          <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>
+          {person.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{person.shortBio}</p>}
+          <p className="mt-1 text-xs text-black/45">{person.followerCount} followers</p>
+        </div>
+      )}
+      {avatarReady && (
+        <button type="button" aria-pressed={person.isFollowing} onClick={() => void onFollow("user", person.id, person.isFollowing)} disabled={pending === `user:${person.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${person.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{person.isFollowing ? "Following" : "Follow"}</button>
+      )}
+    </article>
+  );
+}
+
+function PageResultCard({ page, pending, onFollow, showFollowButton = true }: { page: PageResult; pending: string | null; onFollow: (kind: "user" | "page", id: string, following: boolean) => void; showFollowButton?: boolean }) {
+  const [avatarReady, setAvatarReady] = useState(Boolean(!page.profilePicture));
+
+  useEffect(() => {
+    setAvatarReady(Boolean(!page.profilePicture));
+  }, [page.profilePicture]);
+
+  return (
+    <article className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 sm:p-4">
+      <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} aria-label={`Open ${page.displayName}'s profile`} className="rounded-full"><DiscoveryAvatar reference={page.profilePicture} seed={page.ownerId} label={page.displayName} onReady={setAvatarReady} /></Link>
+      {!avatarReady ? (
+        <div className="min-w-0 flex-1 space-y-2 py-1" aria-label="Loading page details">
+          <div className="h-3 w-2/3 rounded bg-black/10" />
+          <div className="h-2.5 w-1/2 rounded bg-black/[0.07]" />
+        </div>
+      ) : (
+        <div className="min-w-0 flex-1">
+          <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>
+          {page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}
+          <p className="mt-1 text-xs text-black/45">{showFollowButton ? `${page.followerCount} followers` : `${page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · ${page.followerCount} followers`}</p>
+        </div>
+      )}
+      {avatarReady && showFollowButton && (
+        <button type="button" aria-pressed={page.isFollowing} onClick={() => void onFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
+      )}
+    </article>
   );
 }
 
@@ -212,62 +281,41 @@ export default function ConnectPage() {
       </section>}
       {query.trim() && loading && <SearchResultsSkeleton />}
       {query.trim() && !loading && <>
-      {resultType === "Posts" && <p className="mt-6 text-sm text-black/55">Posts are not available yet.</p>}
-      {(resultType === "People" || resultType === "Profiles" || resultType === "Trending") && <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:items-start">
-      <section aria-labelledby="campus-people-title">
-        <div className="flex items-end justify-between gap-3 border-b border-black/10 pb-3">
-          <h2 id="campus-people-title" className="text-xl font-semibold text-safecrib-black">{resultType === "Trending" ? "Trending people" : resultType}</h2>
-          <span className="text-xs text-black/45">{people.length} found</span>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          {people.map((person) => <article key={person.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 transition-colors hover:border-safecrib-green/25 sm:p-4">
-            <Link href={`/profile/${encodeURIComponent(person.id)}`} aria-label={`Open ${person.displayName || "SafeCrib member"}'s profile`} className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
-              <DiscoveryAvatar reference={person.profilePicture} seed={person.id} label={person.displayName || "SafeCrib member"} />
-            </Link>
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <Link href={`/profile/${encodeURIComponent(person.id)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{person.displayName || "SafeCrib member"}</Link>
-                {person.isVerified && <VerificationBadge verified compact iconOnly />}
-              </div>
-              <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>
-              {person.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{person.shortBio}</p>}
-              <p className="mt-1 text-xs text-black/45">{person.followerCount} followers</p>
+        {resultType === "Posts" && <p className="mt-6 text-sm text-black/55">Posts are not available yet.</p>}
+        {(resultType === "People" || resultType === "Profiles" || resultType === "Trending") && <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:items-start">
+          <section aria-labelledby="campus-people-title">
+            <div className="flex items-end justify-between gap-3 border-b border-black/10 pb-3">
+              <h2 id="campus-people-title" className="text-xl font-semibold text-safecrib-black">{resultType === "Trending" ? "Trending people" : resultType}</h2>
+              <span className="text-xs text-black/45">{people.length} found</span>
             </div>
-            <button type="button" aria-pressed={person.isFollowing} onClick={() => void toggleFollow("user", person.id, person.isFollowing)} disabled={pending === `user:${person.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${person.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{person.isFollowing ? "Following" : "Follow"}</button>
-          </article>)}
-          {people.length === 0 && <p className="text-sm text-black/50">No matching verified users.</p>}
-        </div>
-      </section>
-      {resultType === "Trending" && <section aria-labelledby="trending-pages-title">
-        <div className="flex items-end justify-between gap-3 border-b border-black/10 pb-3">
-          <h2 id="trending-pages-title" className="text-xl font-semibold text-safecrib-black">Trending pages</h2>
-          <span className="text-xs text-black/45">{pages.length} found</span>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          {pages.map((page) => <article key={page.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 sm:p-4">
-            <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} aria-label={`Open ${page.displayName}'s profile`} className="rounded-full"><DiscoveryAvatar reference={page.profilePicture} seed={page.ownerId} label={page.displayName} /></Link>
-            <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>{page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}<p className="mt-1 text-xs text-black/45">{page.followerCount} followers</p></div>
-            <button type="button" aria-pressed={page.isFollowing} onClick={() => void toggleFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
-          </article>)}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {people.map((person) => <UserResultCard key={person.id} person={person} pending={pending} onFollow={toggleFollow} />)}
+              {people.length === 0 && <p className="text-sm text-black/50">No matching verified users.</p>}
+            </div>
+          </section>
+          {resultType === "Trending" && <section aria-labelledby="trending-pages-title">
+            <div className="flex items-end justify-between gap-3 border-b border-black/10 pb-3">
+              <h2 id="trending-pages-title" className="text-xl font-semibold text-safecrib-black">Trending pages</h2>
+              <span className="text-xs text-black/45">{pages.length} found</span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {pages.map((page) => <PageResultCard key={page.id} page={page} pending={pending} onFollow={toggleFollow} />)}
+              {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
+            </div>
+          </section>}
+        </div>}
+        {resultType === "Pages" && <section className="mt-6" aria-label="Pages">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pages.map((page) => <PageResultCard key={page.id} page={page} pending={pending} onFollow={toggleFollow} showFollowButton={false} />)}
+          </div>
           {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
-        </div>
-      </section>}
-      </div>
-      }
-      {resultType === "Pages" && <section className="mt-6" aria-label="Pages">
-        <div className="grid gap-3 sm:grid-cols-2">{pages.map((page) => <article key={page.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-4">
-          <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} aria-label={`Open ${page.displayName}'s profile`}><DiscoveryAvatar reference={page.profilePicture} seed={page.ownerId} label={page.displayName} /></Link>
-          <div className="min-w-0 flex-1"><Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>{page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}<p className="mt-1 text-xs text-black/45">{page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · {page.followerCount} followers</p></div>
-          <button type="button" aria-pressed={page.isFollowing} onClick={() => void toggleFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
-        </article>)}</div>
-        {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
-      </section>}
-      {resultType === "Homes" && <section className="mt-6" aria-label="Homes">
-        <div className="grid gap-3 sm:grid-cols-2">{matchingHomes.map((home) => <Link key={home.id} href={`/dashboard/listings/${encodeURIComponent(home.id)}`} className="rounded-xl border border-black/10 bg-white p-4 transition-colors hover:border-safecrib-green/30">
-          <h2 className="font-semibold text-safecrib-black">{home.title || "Student home"}</h2><p className="mt-1 text-sm text-black/55">{[home.campus, home.address].filter(Boolean).join(" · ") || "Campus listing"}</p>{typeof home.price === "number" && <p className="mt-3 text-sm font-semibold text-safecrib-green">₦{home.price.toLocaleString()}</p>}
-        </Link>)}</div>
-        {matchingHomes.length === 0 && <p className="text-sm text-black/50">No matching homes.</p>}
-      </section>}
+        </section>}
+        {resultType === "Homes" && <section className="mt-6" aria-label="Homes">
+          <div className="grid gap-3 sm:grid-cols-2">{matchingHomes.map((home) => <Link key={home.id} href={`/dashboard/listings/${encodeURIComponent(home.id)}`} className="rounded-xl border border-black/10 bg-white p-4 transition-colors hover:border-safecrib-green/30">
+            <h2 className="font-semibold text-safecrib-black">{home.title || "Student home"}</h2><p className="mt-1 text-sm text-black/55">{[home.campus, home.address].filter(Boolean).join(" · ") || "Campus listing"}</p>{typeof home.price === "number" && <p className="mt-3 text-sm font-semibold text-safecrib-green">₦{home.price.toLocaleString()}</p>}
+          </Link>)}</div>
+          {matchingHomes.length === 0 && <p className="text-sm text-black/50">No matching homes.</p>}
+        </section>}
       </>}
     </section>
   </main>;
