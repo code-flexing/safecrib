@@ -75,6 +75,18 @@ body {
   box-sizing: border-box;
 }
 
+img:not([data-skeleton="off"]) {
+  background-color: #e8eeeb;
+  background-image: linear-gradient(
+    100deg,
+    #e8eeeb 20%,
+    #f7faf8 38%,
+    #e8eeeb 56%
+  );
+  background-size: 220% 100%;
+  animation: safecrib-image-skeleton 1.35s ease-in-out infinite;
+}
+
 ::selection {
   background: var(--safecrib-green);
   color: var(--safecrib-white);
@@ -193,6 +205,15 @@ body {
   }
 }
 
+@keyframes safecrib-image-skeleton {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
 @keyframes landing-arrive {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
@@ -235,6 +256,10 @@ body {
   }
 
   .safecrib-ambient-card {
+    animation: none;
+  }
+
+  img:not([data-skeleton="off"]) {
     animation: none;
   }
 }
