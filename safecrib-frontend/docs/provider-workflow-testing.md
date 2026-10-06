@@ -1,13 +1,13 @@
 # Provider Workflow: Direct Testing
 
-This runbook covers the agent/landlord frontend and its API handoff. The deployed API is documented at [SafeCrib OpenAPI](https://pible.onrender.com/api/v1/docs#/). Requests below target that service directly; the application forwards the same `/api/v1/...` paths through its backend proxy.
+This runbook covers the agent/landlord frontend and its API handoff. The deployed API is documented at [SafeCrib OpenAPI](https://safecrib.onrender.com/api/v1/docs#/). Requests below target that service directly; the application forwards the same `/api/v1/...` paths through its backend proxy.
 
 ## Before testing
 
 Use a non-production test account and a separate admin test account. Do not paste access tokens, private proof URLs, or real payout details into issues or screenshots. Keep these values in your local shell:
 
 ```sh
-export API_BASE="https://pible.onrender.com/api/v1"
+export API_BASE="https://safecrib.onrender.com/api/v1"
 export ACCESS_TOKEN="<test-user-access-token>"
 export ADMIN_TOKEN="<test-admin-access-token>"
 ```

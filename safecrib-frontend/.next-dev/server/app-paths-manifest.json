@@ -4,6 +4,5 @@
   "/page": "app/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/connect/page": "app/connect/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/notifications/page": "app/notifications/page.js"
+  "/profile/page": "app/profile/page.js"
 }

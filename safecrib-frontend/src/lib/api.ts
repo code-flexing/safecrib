@@ -3,11 +3,17 @@ export type PageStatus = "none" | "pending" | "approved" | "rejected";
 
 export class ApiError extends Error {
   status: number;
+  method: string;
+  path: string;
+  responseMessage: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, method = "GET", path = "") {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.method = method;
+    this.path = path;
+    this.responseMessage = message;
   }
 }
 
@@ -363,6 +369,7 @@ export function unwrapData<T>(value: unknown): T {
 let refreshPromise: Promise<void> | null = null;
 
 async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
   const token = typeof window === "undefined" ? null : localStorage.getItem("safecrib_access_token");
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
@@ -370,7 +377,7 @@ async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   let response = await fetch(`/api/backend${path}`, { ...init, headers });
-  if (response.status >= 500 && response.status < 600) {
+  if ((method === "GET" || method === "HEAD") && response.status >= 500 && response.status < 600) {
     await new Promise((resolve) => setTimeout(resolve, 250));
     response = await fetch(`/api/backend${path}`, { ...init, headers });
   }
@@ -378,14 +385,15 @@ async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const payloadRecord = typeof payload === "object" && payload !== null ? payload as Record<string, unknown> : null;
     const responseMessage = payloadRecord?.message;
-    const message = Array.isArray(responseMessage)
+    const responseError = Array.isArray(responseMessage)
       ? responseMessage.filter((item): item is string => typeof item === "string").join(" ")
       : typeof responseMessage === "string"
         ? responseMessage
         : typeof payloadRecord?.error === "string"
           ? payloadRecord.error
           : `Request failed (${response.status})`;
-    throw new ApiError(response.status, message);
+    const message = `${method} ${path}: ${responseError}`;
+    throw new ApiError(response.status, message, method, path);
   }
   return payload as T;
 }
@@ -612,26 +620,62 @@ export async function uploadListingMedia(file: File, purpose: ListingMediaPurpos
 }
 
 export async function waitForMediaReady(mediaId: string) {
+  let statusEndpointAvailable = true;
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const response = unwrapData<unknown>(await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/status`, { cache: "no-store" }));
-    const media = recordValue(response);
-    const status = String(media.status ?? "").toUpperCase();
-    if (status === "READY") return;
-    if (status === "FAILED") {
-      const reason = typeof media.failureReason === "string" && media.failureReason.trim()
-        ? `: ${media.failureReason}`
-        : "";
-      throw new Error(`The media upload failed${reason}`);
-    }
-    if (status === "DELETED" || status === "DELETING") {
-      throw new Error("The uploaded media is no longer available. Upload it again.");
-    }
-    if (status !== "PENDING") {
-      throw new Error("The media service returned an unrecognized upload status.");
+    if (statusEndpointAvailable) {
+      let response: unknown;
+      try {
+        response = unwrapData<unknown>(
+          await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/status`, { cache: "no-store" }),
+        );
+      } catch (error) {
+        const endpointMissing = error instanceof ApiError
+          && error.status === 404
+          && (error.responseMessage === "Request failed (404)" || error.responseMessage.startsWith("Cannot GET "));
+        if (!endpointMissing) throw error;
+        statusEndpointAvailable = false;
+        console.warn("This media API does not expose per-upload status yet; checking the pending-upload list and media access instead.");
+      }
+
+      if (statusEndpointAvailable) {
+        const media = recordValue(response);
+        const status = String(media.status ?? "").toUpperCase();
+        if (status === "READY") return;
+        if (status === "FAILED") {
+          const reason = typeof media.failureReason === "string" && media.failureReason.trim()
+            ? `: ${media.failureReason}`
+            : "";
+          throw new Error(`The media upload failed${reason}`);
+        }
+        if (status === "DELETED" || status === "DELETING") {
+          throw new Error("The uploaded media is no longer available. Upload it again.");
+        }
+        if (status !== "PENDING") {
+          throw new Error("The media service returned an unrecognized upload status.");
+        }
+      } else {
+        const pending = unwrapData<unknown[]>(
+          await apiFetch<unknown>("/api/v1/media/pending", { cache: "no-store" }),
+        );
+        if (!Array.isArray(pending)) {
+          throw new Error("The media service returned an invalid pending-upload list.");
+        }
+        const isPending = pending.some((item) => recordValue(item).id === mediaId);
+        if (!isPending) {
+          try {
+            await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/access`, { cache: "no-store" });
+            return;
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404) throw error;
+          }
+        }
+      }
     }
     await new Promise((resolve) => window.setTimeout(resolve, 2000));
   }
-  throw new Error("Media processing is taking longer than expected. Your draft is saved; refresh media before trying again.");
+  throw new Error(statusEndpointAvailable
+    ? "Media processing is taking longer than expected. Your draft is saved; refresh media before trying again."
+    : "Media processing is still pending. The current API lacks an upload-status route, so deploy the updated backend or try again shortly.");
 }
 
 const resolvedMediaUrlPrefix = "safecrib_media_url:";

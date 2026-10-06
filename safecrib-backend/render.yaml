@@ -42,6 +42,12 @@ services:
         sync: false
       - key: BREVO_API_KEY
         sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:notifications@safecrib.app
     # Create / update Cloudinary upload presets + named transformations on
     # every deploy so the signed upload flow always targets existing presets.
     postdeploy: npm run cloudinary:sync-presets

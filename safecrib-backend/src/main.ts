@@ -31,7 +31,11 @@ function getAllowedOrigins(): string[] {
       .map((origin) => normalizeOrigin(origin.trim()))
       .filter(Boolean) ?? [];
 
-  const fallbackOrigins = ['https://safecrib.onrender.com'];
+  const fallbackOrigins = [
+    'https://safecrib.onrender.com',
+    'https://safecribs.com.ng',
+    'https://www.safecribs.com.ng',
+  ];
 
   const origins = [
     productionUrl,

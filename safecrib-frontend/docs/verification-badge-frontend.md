@@ -1,6 +1,6 @@
 # Verification Badges and Account Settings: Frontend Implementation and Testing
 
-The signed-in customer settings page at `/profile` and the admin-only settings page at `/admin/settings` share account name and password controls. The customer page also renders verification tracking from the authenticated trust API. Admin routes remain protected by the admin layout and membership check. The browser never derives a badge from role or trust score. The live API docs are at [SafeCrib OpenAPI](https://pible.onrender.com/api/v1/docs#/).
+The signed-in customer settings page at `/profile` and the admin-only settings page at `/admin/settings` share account name and password controls. The customer page also renders verification tracking from the authenticated trust API. Admin routes remain protected by the admin layout and membership check. The browser never derives a badge from role or trust score. The live API docs are at [SafeCrib OpenAPI](https://safecrib.onrender.com/api/v1/docs#/).
 
 ## Implemented UI
 
@@ -55,7 +55,7 @@ Example stage response:
 Use a test account and keep tokens out of screenshots and source files:
 
 ```sh
-export API_BASE="https://pible.onrender.com/api/v1"
+export API_BASE="https://safecrib.onrender.com/api/v1"
 export ACCESS_TOKEN="<test-user-access-token>"
 
 curl -i -sS "$API_BASE/trust/me/verification-stage" \

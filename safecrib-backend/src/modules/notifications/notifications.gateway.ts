@@ -19,6 +19,8 @@ function allowedOrigins(): string[] {
     process.env.FRONTEND_URL_TESTING,
     ...(process.env.CORS_ORIGINS ?? '').split(','),
     'https://safecrib.onrender.com',
+    'https://safecribs.com.ng',
+    'https://www.safecribs.com.ng',
   ].map((origin) => origin?.trim().replace(/\/+$/, '')).filter((origin): origin is string => Boolean(origin));
 }
 

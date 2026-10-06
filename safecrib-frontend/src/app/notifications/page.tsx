@@ -78,6 +78,7 @@ export default function NotificationsPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
   const pendingNotifications = useRef(new Map<string, NotificationItem>());
   const notificationFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -140,9 +141,10 @@ export default function NotificationsPage() {
       setPushSupported(false);
       return;
     }
+    setNotificationPermission(Notification.permission);
     void navigator.serviceWorker.getRegistration("/").then(async (registration) => {
       const subscription = await registration?.pushManager.getSubscription();
-      setPushEnabled(Boolean(subscription));
+      setPushEnabled(Boolean(subscription) && Notification.permission === "granted");
     }).catch((pushError: unknown) => {
       console.error("Could not inspect this device's phone notification subscription.", pushError);
     });
@@ -218,19 +220,19 @@ export default function NotificationsPage() {
     setPushBusy(true);
     setError(null);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setError(permission === "denied"
-          ? "Phone notifications are blocked in your browser settings."
-          : "Allow phone notifications to enable alerts.");
-        return;
-      }
       const config = unwrapData<{ enabled: boolean; publicKey: string | null }>(
         await apiFetch<unknown>("/api/v1/notifications/push/config", { cache: "no-store" }),
       );
       if (!config?.enabled || !config.publicKey) {
-        setPushSupported(false);
         setError("Phone notifications are not configured on this server yet.");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission !== "granted") {
+        setError(permission === "denied"
+          ? "Phone notifications are blocked in your browser settings."
+          : "Allow phone notifications to enable alerts.");
         return;
       }
       const registration = await navigator.serviceWorker.register("/sw.js");
@@ -254,27 +256,6 @@ export default function NotificationsPage() {
       setPushEnabled(true);
     } catch (pushError) {
       setError(pushError instanceof Error ? pushError.message : "Could not enable phone notifications.");
-    } finally {
-      setPushBusy(false);
-    }
-  };
-
-  const disablePhoneNotifications = async () => {
-    setPushBusy(true);
-    setError(null);
-    try {
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      const subscription = await registration?.pushManager.getSubscription();
-      if (subscription) {
-        await apiFetch("/api/v1/notifications/push/subscriptions", {
-          method: "DELETE",
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        });
-        await subscription.unsubscribe();
-      }
-      setPushEnabled(false);
-    } catch (pushError) {
-      setError(pushError instanceof Error ? pushError.message : "Could not disable phone notifications.");
     } finally {
       setPushBusy(false);
     }
@@ -318,13 +299,13 @@ export default function NotificationsPage() {
           </button>
         </header>
 
-        {pushSupported && <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white p-4">
+        {pushSupported && !pushEnabled && <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white p-4">
           <div>
             <h2 className="font-semibold">Phone notifications</h2>
             <p className="mt-1 text-sm text-black/55">{pushEnabled ? "This device can receive alerts when SafeCrib is closed." : "Get important SafeCrib updates on this device."}</p>
           </div>
-          <button type="button" disabled={pushBusy} onClick={() => void (pushEnabled ? disablePhoneNotifications() : enablePhoneNotifications())} className="rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {pushBusy ? "Saving…" : pushEnabled ? "Turn off" : "Enable"}
+          <button type="button" disabled={pushBusy} onClick={() => void enablePhoneNotifications()} className="rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            {pushBusy ? "Saving…" : notificationPermission === "granted" ? "Finish enabling" : "Enable"}
           </button>
         </section>}
 

@@ -6,7 +6,7 @@
 // responses, authentication, or user data — that will be added once the
 // backend exists, and must never cache anything sensitive.
 
-const CACHE_NAME = "safecrib-shell-v2";
+const CACHE_NAME = "safecrib-shell-v3";
 const APP_SHELL = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -41,21 +41,46 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   const isDocumentRequest = request.mode === "navigate" || url.pathname === "/manifest.webmanifest";
+  const isAppShellRequest = url.pathname === "/" || url.pathname === "/manifest.webmanifest";
 
   if (isDocumentRequest) {
     event.respondWith(
       fetch(request)
-        .then((response) => {
+        .then(async (response) => {
+          if (!isAppShellRequest) return response;
           const responseCopy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(request, responseCopy));
+          try {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, responseCopy);
+          } catch (error) {
+            console.warn("Could not update the SafeCrib offline cache.", error);
+          }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached ?? Response.error()))
+        .catch(async () => {
+          let cached;
+          try {
+            cached = isAppShellRequest ? await caches.match(request) : undefined;
+          } catch (error) {
+            console.warn("Could not read the SafeCrib offline cache.", error);
+          }
+          return cached ?? new Response("SafeCrib is unavailable while you are offline.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        })
     );
     return;
   }
 
-  event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
+  event.respondWith(
+    caches.match(request)
+      .then((cached) => cached ?? fetch(request))
+      .catch(() => new Response("This resource is unavailable while you are offline.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      }))
+  );
 });
 
 self.addEventListener("push", (event) => {

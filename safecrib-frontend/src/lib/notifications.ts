@@ -1,6 +1,7 @@
 "use client";
 
 import { io, type Socket } from "socket.io-client";
+import { getBackendOrigin } from "@/lib/backend-origin";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -70,10 +71,7 @@ export function connectNotificationSocket(): Socket | null {
     socketSubscribers = 0;
   }
 
-  const origin = process.env.NEXT_PUBLIC_API_ORIGIN
-    ?? process.env.NEXT_PUBLIC_API_URL
-    ?? process.env.NEXT_PUBLIC_BACKEND_URL
-    ?? "https://safecrib.onrender.com";
+  const origin = getBackendOrigin();
   let backendOrigin: string;
   try {
     const parsed = new URL(origin);
@@ -86,7 +84,7 @@ export function connectNotificationSocket(): Socket | null {
 
   notificationSocket = io(`${backendOrigin}/notifications`, {
     auth: (callback) => callback({ token: localStorage.getItem("safecrib_access_token") }),
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,

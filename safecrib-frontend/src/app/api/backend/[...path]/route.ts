@@ -1,14 +1,7 @@
-function getApiOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_API_ORIGIN
-    ?? process.env.NEXT_PUBLIC_API_URL
-    ?? process.env.NEXT_PUBLIC_BACKEND_URL
-    ?? "https://safecrib.onrender.com";
-
-  return configured.replace(/\/+$/, "");
-}
+import { getBackendOrigin } from "@/lib/backend-origin";
 
 async function forward(request: Request, path: string[]) {
-  const apiOrigin = getApiOrigin();
+  const apiOrigin = getBackendOrigin();
   const target = new URL(path.join("/"), `${apiOrigin}/`);
   target.search = new URL(request.url).search;
 

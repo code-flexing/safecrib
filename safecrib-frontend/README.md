@@ -64,7 +64,7 @@ flowchart LR
 		Browser -->|attach READY media ID| API
 ```
 
-The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to `https://pible.onrender.com/api/v1/...`. Login and registration use dedicated Next routes. Listing media uses signed upload payloads and direct-to-Cloudinary uploads; an uploaded asset is not treated as attached until the listing API returns it.
+The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to the configured API origin. Login, registration, and Socket.IO use the same origin selection. In development the default is `http://localhost:3001`; in production it is `https://safecrib.onrender.com`. Set `NEXT_PUBLIC_API_URL` to override either value.
 
 ### Account and review flow
 
@@ -159,16 +159,17 @@ The UI uses the App Router, React 19, TypeScript, Tailwind CSS, and small local 
 
 - Node.js 20 LTS recommended
 - npm
-- Network access to the configured SafeCrib API for authenticated flows
+- A local backend and Redis for local authenticated and real-time notification flows
 
 ### Install and start
 
 ```sh
 npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. The API is remote; UI routes can render without credentials, but protected workflows require a valid test account and backend access.
+Start the backend and Redis using the instructions in `../safecrib-backend/README.md`, then open `http://localhost:3000`. Set `NEXT_PUBLIC_API_URL` in `.env.local` if the backend runs on a different origin.
 
 ### Useful commands
 
@@ -186,8 +187,8 @@ There is currently no automated test script configured in `package.json`. Before
 
 ## API and media integration
 
-- **Live API docs:** [pible.onrender.com/api/v1/docs](https://pible.onrender.com/api/v1/docs#/)
-- **API origin:** currently hardcoded as `https://pible.onrender.com` in the backend proxy and auth route handlers. Before adding staging/production environments, move this to validated environment configuration and document each deployment target.
+- **Live API docs:** [safecrib.onrender.com/api/v1/docs](https://safecrib.onrender.com/api/v1/docs#/)
+- **API origin:** `NEXT_PUBLIC_API_URL` (or `NEXT_PUBLIC_API_ORIGIN` / `NEXT_PUBLIC_BACKEND_URL`) configures the API proxy, login/registration, and notification Socket.IO client. Local development defaults to `http://localhost:3001`; production defaults to `https://safecrib.onrender.com`.
 - **Authentication:** access tokens are sent as `Authorization: Bearer <token>`. The client refreshes sessions and keeps current-user data in a best-effort browser cache for fast page transitions.
 - **Errors:** handle `401` as an expired/missing session, `403` as an authorization decision, `404` as a missing resource, and `409` as a state/limit conflict. Do not silently override server decisions in client state.
 - **Uploads:** request a signed upload, upload bytes to Cloudinary, wait for `READY`, then attach the media ID to the listing. Video readiness is webhook-driven.
@@ -236,7 +237,7 @@ Confirm these with the backend team before treating the corresponding flows as e
 - [Provider Page backend handoff](docs/backend-provider-page-implementation.md)
 - [Provider workflow direct testing](docs/provider-workflow-testing.md)
 - [Verification badges and account settings](docs/verification-badge-frontend.md)
-- [Live SafeCrib API reference](https://pible.onrender.com/api/v1/docs#/)
+- [Live SafeCrib API reference](https://safecrib.onrender.com/api/v1/docs#/)
 
 ## Contribution checklist
 
