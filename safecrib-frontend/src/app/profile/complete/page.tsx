@@ -1596,11 +1596,12 @@ export default function CompleteStudentProfilePage() {
               </p>
             )}
 
-            <div className="sm:col-span-2 flex items-center justify-between gap-3">
+            <div className="sm:col-span-2 mt-2 flex flex-col-reverse gap-3 border-t border-black/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={handleBackClick}
+                className="w-full sm:w-auto"
               >
                 Back
               </Button>
@@ -1609,6 +1610,7 @@ export default function CompleteStudentProfilePage() {
                 <Button
                   type="button"
                   onClick={handleNextClick}
+                  className="w-full sm:w-auto"
                 >
                   Next
                 </Button>
@@ -1620,6 +1622,7 @@ export default function CompleteStudentProfilePage() {
                     uploadingStudentship ||
                     uploadingAvatar
                   }
+                  className="w-full sm:w-auto"
                 >
                   {status === "rejected"
                     ? "Update and resubmit"
