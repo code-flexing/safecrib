@@ -186,13 +186,13 @@ export default function NewHomePage() {
         file,
         kind === "photo" ? "LISTING_PHOTO" : "LISTING_VIDEO",
         listing.id,
-        (percent) => setMediaProgress({ kind, stage: "uploading", percent }),
+        ({ stage, percent }) => setMediaProgress({ kind, stage, percent }),
       );
       setMediaProgress({ kind, stage: "processing", percent: 100 });
       if (uploaded.status !== "READY") {
         await waitForMediaReady(uploaded.mediaId, {
-          ...(kind === "photo" && uploaded.completionPayload ? { completionPayload: uploaded.completionPayload } : {}),
-          webhookOnly: kind === "video",
+          ...(uploaded.completionPayload ? { completionPayload: uploaded.completionPayload } : {}),
+          videoUpload: kind === "video",
         });
       }
       setMediaProgress({ kind, stage: "attaching", percent: 100 });

@@ -86,6 +86,19 @@ export interface UploadResponseSignatureParams {
   signature: string;
 }
 
+export interface CloudinaryAssetMetadata {
+  publicId: string;
+  assetId: string;
+  resourceType: string;
+  version: number;
+  bytes: number;
+  format: string;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  etag: string | null;
+}
+
 export const STORAGE_PROVIDER = Symbol('STORAGE_PROVIDER');
 
 export interface StorageProvider {
@@ -97,6 +110,12 @@ export interface StorageProvider {
 
   /** Verify the signature included in a successful Cloudinary upload response. */
   verifyUploadResponseSignature(params: UploadResponseSignatureParams): boolean;
+
+  /** Fetch authenticated Cloudinary metadata to independently verify an upload. */
+  getAssetMetadata(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw',
+  ): Promise<CloudinaryAssetMetadata>;
 
   /**
    * Build a public CDN delivery URL without any network call.

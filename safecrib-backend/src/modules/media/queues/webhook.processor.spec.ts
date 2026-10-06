@@ -188,5 +188,16 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
         callProcess({ notification_type: 'moderation', public_id: 'some/id' }),
       ).resolves.not.toThrow();
     });
+
+    it('does not treat an eager transformation event as the original upload completion', async () => {
+      await callProcess({
+        notification_type: 'eager',
+        public_id: 'prod/listings/video/l1/uuid',
+        eager: [{ status: 'complete' }],
+      });
+
+      expect(repo.markReady).not.toHaveBeenCalled();
+      expect(repo.markFailed).not.toHaveBeenCalled();
+    });
   });
 });

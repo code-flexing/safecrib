@@ -71,6 +71,18 @@ function makeStorage(): StorageProvider {
     })),
     verifyWebhook: vi.fn(() => ({ valid: true })),
     verifyUploadResponseSignature: vi.fn(() => true),
+    getAssetMetadata: vi.fn(async (publicId: string, resourceType: string) => ({
+      publicId,
+      assetId: 'asset_abc',
+      resourceType,
+      version: 1726780800,
+      bytes: 2 * 1024 * 1024,
+      format: 'mp4',
+      width: 1280,
+      height: 720,
+      durationSec: 30,
+      etag: 'etag_video',
+    })),
   };
 }
 
@@ -504,6 +516,75 @@ describe('MediaService', () => {
       })).resolves.toEqual({
         media: { id: 'media_1', status: 'READY' },
       });
+      expect(repo.markReady).not.toHaveBeenCalled();
+    });
+
+    it('accepts a Cloudinary public ID with the same unique suffix and stores its canonical value', async () => {
+      const repo = makeRepo(makeMedia());
+      const svc = makeService({ repo });
+      const cloudinaryPublicId = 'uuid';
+
+      await expect(svc.completeUpload('media_1', 'user_1', {
+        ...uploadResponse,
+        public_id: cloudinaryPublicId,
+      })).resolves.toEqual({ media: { id: 'media_1', status: 'READY' } });
+
+      expect(repo.markReady).toHaveBeenCalledWith('media_1', expect.objectContaining({
+        publicId: cloudinaryPublicId,
+      }));
+    });
+
+    it('completes listing videos after verifying their metadata with Cloudinary', async () => {
+      const video = makeMedia({
+        purpose: 'LISTING_VIDEO',
+        resourceType: 'VIDEO',
+        publicId: 'prod/listings/video/l1/uuid',
+      });
+      const repo = makeRepo(video);
+      const storage = makeStorage();
+      const svc = makeService({ repo, storage });
+
+      await expect(svc.completeUpload('media_1', 'user_1', {
+        ...uploadResponse,
+        public_id: video.publicId,
+        resource_type: 'video',
+      })).resolves.toEqual({ media: { id: 'media_1', status: 'READY' } });
+
+      expect(storage.getAssetMetadata).toHaveBeenCalledWith(video.publicId, 'video');
+      expect(repo.markReady).toHaveBeenCalledWith('media_1', expect.objectContaining({
+        bytes: 2 * 1024 * 1024,
+        format: 'mp4',
+        durationSec: 30,
+      }));
+    });
+
+    it('rejects videos Cloudinary reports above the configured size limit', async () => {
+      const video = makeMedia({
+        purpose: 'LISTING_VIDEO',
+        resourceType: 'VIDEO',
+        publicId: 'prod/listings/video/l1/uuid',
+      });
+      const storage = makeStorage();
+      vi.mocked(storage.getAssetMetadata).mockResolvedValue({
+        publicId: video.publicId,
+        assetId: uploadResponse.asset_id,
+        resourceType: 'video',
+        version: uploadResponse.version,
+        bytes: 100 * 1024 * 1024 + 1,
+        format: 'mp4',
+        width: 1280,
+        height: 720,
+        durationSec: 30,
+        etag: 'etag_video',
+      });
+      const repo = makeRepo(video);
+      const svc = makeService({ repo, storage });
+
+      await expect(svc.completeUpload('media_1', 'user_1', {
+        ...uploadResponse,
+        public_id: video.publicId,
+        resource_type: 'video',
+      })).rejects.toThrow('exceeds the allowed size');
       expect(repo.markReady).not.toHaveBeenCalled();
     });
 

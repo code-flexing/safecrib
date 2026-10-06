@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  BadGatewayException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -31,6 +32,14 @@ import type {
   UploadSignatureResponse,
 } from '../dto/media.dto.js';
 import { NAMED_TRANSFORMATIONS } from '../policies/purpose-policies.js';
+
+function cloudinaryPublicIdMatches(expected: string, actual: string): boolean {
+  const expectedParts = expected.split('/');
+  const actualParts = actual.split('/');
+  const shorter = expectedParts.length <= actualParts.length ? expectedParts : actualParts;
+  const longer = expectedParts.length <= actualParts.length ? actualParts : expectedParts;
+  return shorter.every((part, index) => part === longer[longer.length - shorter.length + index]);
+}
 
 @Injectable()
 export class MediaService {
@@ -220,7 +229,7 @@ export class MediaService {
 
     if (media.purpose === 'LISTING_VIDEO') {
       throw new BadRequestException(
-        'Listing videos must be confirmed by the verified Cloudinary webhook',
+        'Listing videos must be completed with the verified Cloudinary upload response',
       );
     }
 
@@ -266,13 +275,6 @@ export class MediaService {
 
     const resourceType = this.resourceTypeToSdk(media.resourceType);
 
-    if (dto.public_id !== media.publicId) {
-      this.logger.warn(
-        `Upload completion public_id mismatch: mediaId=${media.id} stored=${media.publicId} received=${dto.public_id}`,
-      );
-      throw new BadRequestException('Cloudinary public_id does not match the stored media record');
-    }
-
     if (dto.resource_type.trim().toLowerCase() !== resourceType) {
       this.logger.warn(
         `Upload completion resource_type mismatch: mediaId=${media.id} stored=${resourceType} received=${dto.resource_type}`,
@@ -288,14 +290,42 @@ export class MediaService {
       throw new BadRequestException('Invalid Cloudinary upload response signature');
     }
 
+    if (!cloudinaryPublicIdMatches(media.publicId, dto.public_id)) {
+      this.logger.warn(
+        `Upload completion public_id mismatch: mediaId=${media.id} stored=${media.publicId} received=${dto.public_id}`,
+      );
+      throw new BadRequestException('Cloudinary public_id does not match the stored media record');
+    }
+
     if (media.status !== 'PENDING') {
       throw new ForbiddenException(`Cannot complete media in status "${media.status}"`);
     }
 
+    let assetMetadata: Awaited<ReturnType<typeof this.storage.getAssetMetadata>> | undefined;
     if (media.purpose === 'LISTING_VIDEO') {
-      throw new BadRequestException(
-        'Listing videos must be completed by the verified Cloudinary webhook',
-      );
+      try {
+        assetMetadata = await this.storage.getAssetMetadata(dto.public_id, 'video');
+      } catch (error) {
+        this.logger.warn(
+          `Cloudinary metadata verification failed: mediaId=${media.id} publicId=${dto.public_id} error=${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw new BadGatewayException('Cloudinary has not confirmed the uploaded video yet. Retry shortly.');
+      }
+      const maxBytes = PURPOSE_POLICIES[media.purpose].maxBytes;
+      if (
+        assetMetadata.publicId !== dto.public_id
+        || assetMetadata.assetId !== dto.asset_id
+        || assetMetadata.resourceType.toLowerCase() !== 'video'
+        || assetMetadata.version !== dto.version
+        || !Number.isInteger(assetMetadata.bytes)
+        || assetMetadata.bytes < 1
+        || assetMetadata.bytes > maxBytes
+      ) {
+        this.logger.warn(
+          `Cloudinary metadata did not match upload completion: mediaId=${media.id} publicId=${dto.public_id} assetId=${dto.asset_id} bytes=${assetMetadata.bytes}`,
+        );
+        throw new BadRequestException('The uploaded video metadata is invalid or exceeds the allowed size.');
+      }
     }
 
     const idempotencyKey = `${dto.asset_id}:${dto.version}`;
@@ -307,6 +337,15 @@ export class MediaService {
     await this.mediaRepo.markReady(mediaId, {
       assetId: dto.asset_id,
       version: BigInt(dto.version),
+      publicId: dto.public_id,
+      ...(assetMetadata ? {
+        format: assetMetadata.format,
+        bytes: assetMetadata.bytes,
+        width: assetMetadata.width ?? undefined,
+        height: assetMetadata.height ?? undefined,
+        durationSec: assetMetadata.durationSec ?? undefined,
+        etag: assetMetadata.etag ?? undefined,
+      } : {}),
       idempotencyKey,
     });
 

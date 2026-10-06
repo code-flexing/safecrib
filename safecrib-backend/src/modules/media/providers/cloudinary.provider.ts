@@ -12,6 +12,7 @@ import type {
   UploadSignatureParams,
   UploadSignatureResult,
   UploadResponseSignatureParams,
+  CloudinaryAssetMetadata,
   WebhookVerificationResult,
 } from './storage-provider.interface.js';
 
@@ -95,6 +96,28 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
       Buffer.from(expected, 'hex'),
       Buffer.from(params.signature, 'hex'),
     );
+  }
+
+  async getAssetMetadata(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw',
+  ): Promise<CloudinaryAssetMetadata> {
+    const resource = await cloudinary.api.resource(publicId, {
+      resource_type: resourceType,
+      type: 'upload',
+    });
+    return {
+      publicId: resource.public_id,
+      assetId: resource.asset_id,
+      resourceType: resource.resource_type,
+      version: resource.version,
+      bytes: resource.bytes,
+      format: resource.format,
+      width: resource.width ?? null,
+      height: resource.height ?? null,
+      durationSec: typeof resource.duration === 'number' ? resource.duration : null,
+      etag: resource.etag ?? null,
+    };
   }
 
   getDeliveryUrl(publicId: string, options: DeliveryUrlOptions = {}): string {

@@ -55,6 +55,21 @@ class MockStorageProvider implements StorageProvider {
     return params.signature === 'mock_upload_signature';
   }
 
+  async getAssetMetadata(publicId: string, resourceType: 'image' | 'video' | 'raw') {
+    return {
+      publicId,
+      assetId: 'mock_asset_id',
+      resourceType,
+      version: 1726780800,
+      bytes: 1024,
+      format: 'mp4',
+      width: 1280,
+      height: 720,
+      durationSec: 30,
+      etag: 'mock_etag',
+    };
+  }
+
   getDeliveryUrl(publicId: string, _options?: DeliveryUrlOptions): string {
     return `https://res.cloudinary.com/mock/image/upload/${publicId}`;
   }

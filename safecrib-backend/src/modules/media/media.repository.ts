@@ -82,6 +82,7 @@ export class MediaRepository {
       durationSec?: number;
       etag?: string;
       idempotencyKey: string;
+      publicId?: string;
     },
   ): Promise<Media> {
     return this.prisma.media.update({
@@ -89,6 +90,7 @@ export class MediaRepository {
       data: {
         status: 'READY',
         readyAt: new Date(),
+        publicId: data.publicId,
         assetId: data.assetId,
         version: data.version,
         format: data.format,

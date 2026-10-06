@@ -145,14 +145,17 @@ the same repository `markReady` transition used by direct completion.
 
 Webhook delivery remains a fallback if the client cannot reach completion. A
 client may retry completion after an uncertain network result; it is safe to
-repeat. `LISTING_VIDEO` is intentionally different: its actual uploaded byte
-count must pass webhook validation, so clients must wait for the media status to
-become ready before attaching a video. Clients should not call `/complete` for
-listing videos; that endpoint intentionally rejects them.
+repeat. For `LISTING_VIDEO`, `/complete` independently fetches the uploaded
+asset's metadata from Cloudinary and verifies its asset ID, version, resource
+type, and actual byte count before marking it ready. The webhook remains a
+fallback; clients do not need to wait for it after a successful completion.
+Cloudinary can represent the same upload public ID with or without its folder
+prefix, so completion accepts only IDs where one full path is a suffix of the
+other and stores the canonical ID returned by Cloudinary.
 
 The legacy `POST /api/v1/media/{mediaId}/confirm` endpoint remains for
 compatibility. New clients should use `/complete`, which verifies Cloudinary's
-response signature and exact upload identity.
+response signature and upload identity.
 
 ## Recovery endpoints
 

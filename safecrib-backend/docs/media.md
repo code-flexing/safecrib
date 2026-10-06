@@ -70,9 +70,15 @@ Client                  SafeCrib API              Cloudinary
 media record is ready. After a successful direct upload, call the authenticated
 `POST /media/:id/complete` endpoint immediately. The endpoint verifies the
 Cloudinary response signature and the upload's `public_id`/resource type against
-the owned media row. The webhook remains a fallback and uses the same repository
-READY transition. Listing videos still require webhook processing because their
-actual byte count is checked there.
+the owned media row. Cloudinary may represent the same public ID with or without
+its folder prefix; completion accepts only IDs where one full path is a suffix
+of the other, then stores the canonical Cloudinary ID. The webhook remains a
+fallback and uses the same repository READY transition. Listing video clients
+can complete immediately: the API fetches the asset from Cloudinary's
+authenticated Admin API and validates its asset ID, version, resource type, and
+actual byte count before marking the media ready. Eager-transformation
+notifications are not upload completion events and must never mark a media
+record ready or failed.
 
 The verified webhook worker locates the original pending record by its Cloudinary
 `public_id` and marks that record `READY` after checking the reported file size.

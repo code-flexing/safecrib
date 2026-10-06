@@ -30,8 +30,12 @@ export class MediaWebhookProcessor implements OnModuleInit {
   private async process(payload: WebhookNotificationPayload): Promise<void> {
     const notificationType = payload.notification_type;
 
-    if (notificationType === 'upload' || notificationType === 'eager') {
+    if (notificationType === 'upload') {
       await this.handleUploadComplete(payload);
+    } else if (notificationType === 'eager') {
+      this.logger.debug(
+        `Eager transformation completed for publicId=${payload.public_id ?? 'unknown'}; upload readiness is handled by the upload event or verified client completion`,
+      );
     } else if (notificationType === 'delete') {
       await this.handleDeleteComplete(payload);
     } else if (notificationType === 'error') {

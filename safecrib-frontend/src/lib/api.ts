@@ -491,7 +491,7 @@ export type CloudinaryCompletionPayload = {
   signature: string;
 };
 
-export type MediaUploadProgress = (percent: number) => void;
+export type MediaUploadProgress = (progress: { stage: "uploading" | "processing"; percent: number }) => void;
 
 export async function completeMediaUpload(mediaId: string, payload: CloudinaryCompletionPayload) {
   const response = unwrapData<unknown>(await apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaId)}/complete`, {
@@ -567,7 +567,7 @@ export async function uploadSignedMedia(
     request.open("POST", uploadUrl);
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
-        onUploadProgress?.(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        onUploadProgress?.({ stage: "uploading", percent: Math.min(100, Math.round((event.loaded / event.total) * 100)) });
       }
     });
     request.addEventListener("load", () => {
@@ -587,7 +587,7 @@ export async function uploadSignedMedia(
         reject(new ApiError(request.status, message));
         return;
       }
-      onUploadProgress?.(100);
+      onUploadProgress?.({ stage: "processing", percent: 100 });
       resolve(recordValue(result));
     });
     request.addEventListener("error", () => reject(new Error("The file upload could not reach Cloudinary. Check your connection and retry.")));
@@ -624,10 +624,7 @@ export async function uploadSignedMedia(
   ].join(", ");
   let status = String(signature.status ?? media.status ?? "PENDING").toUpperCase();
   let completionError: string | undefined;
-  if (completionPayload && identityMismatch) {
-    status = "PENDING";
-    completionError = `Cloudinary response does not match the signed upload (${identityCheckDetails}).`;
-  } else if (completionPayload && purpose !== "LISTING_VIDEO") {
+  if (completionPayload) {
     try {
       status = await completeMediaUpload(mediaId, completionPayload);
     } catch (error) {
@@ -638,11 +635,12 @@ export async function uploadSignedMedia(
         && error.status !== 408
         && error.status !== 429
       ) {
-        throw error;
+        const reason = error instanceof Error ? error.message : "SafeCrib rejected the upload completion request.";
+        throw new Error(`${reason} Client comparison: ${identityCheckDetails}.`);
       }
       status = "PENDING";
       const reason = error instanceof Error ? error.message : "SafeCrib could not confirm the uploaded media.";
-      completionError = `${reason} Client comparison: ${identityCheckDetails}.`;
+      completionError = `${reason}${identityMismatch ? ` Client comparison: ${identityCheckDetails}.` : ""}`;
     }
   } else if (purpose !== "LISTING_VIDEO") {
     const missingFields = Object.entries(completionValues).filter(([, value]) => value === undefined || value === null || value === "").map(([key]) => key);
@@ -671,7 +669,7 @@ export async function uploadListingMedia(
 
 export async function waitForMediaReady(
   mediaId: string,
-  options: { completionPayload?: CloudinaryCompletionPayload; webhookOnly?: boolean } = {},
+  options: { completionPayload?: CloudinaryCompletionPayload; videoUpload?: boolean } = {},
 ) {
   let statusEndpointAvailable = true;
   let completionError: string | undefined;
@@ -749,8 +747,8 @@ export async function waitForMediaReady(
   if (completionError) {
     throw new Error(`The upload is still pending. SafeCrib could not confirm it: ${completionError}`);
   }
-  throw new Error(options.webhookOnly
-    ? "The video upload is still pending because SafeCrib has not received its Cloudinary processing notification. Your draft is saved; contact support rather than uploading it again."
+  throw new Error(options.videoUpload
+    ? "SafeCrib has not yet verified this video with Cloudinary. Your draft is saved; refresh media shortly and do not upload the same file again."
     : "Media processing is taking longer than expected. Your draft is saved; refresh media before trying again.");
 }
 

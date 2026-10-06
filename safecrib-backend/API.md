@@ -77,7 +77,7 @@ Uploads use a signed direct-to-Cloudinary flow. The frontend does not send the i
 
 2. POST the file and every field in the returned `uploadPayload` as `multipart/form-data` to the returned `uploadUrl`. This is Cloudinary's upload API endpoint; do not construct it from a delivery URL.
 
-3. After Cloudinary returns `2xx`, call `POST /media/:mediaId/complete` with its `asset_id`, `public_id`, `resource_type`, `version`, and `signature`. Treat its `{ "media": { "id": "<mediaId>", "status": "READY" } }` response as confirmation; do not wait for the webhook for normal agent photos or license documents.
+3. After Cloudinary returns `2xx`, call `POST /media/:mediaId/complete` with its `asset_id`, `public_id`, `resource_type`, `version`, and `signature`. Treat its `{ "media": { "id": "<mediaId>", "status": "READY" } }` response as confirmation; video completion also verifies the asset metadata and actual byte count against Cloudinary's API, so do not wait for the webhook after a successful response.
 
 4. Read completed media with `GET /media/:mediaId/access`. Public profile images can return a permanent CDN URL. License documents must only be accessed through this authenticated route, which returns a temporary signed URL; never persist or expose a permanent public URL. Use `?transformation=avatar_sm` or `avatar_md` for profile-picture sizing.
 
