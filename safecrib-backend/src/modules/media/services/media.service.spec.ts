@@ -359,7 +359,9 @@ describe('MediaService', () => {
         ownerId: 'user_1',
       });
       const storage = makeStorage();
-      const svc = makeService({ repo: makeRepo(media), storage });
+      const policy = makePolicy();
+      vi.mocked(policy.requiresSignedUrl).mockReturnValue(true);
+      const svc = makeService({ repo: makeRepo(media), storage, policy });
 
       await svc.getAccessUrl('media_1', 'user_1', 'USER', '127.0.0.1', 'vitest', 'avatar_sm');
 
