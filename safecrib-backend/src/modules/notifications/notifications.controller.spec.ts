@@ -23,6 +23,23 @@ describe('NotificationsController', () => {
     expect(response.unreadCount).toBe(3);
   });
 
+  it('falls back to an empty state when the notifications table is missing', async () => {
+    const prisma = {
+      notification: {
+        findMany: vi.fn().mockRejectedValue(Object.assign(new Error('Table does not exist'), { code: 'P2021' })),
+        count: vi.fn().mockRejectedValue(Object.assign(new Error('Table does not exist'), { code: 'P2021' })),
+      },
+    };
+    const controller = new NotificationsController(prisma as never);
+
+    await expect(controller.list({ id: 'user-1' }, undefined, undefined)).resolves.toEqual({
+      notifications: [],
+      unreadCount: 0,
+      nextCursor: null,
+    });
+    await expect(controller.unreadCount({ id: 'user-1' })).resolves.toEqual({ count: 0 });
+  });
+
   it('does not mark or reveal another user’s notification', async () => {
     const prisma = {
       notification: {

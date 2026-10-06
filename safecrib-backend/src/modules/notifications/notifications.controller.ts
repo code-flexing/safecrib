@@ -39,6 +39,14 @@ function encodeCursor(createdAt: Date, id: string): string {
   return Buffer.from(`${createdAt.toISOString()}|${id}`).toString('base64url');
 }
 
+function isMissingTableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === 'P2021' || (
+    typeof candidate.message === 'string' && candidate.message.includes('does not exist in the current database')
+  );
+}
+
 @ApiTags('Notifications')
 @ApiBearerAuth('access-token')
 @Controller('notifications')
@@ -99,6 +107,15 @@ export class NotificationsController {
     return this.push.removeSubscription(user.id, subscription.endpoint);
   }
 
+  private async withNotificationTableFallback<T>(fallback: T, callback: () => Promise<T>): Promise<T> {
+    try {
+      return await callback();
+    } catch (error) {
+      if (isMissingTableError(error)) return fallback;
+      throw error;
+    }
+  }
+
   @Get()
   @ApiOperation({ summary: 'List the authenticated user notifications' })
   async list(
@@ -112,86 +129,100 @@ export class NotificationsController {
     }
     const limit = Math.min(requestedLimit, MAX_PAGE_SIZE);
     const cursor = decodeCursor(before);
-    const rows = await this.prisma.notification.findMany({
-      where: {
-        userId: user.id,
-        ...(cursor ? {
-          OR: [
-            { createdAt: { lt: cursor.createdAt } },
-            { createdAt: cursor.createdAt, id: { lt: cursor.id } },
-          ],
-        } : {}),
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        body: true,
-        href: true,
-        data: true,
-        readAt: true,
-        createdAt: true,
-      },
+    return this.withNotificationTableFallback({
+      notifications: [],
+      unreadCount: 0,
+      nextCursor: null,
+    }, async () => {
+      const rows = await this.prisma.notification.findMany({
+        where: {
+          userId: user.id,
+          ...(cursor ? {
+            OR: [
+              { createdAt: { lt: cursor.createdAt } },
+              { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+            ],
+          } : {}),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          href: true,
+          data: true,
+          readAt: true,
+          createdAt: true,
+        },
+      });
+      const hasMore = rows.length > limit;
+      const notifications = rows.slice(0, limit);
+      const unreadCount = await this.prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      });
+      const last = notifications.at(-1);
+      return {
+        notifications,
+        unreadCount,
+        nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
+      };
     });
-    const hasMore = rows.length > limit;
-    const notifications = rows.slice(0, limit);
-    const unreadCount = await this.prisma.notification.count({
-      where: { userId: user.id, readAt: null },
-    });
-    const last = notifications.at(-1);
-    return {
-      notifications,
-      unreadCount,
-      nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
-    };
   }
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get the authenticated user unread notification count' })
   async unreadCount(@CurrentUser() user: { id: string }) {
-    const count = await this.prisma.notification.count({
-      where: { userId: user.id, readAt: null },
+    return this.withNotificationTableFallback({ count: 0 }, async () => {
+      const count = await this.prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      });
+      return { count };
     });
-    return { count };
   }
 
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all authenticated user notifications as read' })
   async markAllRead(@CurrentUser() user: { id: string }) {
-    const result = await this.prisma.notification.updateMany({
-      where: { userId: user.id, readAt: null },
-      data: { readAt: new Date() },
+    return this.withNotificationTableFallback({ updated: 0 }, async () => {
+      const result = await this.prisma.notification.updateMany({
+        where: { userId: user.id, readAt: null },
+        data: { readAt: new Date() },
+      });
+      return { updated: result.count };
     });
-    return { updated: result.count };
   }
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark one owned notification as read' })
   async markRead(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    const result = await this.prisma.notification.updateMany({
-      where: { id, userId: user.id, readAt: null },
-      data: { readAt: new Date() },
+    return this.withNotificationTableFallback({ id, readAt: null, updated: false }, async () => {
+      const result = await this.prisma.notification.updateMany({
+        where: { id, userId: user.id, readAt: null },
+        data: { readAt: new Date() },
+      });
+      const notification = await this.prisma.notification.findFirst({
+        where: { id, userId: user.id },
+        select: { id: true, readAt: true },
+      });
+      if (!notification) throw new NotFoundException('Notification not found');
+      return { ...notification, updated: result.count > 0 };
     });
-    const notification = await this.prisma.notification.findFirst({
-      where: { id, userId: user.id },
-      select: { id: true, readAt: true },
-    });
-    if (!notification) throw new NotFoundException('Notification not found');
-    return { ...notification, updated: result.count > 0 };
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete one owned notification' })
   async deleteNotification(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    const result = await this.prisma.notification.deleteMany({
-      where: { id, userId: user.id },
+    return this.withNotificationTableFallback({ deleted: false, unreadCount: 0 }, async () => {
+      const result = await this.prisma.notification.deleteMany({
+        where: { id, userId: user.id },
+      });
+      if (!result.count) throw new NotFoundException('Notification not found');
+      const unreadCount = await this.prisma.notification.count({
+        where: { userId: user.id, readAt: null },
+      });
+      return { deleted: true, unreadCount };
     });
-    if (!result.count) throw new NotFoundException('Notification not found');
-    const unreadCount = await this.prisma.notification.count({
-      where: { userId: user.id, readAt: null },
-    });
-    return { deleted: true, unreadCount };
   }
 }
