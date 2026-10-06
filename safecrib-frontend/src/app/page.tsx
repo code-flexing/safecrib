@@ -223,7 +223,7 @@ export default function Home() {
   useEffect(() => {
     if (!menuOpen) return;
 
-    const handleOutsideClick = (event: MouseEvent) => {
+    const handleOutsideClick = (event: Event) => {
       const target = event.target as Node | null;
       const mobileToggle = document.querySelector('[aria-controls="mobile-navigation"]');
       const mobileNav = document.getElementById("mobile-navigation");
@@ -233,11 +233,11 @@ export default function Home() {
     };
 
     document.addEventListener("mousedown", handleOutsideClick);
-    document.addEventListener("touchstart", handleOutsideClick as EventListener);
+    document.addEventListener("touchstart", handleOutsideClick);
 
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("touchstart", handleOutsideClick as EventListener);
+      document.removeEventListener("touchstart", handleOutsideClick);
     };
   }, [menuOpen]);
 

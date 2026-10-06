@@ -8,7 +8,6 @@ import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIl
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
@@ -400,21 +399,6 @@ const cachedProfile = getCachedCurrentUser<Profile>();
       window.clearInterval(interval);
     };
   }, [accountStatus, profile?.role]);
-
-  const toggleBookmark = async (listingId: string) => {
-    const isSaved = bookmarkedIds.includes(listingId);
-    const message = accountMessage(accountStatus, isSaved ? "remove this saved listing" : "save this listing");
-    if (message) {
-      setActionMessage(message);
-      return;
-    }
-    try {
-      await apiFetch(`/api/v1/listings/${listingId}/bookmark`, { method: isSaved ? "DELETE" : "POST" });
-      setBookmarkedIds((current) => isSaved ? current.filter((id) => id !== listingId) : [...current, listingId]);
-    } catch {
-      setActionMessage("We could not update your saved listings. Please try again.");
-    }
-  };
 
   const toggleLike = async (listing: Listing) => {
     const actionKey = `like:${listing.id}`;
