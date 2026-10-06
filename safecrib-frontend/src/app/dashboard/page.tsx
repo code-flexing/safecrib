@@ -469,7 +469,17 @@ export default function DashboardPage() {
                             </button>
                           )}
                           {listing.ownerId && (
-                            <button type="button" onClick={() => { void toggleRecommendation(listing.ownerId); setOpenMenuId(null); }} disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)} className="block w-full px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ownerId = listing.ownerId;
+                                if (!ownerId) return;
+                                void toggleRecommendation(ownerId);
+                                setOpenMenuId(null);
+                              }}
+                              disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                              className="block w-full px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
                               {recommendedProviderIds.includes(listing.ownerId) ? "Remove recommendation" : "Recommend provider"}
                             </button>
                           )}
