@@ -146,7 +146,6 @@ export default function CompleteStudentProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploadingStudentship, setUploadingStudentship] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [uploadingCover, setUploadingCover] = useState(false);
   const [step, setStep] = useState(0);
   const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
   const [cancellingUpload, setCancellingUpload] = useState<string | null>(null);
@@ -322,15 +321,6 @@ export default function CompleteStudentProfilePage() {
     event.preventDefault();
     event.stopPropagation();
     previousStep();
-  };
-  const validate = () => {
-    const validationError = validateStep(step, form);
-    if (validationError) {
-      setError(validationError);
-      return false;
-    }
-    setError("");
-    return true;
   };
   const handleFormSubmit = async (event: FormEvent) => {
     event.preventDefault();

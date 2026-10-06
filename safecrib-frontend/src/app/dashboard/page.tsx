@@ -34,7 +34,6 @@ function resolveAccountName(profile: Profile | null) {
   return displayName(profile) || getAuthenticatedDisplayName() || emailNameFallback(profile?.email);
 }
 
-<<<<<<< HEAD
 function isUsableImageSource(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
 }
@@ -71,12 +70,6 @@ function getListingImageReference(listing: Listing): string | null {
   return null;
 }
 
-=======
-function isUsableImageSource(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
-}
-
->>>>>>> e8adeacdc0422394c74872a55986e00e0ddf859e
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
