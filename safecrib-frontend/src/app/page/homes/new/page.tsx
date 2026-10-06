@@ -180,7 +180,12 @@ export default function NewHomePage() {
     setNotice("Uploading file. It will be attached only after media processing completes.");
     try {
       const uploaded = await uploadListingMedia(file, kind === "photo" ? "LISTING_PHOTO" : "LISTING_VIDEO", listing.id);
-      if (uploaded.status !== "READY") await waitForMediaReady(uploaded.mediaId);
+      if (uploaded.status !== "READY") {
+        await waitForMediaReady(uploaded.mediaId, {
+          ...(kind === "photo" && uploaded.completionPayload ? { completionPayload: uploaded.completionPayload } : {}),
+          webhookOnly: kind === "video",
+        });
+      }
       await apiFetch(`/api/v1/listings/${encodeURIComponent(listing.id)}/${kind === "photo" ? "photos/media" : "video"}`, { method: "POST", body: JSON.stringify({ mediaId: uploaded.mediaId }) });
       await refreshListing();
       setNotice(kind === "photo" ? "Photo uploaded and attached." : "Video uploaded and attached.");

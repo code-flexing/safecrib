@@ -628,9 +628,29 @@ export async function uploadListingMedia(file: File, purpose: ListingMediaPurpos
   return uploadSignedMedia(file, purpose, listingId);
 }
 
-export async function waitForMediaReady(mediaId: string) {
+export async function waitForMediaReady(
+  mediaId: string,
+  options: { completionPayload?: CloudinaryCompletionPayload; webhookOnly?: boolean } = {},
+) {
   let statusEndpointAvailable = true;
+  let completionError: string | undefined;
   for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (
+      options.completionPayload
+      && (attempt === 0 || attempt % 4 === 0)
+    ) {
+      try {
+        await completeMediaUpload(mediaId, options.completionPayload);
+        return;
+      } catch (error) {
+        const retryable = error instanceof TypeError
+          || (error instanceof ApiError
+            && (error.status === 408 || error.status === 429 || error.status >= 500));
+        if (!retryable) throw error;
+        completionError = error instanceof Error ? error.message : "SafeCrib could not confirm the uploaded media.";
+      }
+    }
+
     if (statusEndpointAvailable) {
       let response: unknown;
       try {
@@ -682,9 +702,15 @@ export async function waitForMediaReady(mediaId: string) {
     }
     await new Promise((resolve) => window.setTimeout(resolve, 2000));
   }
-  throw new Error(statusEndpointAvailable
-    ? "Media processing is taking longer than expected. Your draft is saved; refresh media before trying again."
-    : "Media processing is still pending. The current API lacks an upload-status route, so deploy the updated backend or try again shortly.");
+  if (!statusEndpointAvailable) {
+    throw new Error("Media processing is still pending. The current API lacks an upload-status route, so deploy the updated backend or try again shortly.");
+  }
+  if (completionError) {
+    throw new Error(`The upload is still pending. SafeCrib could not confirm it: ${completionError}`);
+  }
+  throw new Error(options.webhookOnly
+    ? "The video upload is still pending because SafeCrib has not received its Cloudinary processing notification. Your draft is saved; contact support rather than uploading it again."
+    : "Media processing is taking longer than expected. Your draft is saved; refresh media before trying again.");
 }
 
 const resolvedMediaUrlPrefix = "safecrib_media_url:";
