@@ -449,21 +449,21 @@ export default function DashboardPage() {
                 className="relative z-10 overflow-visible rounded-2xl border border-black/10 bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:p-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="shrink-0">
+                  <div className="shrink-0 pt-0.5">
                     <ProfileAvatar src={null} alt={listing.title ?? "Home listing"} size="small" />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 leading-none">
                           <span className="truncate text-sm font-bold text-safecrib-black sm:text-[15px]">
                             {listing.title ?? "Verified home"}
                           </span>
                           <span className="hidden text-xs text-black/45 sm:inline">·</span>
                           <span className="text-[11px] text-black/45 sm:text-xs">{ownerLabel}</span>
                         </div>
-                        <p className="mt-1 text-xs text-black/60 sm:text-sm">
+                        <p className="mt-1 text-xs leading-5 text-black/60 sm:text-sm">
                           {listing.address ?? listing.campus ?? "Location details available"}
                         </p>
                       </div>
@@ -473,7 +473,7 @@ export default function DashboardPage() {
                           type="button"
                           aria-label="More options"
                           onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                          className="rounded-full p-1 text-black/50 transition hover:bg-black/[0.04]"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04]"
                         >
                           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
                         </button>
@@ -506,7 +506,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-black/75 sm:text-[15px]">
+                    <p className="mt-2 text-sm leading-6 text-black/75 sm:text-[15px]">
                       {listing.description ?? "View this home for more details."}
                     </p>
 
@@ -547,13 +547,13 @@ export default function DashboardPage() {
                         </button>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-black/70 sm:text-sm">
-                        <Link href={`/dashboard/listings/${listing.id}`} className="rounded-full bg-safecrib-green px-3 py-1.5 font-medium text-safecrib-white hover:bg-[#0a5f47]">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-black/70 sm:text-sm">
+                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex items-center justify-center rounded-full bg-safecrib-green px-3 py-1.5 font-medium text-safecrib-white hover:bg-[#0a5f47]" style={{ lineHeight: '1.2' }}>
                           View details
                         </Link>
 
                         {listing.ownerId && (
-                          <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="font-medium text-safecrib-green hover:underline">
+                          <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="inline-flex items-center justify-center font-medium text-safecrib-green hover:underline" style={{ lineHeight: '1.2' }}>
                             View provider
                           </Link>
                         )}
@@ -562,14 +562,14 @@ export default function DashboardPage() {
                           "UNVERIFIED",
                           "STUDENT",
                         ].includes(String(profile?.role ?? "").toUpperCase()) && (
-                          <Button type="button" variant="secondary" className="px-3 py-1.5 text-[11px] sm:text-xs" onClick={() => void toggleBookmark(listing.id)}>
+                          <Button type="button" variant="secondary" className="px-3 py-1.5 text-[11px] sm:text-xs" onClick={() => void toggleBookmark(listing.id)} style={{ lineHeight: '1.2' }}>
                             {bookmarkedIds.includes(listing.id) ? "Saved" : "Save"}
                           </Button>
                         )}
                       </div>
                     </div>
 
-                    <p className="mt-3 text-sm font-semibold text-safecrib-black sm:text-[15px]">
+                    <p className="mt-3 text-sm font-semibold text-safecrib-black sm:text-[15px]" style={{ lineHeight: '1.3' }}>
                       {typeof listing.price === "number" ? `₦${listing.price.toLocaleString()}` : "Price available in details"}
                     </p>
                   </div>
