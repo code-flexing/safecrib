@@ -586,12 +586,6 @@ export default function CompleteStudentProfilePage() {
   const [courseSelectionLocked, setCourseSelectionLocked] =
     useState(false);
 
-  useEffect(() => {
-    const nextCourseSearch = form.courseOfStudy ?? "";
-    setCourseSearch(nextCourseSearch);
-    setCourseSelectionLocked(Boolean(nextCourseSearch.trim()));
-  }, [form.courseOfStudy]);
-
   const courseSuggestions =
     courseSearch.trim() === ""
       ? []
