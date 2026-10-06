@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, authenticatedFetch, clearSession, unwrapData } from "@/lib/api";
 import { errorMessage, SupportConversation, supportTimestamp, unwrapSupportList } from "@/lib/support";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
 
@@ -63,7 +64,8 @@ export default function SupportPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f1f7f6] px-4 py-8 sm:px-8">
+    <main className="min-h-screen bg-[#f1f7f6] px-4 pb-24 pt-8 sm:px-8 md:pb-8">
+      <DashboardNav onCreatePage={() => router.push("/page/new")} pageStatus="none" />
       <section className="mx-auto max-w-6xl">
         <BackHomeLink />
 
