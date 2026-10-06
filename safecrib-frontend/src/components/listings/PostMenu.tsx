@@ -24,13 +24,19 @@ export function PostMenu({ items, triggerLabel = "More options", className = "" 
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
-          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && !menuRef.current.contains(target) &&
+          buttonRef.current && !buttonRef.current.contains(target)) {
         setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside as EventListener);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside as EventListener);
+    };
   }, []);
 
   useEffect(() => {

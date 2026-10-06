@@ -67,10 +67,10 @@ export default function ListingDetailPage() {
   useEffect(() => {
     if (!localStorage.getItem("safecrib_access_token")) { router.replace("/login"); return; }
     void Promise.all([
-      apiFetch<Listing>(`/api/v1/listings/${id}`),
+      cachedApiFetch<unknown>(`/api/v1/listings/${id}`),
       apiFetch<Profile>("/api/v1/users/me"),
-      apiFetch<ProviderPage>("/api/v1/provider-pages/me").catch(() => null),
-      apiFetch<ListingComment[]>(`/api/v1/listings/${encodeURIComponent(id)}/comments`).catch(() => null),
+      cachedApiFetch<unknown>("/api/v1/provider-pages/me").catch(() => null),
+      cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(id)}/comments`).catch(() => null),
     ]).then(async ([homeResponse, userResponse, pageResponse, commentsResponse]) => {
       const home = unwrapData<Listing>(homeResponse);
       const user = unwrapData<Profile>(userResponse);

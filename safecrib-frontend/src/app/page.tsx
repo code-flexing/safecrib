@@ -221,6 +221,27 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      const mobileToggle = document.querySelector('[aria-controls="mobile-navigation"]');
+      const mobileNav = document.getElementById("mobile-navigation");
+      if (!target || (!mobileToggle?.contains(target) && !mobileNav?.contains(target))) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick as EventListener);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick as EventListener);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
     const elements = document.querySelectorAll("[data-reveal]");
     if (!elements.length) return;
     const observer = new IntersectionObserver((entries) => {

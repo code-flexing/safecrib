@@ -151,20 +151,8 @@ export function ListingPost({
           </div>
         )}
 
-        {/* Price + chips row */}
+        {/* Feature chips */}
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
-          {listing.price != null ? (
-            <>
-              <span className="font-semibold text-safecrib-black text-base">
-                {formatPrice(listing.price, listing.discountAmount)}
-              </span>
-              <span className="text-xs text-black/50">/year</span>
-            </>
-          ) : (
-            <span className="text-sm font-medium text-black/50">Price on request</span>
-          )}
-
-          {/* Only render bedroom chip when the backend actually provides the value */}
           {typeof listing.bedrooms === "number" && listing.bedrooms > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
               <Icon name="bed" className="h-3 w-3" />
@@ -172,7 +160,6 @@ export function ListingPost({
             </span>
           )}
 
-          {/* Only render bathroom chip when the backend actually provides the value */}
           {typeof listing.bathrooms === "number" && listing.bathrooms > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
               <Icon name="droplet" className="h-3 w-3" />
@@ -180,7 +167,6 @@ export function ListingPost({
             </span>
           )}
 
-          {/* Property type chip — only when backend provides it */}
           {listing.propertyType && (
             <span className="inline-flex items-center rounded-full border border-black/15 px-2.5 py-1 text-xs text-black/60">
               {listing.propertyType}
@@ -209,8 +195,21 @@ export function ListingPost({
 
       {/* Media */}
       {mediaItems.length > 0 && (
-        <div className="px-4 pb-4">
-          <PostMedia media={mediaItems} />
+        <div className="relative px-4 pb-4">
+          <div className="relative">
+            <PostMedia media={mediaItems} />
+            {listing.price != null ? (
+              <div className="pointer-events-none absolute bottom-3 left-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-1.5 shadow-[0_10px_24px_rgba(11,12,14,0.12)] backdrop-blur-sm">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/45">From</span>
+                <span className="text-base font-semibold text-safecrib-black">{formatPrice(listing.price, listing.discountAmount)}</span>
+                <span className="text-[11px] text-black/45">/yr</span>
+              </div>
+            ) : (
+              <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-sm font-medium text-black/60 shadow-[0_10px_24px_rgba(11,12,14,0.12)] backdrop-blur-sm">
+                Price on request
+              </div>
+            )}
+          </div>
         </div>
       )}
 

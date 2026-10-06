@@ -1049,7 +1049,7 @@ export async function fetchPublicListings<T = unknown>(params: Record<string, st
     if (key !== "status") searchParams.set(key, String(value));
   });
   const path = `/api/v1/listings${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-  return apiFetch<T>(path);
+  return cachedApiFetch<T>(path);
 }
 
 export function normalizePageStatus(value: unknown): PageStatus {
