@@ -24,7 +24,9 @@ function keyToBase64Url(key: CryptoKey | ArrayBuffer | null): string {
   if (!bytes) return "";
   let binary = "";
   for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
+    const byte = bytes[index];
+    if (typeof byte !== "number") continue;
+    binary += String.fromCharCode(byte);
   }
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
