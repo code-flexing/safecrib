@@ -7,7 +7,7 @@ import { AccountSettingsPanel } from "@/components/settings/AccountSettingsPanel
 import { SettingsSignOutButton } from "@/components/settings/SettingsSignOutButton";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { VerificationOverview } from "@/components/verification/VerificationOverview";
-import { apiFetch, cachedCurrentUser, clearSession, isUnauthorizedError, normalizeAccountStatus, subscribeClientCacheUpdates, unwrapData, type AccountStatus } from "@/lib/api";
+import { apiFetch, cachedCurrentUser, clearSession, isUnauthorizedError, normalizeAccountStatus, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, type AccountStatus } from "@/lib/api";
 
 type User = {
   email?: string;
@@ -60,7 +60,14 @@ export default function SettingsPage() {
         router.replace("/login?reason=session-expired");
       }
     });
-    return () => { active = false; unsubscribeCache(); };
+
+    const handleSessionCleared = () => {
+      setUser(null);
+      setStatus("not_submitted");
+    };
+    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+
+    return () => { active = false; unsubscribeCache(); window.removeEventListener(userSessionClearedEvent, handleSessionCleared); };
   }, [router]);
 
   const role = String(user?.role ?? "").toUpperCase();

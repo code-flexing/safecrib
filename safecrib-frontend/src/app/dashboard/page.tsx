@@ -11,7 +11,7 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
@@ -102,9 +102,16 @@ export default function DashboardPage() {
         setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
       }
       const picture = currentUser.profilePicture ?? currentUser.studentProfile?.profilePicture;
+      if (currentUser.id) {
+        const cachedAvatar = getCachedUserAvatar(currentUser.id);
+        if (cachedAvatar) setProfileImage(cachedAvatar);
+      }
       const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) setProfileImage(cachedPicture);
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
+      if (cachedPicture) {
+        setProfileImage(cachedPicture);
+        if (currentUser.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+      }
+      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser.id) setCachedUserAvatar(currentUser.id, url, picture); } });
       return;
     }
 
@@ -112,9 +119,16 @@ export default function DashboardPage() {
       const student = unwrapData<StudentProfile>(value);
       const currentUser = getCachedCurrentUser<Profile>();
       const picture = currentUser?.profilePicture ?? student?.profilePicture;
+      if (currentUser?.id) {
+        const cachedAvatar = getCachedUserAvatar(currentUser.id);
+        if (cachedAvatar) setProfileImage(cachedAvatar);
+      }
       const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) setProfileImage(cachedPicture);
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
+      if (cachedPicture) {
+        setProfileImage(cachedPicture);
+        if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+      }
+      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture); } });
       return;
     }
 
@@ -123,9 +137,16 @@ export default function DashboardPage() {
       setPageStatus(normalizePageStatus(page?.status));
       const currentUser = getCachedCurrentUser<Profile>();
       const picture = currentUser?.profilePicture ?? page?.profilePicture;
+      if (currentUser?.id) {
+        const cachedAvatar = getCachedUserAvatar(currentUser.id);
+        if (cachedAvatar) setProfileImage(cachedAvatar);
+      }
       const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) setProfileImage(cachedPicture);
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) setProfileImage(url); });
+      if (cachedPicture) {
+        setProfileImage(cachedPicture);
+        if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+      }
+      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture); } });
       return;
     }
 
@@ -157,6 +178,24 @@ export default function DashboardPage() {
   }), []);
 
   useEffect(() => {
+    const handleSessionCleared = () => {
+      setProfile(null);
+      setVerification(null);
+      setAccountStatus("not_submitted");
+      setPageStatus("none");
+      setListings([]);
+      setBookmarkedIds([]);
+      setRecommendedProviderIds([]);
+      setRecommendationsLoaded(false);
+      setOpenSupportCount(0);
+      setProfileImage(null);
+      setResolvedListingImages({});
+    };
+    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+    return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
+  }, []);
+
+  useEffect(() => {
     setDashboardLoading(true);
     if (!localStorage.getItem("safecrib_access_token")) {
       router.replace("/login");
@@ -164,12 +203,19 @@ export default function DashboardPage() {
       return;
     }
 
-    const cachedProfile = getCachedCurrentUser<Profile>();
+const cachedProfile = getCachedCurrentUser<Profile>();
     if (cachedProfile) {
       setProfile({ ...cachedProfile, displayName: resolveAccountName(cachedProfile) });
       setVerification(normalizeVerificationStage(getPersistedVerification(cachedProfile.id)));
+      if (cachedProfile.id) {
+        const cachedAvatar = getCachedUserAvatar(cachedProfile.id);
+        if (cachedAvatar) setProfileImage(cachedAvatar);
+      }
       const cachedPicture = getCachedMediaUrl(cachedProfile.profilePicture ?? cachedProfile.studentProfile?.profilePicture);
-      if (cachedPicture) setProfileImage(cachedPicture);
+      if (cachedPicture) {
+        setProfileImage(cachedPicture);
+        if (cachedProfile.id) setCachedUserAvatar(cachedProfile.id, cachedPicture, cachedProfile.profilePicture ?? cachedProfile.studentProfile?.profilePicture);
+      }
     }
     else {
       const tokenName = getAuthenticatedDisplayName();
@@ -256,11 +302,21 @@ export default function DashboardPage() {
           }
         });
       }
+      if (user.id) {
+        const cachedAvatar = getCachedUserAvatar(user.id);
+        if (cachedAvatar) setProfileImage(cachedAvatar);
+      }
       if (pictureReference) {
         const cachedPicture = getCachedMediaUrl(pictureReference);
-        if (cachedPicture) setProfileImage(cachedPicture);
+        if (cachedPicture) {
+          setProfileImage(cachedPicture);
+          if (user.id) setCachedUserAvatar(user.id, cachedPicture, pictureReference);
+        }
         void resolveMediaUrl(pictureReference).then((url) => {
-          if (url) setProfileImage(url);
+          if (url) {
+            setProfileImage(url);
+            if (user.id) setCachedUserAvatar(user.id, url, pictureReference);
+          }
         }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));

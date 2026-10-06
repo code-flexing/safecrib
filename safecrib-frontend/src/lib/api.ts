@@ -50,6 +50,48 @@ export function setSessionTokens(tokens: { accessToken: string; refreshToken: st
   localStorage.setItem("safecrib_refresh_token", tokens.refreshToken);
 }
 
+export const userSessionClearedEvent = "safecrib:user-session-cleared";
+
+function clearUserSessionStorage() {
+  if (typeof window === "undefined") return;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (
+      key.startsWith("safecrib_") &&
+      !key.startsWith("safecrib_theme") &&
+      !key.startsWith("safecrib_language") &&
+      !key.startsWith("safecrib_pwa")
+    )) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key && key.startsWith("safecrib_")) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => sessionStorage.removeItem(key));
+}
+
+export function clearUserSession() {
+  if (typeof window === "undefined") return;
+  clearUserSessionStorage();
+  clearResolvedMediaUrlCache();
+  clearClientCache();
+  clearPendingUploads();
+  resolvedMediaUrls.clear();
+  mediaUrlRequests.clear();
+  window.dispatchEvent(new Event(userSessionClearedEvent));
+  const loginPath = window.location.pathname.startsWith("/admin") ? "/admin/login" : "/login";
+  if (window.location.pathname !== loginPath) {
+    window.location.replace(loginPath);
+  }
+}
+
 export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("safecrib_access_token");
@@ -59,10 +101,7 @@ export function clearSession() {
 }
 
 function expireSession() {
-  clearSession();
-  if (typeof window === "undefined") return;
-  const loginPath = window.location.pathname.startsWith("/admin") ? "/admin/login" : "/login";
-  if (window.location.pathname !== loginPath) window.location.replace(loginPath);
+  clearUserSession();
 }
 
 export async function refreshSession() {
@@ -97,7 +136,7 @@ export async function logoutSession() {
   try {
     if (refreshToken) await apiFetch("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) });
   } finally {
-    clearSession();
+    clearUserSession();
   }
 }
 
@@ -788,6 +827,9 @@ const resolvedMediaUrlLimit = 200;
 const resolvedMediaUrls = new Map<string, { url: string; expiresAt?: number }>();
 const mediaUrlRequests = new Map<string, Promise<string | null>>();
 
+const userAvatarCachePrefix = "safecrib_user_avatar:";
+const userAvatarCacheTtlMs = 24 * 60 * 60 * 1000; // 24 hours
+
 export function withMediaCacheBust(url: string, cacheBurst = Date.now()): string {
   if (!url || /^(https?:|data:|blob:)/.test(url) === false) return url;
   const separator = url.includes("?") ? "&" : "?";
@@ -817,6 +859,36 @@ function clearResolvedMediaUrlCache() {
     const key = localStorage.key(index);
     if (key?.startsWith(resolvedMediaUrlPrefix)) localStorage.removeItem(key);
   }
+}
+
+function userAvatarStorageKey(userId: string) {
+  return `${userAvatarCachePrefix}${encodeURIComponent(userId)}`;
+}
+
+export function getCachedUserAvatar(userId: string | undefined): string | null {
+  if (typeof window === "undefined" || !userId) return null;
+  try {
+    const key = userAvatarStorageKey(userId);
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+    const value = JSON.parse(stored) as { url?: unknown; cachedAt?: unknown; profilePictureRef?: unknown };
+    const isOld = typeof value.cachedAt !== "number" || Date.now() - value.cachedAt > userAvatarCacheTtlMs;
+    if (typeof value.url !== "string" || isOld) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return value.url;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedUserAvatar(userId: string | undefined, url: string, profilePictureRef?: string): void {
+  if (typeof window === "undefined" || !userId || !url) return;
+  try {
+    const key = userAvatarStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify({ url, cachedAt: Date.now(), profilePictureRef }));
+  } catch { /* Storage may be unavailable or full. */ }
 }
 
 function readResolvedMediaUrl(reference: string, transformation?: string) {

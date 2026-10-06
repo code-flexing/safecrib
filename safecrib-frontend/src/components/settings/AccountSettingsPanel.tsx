@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, getCachedMediaUrl, primeCurrentUserCache, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData, uploadDocument } from "@/lib/api";
+import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, getCachedMediaUrl, primeCurrentUserCache, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData, uploadDocument, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { useTheme, type ThemeMode } from "@/components/theme/ThemeProvider";
 
@@ -40,11 +40,18 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
       if (!currentAccount) return;
       setAccount(currentAccount);
       setDisplayName(nameFrom(currentAccount.displayName));
+      if (currentAccount.id) {
+        const cachedAvatar = getCachedUserAvatar(currentAccount.id);
+        if (cachedAvatar) setAvatarUrl(cachedAvatar);
+      }
       const cachedPicture = getCachedMediaUrl(currentAccount.profilePicture);
-      if (cachedPicture) setAvatarUrl(cachedPicture);
+      if (cachedPicture) {
+        setAvatarUrl(cachedPicture);
+        if (currentAccount.id) setCachedUserAvatar(currentAccount.id, cachedPicture, currentAccount.profilePicture);
+      }
       if (currentAccount.profilePicture) {
         void resolveMediaUrl(currentAccount.profilePicture).then((url) => {
-          if (url) setAvatarUrl(url);
+          if (url) { setAvatarUrl(url); if (currentAccount.id) setCachedUserAvatar(currentAccount.id, url, currentAccount.profilePicture); }
         });
       }
     });
@@ -59,12 +66,33 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
         const provider = unwrapData<{ profilePicture?: string } | null>(await cachedApiFetch<unknown>("/api/v1/provider-pages/me"));
         profilePicture = provider?.profilePicture;
       }
-      setAvatarUrl(getCachedMediaUrl(profilePicture) ?? await resolveMediaUrl(profilePicture));
+      if (currentAccount.id) {
+        const cachedAvatar = getCachedUserAvatar(currentAccount.id);
+        if (cachedAvatar) setAvatarUrl(cachedAvatar);
+      }
+      const resolvedUrl = getCachedMediaUrl(profilePicture) ?? await resolveMediaUrl(profilePicture);
+      if (resolvedUrl) {
+        setAvatarUrl(resolvedUrl);
+        if (currentAccount.id) setCachedUserAvatar(currentAccount.id, resolvedUrl, profilePicture);
+      }
     }).catch((loadError: unknown) => {
       setError(loadError instanceof Error ? loadError.message : "We could not load account settings.");
     });
+
+    const handleSessionCleared = () => {
+      setAccount(null);
+      setDisplayName("");
+      setAvatarUrl(null);
+      setError("");
+      setNotice("");
+      if (avatarPreviewUrl.current) URL.revokeObjectURL(avatarPreviewUrl.current);
+      avatarPreviewUrl.current = null;
+    };
+    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+
     return () => {
       unsubscribeCache();
+      window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
       if (avatarPreviewUrl.current) URL.revokeObjectURL(avatarPreviewUrl.current);
     };
   }, []);
@@ -104,6 +132,7 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
       const resolvedAvatar = await resolveMediaUrl(nextAccount.profilePicture);
       if (resolvedAvatar) {
         setAvatarUrl(resolvedAvatar);
+        if (nextAccount.id) setCachedUserAvatar(nextAccount.id, resolvedAvatar, nextAccount.profilePicture);
         URL.revokeObjectURL(previewUrl);
         avatarPreviewUrl.current = null;
       }

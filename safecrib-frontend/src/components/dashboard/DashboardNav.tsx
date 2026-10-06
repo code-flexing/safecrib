@@ -8,7 +8,7 @@ import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
+import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar } from "@/lib/api";
 
 type DashboardNavProps = {
   onCreatePage: () => void;
@@ -63,12 +63,22 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           reference = unwrapData<{ profilePicture?: string } | null>(profile)?.profilePicture;
         }
       }
+      if (user.id) {
+        const cachedAvatar = getCachedUserAvatar(user.id);
+        if (cachedAvatar) {
+          setAvatarUrl(cachedAvatar);
+          return cachedAvatar;
+        }
+      }
       const cachedUrl = getCachedMediaUrl(reference, "avatar_sm");
       if (cachedUrl) {
         setAvatarUrl(cachedUrl);
+        if (user.id) setCachedUserAvatar(user.id, cachedUrl, reference ?? undefined);
         return cachedUrl;
       }
-      return resolveMediaUrl(reference, "avatar_sm");
+      const resolvedUrl = await resolveMediaUrl(reference, "avatar_sm");
+      if (resolvedUrl && user.id) setCachedUserAvatar(user.id, resolvedUrl, reference ?? undefined);
+      return resolvedUrl;
     };
 
     const syncVerification = async (userId?: string, directVerification?: NavUser["verification"]) => {
@@ -128,12 +138,29 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         const profile = unwrapData<{ profilePicture?: string } | null>(value);
         if (profile?.profilePicture) {
           const cachedUrl = getCachedMediaUrl(profile.profilePicture, "avatar_sm");
-          if (cachedUrl) setAvatarUrl(cachedUrl);
-          void resolveMediaUrl(profile.profilePicture, "avatar_sm").then((url) => { if (active) setAvatarUrl(url); });
+          if (cachedUrl) {
+            setAvatarUrl(cachedUrl);
+            const user = getCachedCurrentUser<NavUser>();
+            if (user?.id) setCachedUserAvatar(user.id, cachedUrl, profile.profilePicture);
+          }
+          void resolveMediaUrl(profile.profilePicture, "avatar_sm").then((url) => { 
+            if (active) setAvatarUrl(url);
+            const user = getCachedCurrentUser<NavUser>();
+            if (url && user?.id) setCachedUserAvatar(user.id, url, profile.profilePicture);
+          });
         }
       }
     });
-    return () => { active = false; unsubscribeCache(); };
+
+    const handleSessionCleared = () => {
+      setNavUser(null);
+      setAvatarUrl(null);
+      setVerification(null);
+      setUnreadNotifications(0);
+    };
+    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+
+    return () => { active = false; unsubscribeCache(); window.removeEventListener(userSessionClearedEvent, handleSessionCleared); };
   }, []);
 
   useEffect(() => {
