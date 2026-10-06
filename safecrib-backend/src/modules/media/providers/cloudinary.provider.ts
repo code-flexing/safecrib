@@ -115,6 +115,9 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
   getSignedUrl(publicId: string, options: SignedAccessUrlOptions = {}): string {
     const ttl = options.ttlSeconds ?? 300;
     const expireAt = Math.floor(Date.now() / 1000) + ttl;
+    const transformation = options.transformation
+      ? [{ transformation: options.transformation }]
+      : undefined;
 
     const url = cloudinary.url(publicId, {
       resource_type: options.resourceType ?? 'image',
@@ -122,6 +125,7 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
       secure: true,
       sign_url: true,
       expires_at: expireAt,
+      ...(transformation ? { transformation } : {}),
     });
 
     return url;

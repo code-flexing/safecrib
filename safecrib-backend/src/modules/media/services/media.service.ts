@@ -30,6 +30,7 @@ import type {
   SignedAccessResponse,
   UploadSignatureResponse,
 } from '../dto/media.dto.js';
+import { NAMED_TRANSFORMATIONS } from '../policies/purpose-policies.js';
 
 @Injectable()
 export class MediaService {
@@ -333,6 +334,7 @@ export class MediaService {
     this.policyService.assertCanRead(requesterId, requesterRole, media.ownerId, media.purpose);
 
     const validated = this.policyService.validateTransformation(transformation);
+    const resolvedTransformation = this.resolveNamedTransformation(validated);
     const resourceType = this.resourceTypeToSdk(media.resourceType);
 
     const requiresSigned = this.policyService.requiresSignedUrl(media.purpose);
@@ -347,6 +349,7 @@ export class MediaService {
         resourceType,
         deliveryType:
           media.deliveryType === 'PRIVATE' ? 'private' : 'authenticated',
+        transformation: resolvedTransformation,
       });
       expiresAt = Math.floor(Date.now() / 1000) + ttl;
 
@@ -359,7 +362,7 @@ export class MediaService {
       });
     } else {
       url = this.storage.getDeliveryUrl(media.publicId, {
-        transformation: validated,
+        transformation: resolvedTransformation,
         resourceType,
       });
     }
@@ -443,6 +446,13 @@ export class MediaService {
   }
 
   // ─── Private helpers ────────────────────────────────────────────────────────
+
+  private resolveNamedTransformation(transformation: string | undefined): string | undefined {
+    if (!transformation) return undefined;
+    return Object.prototype.hasOwnProperty.call(NAMED_TRANSFORMATIONS, transformation)
+      ? NAMED_TRANSFORMATIONS[transformation]
+      : transformation;
+  }
 
   private async getOwnedMedia(mediaId: string, ownerId: string): Promise<Media> {
     const media = await this.mediaRepo.findById(mediaId);

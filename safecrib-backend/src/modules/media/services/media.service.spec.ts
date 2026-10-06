@@ -350,6 +350,30 @@ describe('MediaService', () => {
     });
   });
 
+  describe('getAccessUrl', () => {
+    it('keeps the validated Cloudinary transformation on signed URLs', async () => {
+      const media = makeMedia({
+        status: 'READY',
+        purpose: 'PROOF_OF_LICENSE',
+        deliveryType: 'AUTHENTICATED',
+        ownerId: 'user_1',
+      });
+      const storage = makeStorage();
+      const svc = makeService({ repo: makeRepo(media), storage });
+
+      await svc.getAccessUrl('media_1', 'user_1', 'USER', '127.0.0.1', 'vitest', 'avatar_sm');
+
+      expect(storage.getSignedUrl).toHaveBeenCalledWith(
+        'prod/listings/photo/l1/uuid',
+        expect.objectContaining({
+          transformation: 'c_fill,w_64,h_64,f_auto,q_auto',
+          deliveryType: 'authenticated',
+          ttlSeconds: 300,
+        }),
+      );
+    });
+  });
+
   describe('getMediaStatus', () => {
     it('returns upload status and failure reason to the owner', async () => {
       const media = makeMedia({ status: 'FAILED', failureReason: 'Invalid upload signature' });

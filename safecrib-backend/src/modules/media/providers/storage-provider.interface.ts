@@ -39,6 +39,8 @@ export interface SignedAccessUrlOptions {
   ttlSeconds?: number;
   resourceType?: 'image' | 'video' | 'raw';
   deliveryType?: 'authenticated' | 'private';
+  /** Named or raw Cloudinary transformation string to apply */
+  transformation?: string;
 }
 
 export interface DeleteAssetOptions {
