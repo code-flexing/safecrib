@@ -361,10 +361,17 @@ function normalizeNigerianPhone(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
 
-  const digits = trimmed.replace(/\D/g, "").replace(/^0+/, "");
+  let digits = trimmed.replace(/\D/g, "");
   if (!digits) return "";
 
-  return `+234${digits.slice(0, 10)}`;
+  if (digits.startsWith("234")) {
+    digits = digits.slice(3);
+  }
+
+  digits = digits.replace(/^0+/, "");
+  digits = digits.slice(0, 10);
+
+  return digits ? `+234${digits}` : "";
 }
 
 function isValidNigerianPhone(value: string) {
@@ -1515,6 +1522,8 @@ export default function CompleteStudentProfilePage() {
                   <input
                     type="tel"
                     inputMode="numeric"
+                    maxLength={14}
+                    autoComplete="tel"
                     value={form.phoneNumber ?? ""}
                     onChange={(event) => update("phoneNumber", normalizeNigerianPhone(event.target.value))}
                     placeholder="+2348012345678"
@@ -1529,6 +1538,8 @@ export default function CompleteStudentProfilePage() {
                   <input
                     type="tel"
                     inputMode="numeric"
+                    maxLength={14}
+                    autoComplete="tel"
                     value={form.emergencyContact ?? ""}
                     onChange={(event) => update("emergencyContact", normalizeNigerianPhone(event.target.value))}
                     placeholder="+2348012345678"
