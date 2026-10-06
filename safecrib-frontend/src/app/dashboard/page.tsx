@@ -33,6 +33,10 @@ function resolveAccountName(profile: Profile | null) {
   return displayName(profile) || getAuthenticatedDisplayName() || emailNameFallback(profile?.email);
 }
 
+function isUsableImageSource(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -255,13 +259,18 @@ export default function DashboardPage() {
     listings.forEach((listing) => {
       const imageReference = listing.photos?.[0] ?? listing.images?.[0];
       if (!imageReference) return;
+      if (isUsableImageSource(imageReference)) {
+        nextImageMap[listing.id] = imageReference;
+        return;
+      }
+
       const cachedImage = getCachedMediaUrl(imageReference);
       if (cachedImage) {
         nextImageMap[listing.id] = cachedImage;
         return;
       }
       void resolveMediaUrl(imageReference).then((resolvedUrl) => {
-        if (resolvedUrl) {
+        if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
           setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
         }
       }).catch(() => undefined);
@@ -441,7 +450,11 @@ export default function DashboardPage() {
         <div className="mx-auto mt-8 max-w-3xl space-y-4">
           {listings.map((listing) => {
             const imageReference = listing.photos?.[0] ?? listing.images?.[0];
-            const image = resolvedListingImages[listing.id] ?? imageReference ?? null;
+            const image = isUsableImageSource(resolvedListingImages[listing.id])
+              ? resolvedListingImages[listing.id]
+              : isUsableImageSource(imageReference)
+                ? imageReference
+                : null;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             return (
               <article
