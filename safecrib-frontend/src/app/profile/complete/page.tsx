@@ -583,8 +583,13 @@ export default function CompleteStudentProfilePage() {
   const [courseSearch, setCourseSearch] =
     useState("");
 
+  const [courseSelectionLocked, setCourseSelectionLocked] =
+    useState(false);
+
   useEffect(() => {
-    setCourseSearch(form.courseOfStudy ?? "");
+    const nextCourseSearch = form.courseOfStudy ?? "";
+    setCourseSearch(nextCourseSearch);
+    setCourseSelectionLocked(Boolean(nextCourseSearch.trim()));
   }, [form.courseOfStudy]);
 
   const courseSuggestions =
@@ -1347,20 +1352,28 @@ export default function CompleteStudentProfilePage() {
                     onChange={(event) => {
                       const nextValue = event.target.value;
                       setCourseSearch(nextValue);
+                      setCourseSelectionLocked(false);
                       update("courseOfStudy", nextValue);
+                    }}
+                    onFocus={() => {
+                      if (courseSelectionLocked) {
+                        setCourseSelectionLocked(false);
+                      }
                     }}
                     placeholder="Type to search course of study"
                     className="mt-2 w-full rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none"
                   />
-                  {courseSearch.trim() !== "" && courseSuggestions.length > 0 && (
+                  {courseSearch.trim() !== "" && !courseSelectionLocked && courseSuggestions.length > 0 && (
                     <div className="mt-2 max-h-52 overflow-auto rounded-[8px] border border-black/10 bg-white shadow-sm">
                       {courseSuggestions.map((courseName) => (
                         <button
                           key={courseName}
                           type="button"
                           onClick={() => {
-                            update("courseOfStudy", courseName);
-                            setCourseSearch(courseName);
+                            const selectedCourse = courseName;
+                            update("courseOfStudy", selectedCourse);
+                            setCourseSearch(selectedCourse);
+                            setCourseSelectionLocked(true);
                           }}
                           className="block w-full border-b border-black/5 px-3 py-2 text-left text-sm text-safecrib-black transition-colors last:border-b-0 hover:bg-[#f3faf6]"
                         >
@@ -1369,7 +1382,7 @@ export default function CompleteStudentProfilePage() {
                       ))}
                     </div>
                   )}
-                  {courseSearch.trim() !== "" && courseSuggestions.length === 0 && (
+                  {courseSearch.trim() !== "" && !courseSelectionLocked && courseSuggestions.length === 0 && (
                     <p className="mt-2 text-xs text-black/50">No course matches your search yet.</p>
                   )}
                 </label>
