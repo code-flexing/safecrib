@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Inject,
@@ -139,6 +140,7 @@ export class MediaController {
   }
 
   @Get(':id/status')
+  @Header('Cache-Control', 'private, no-store')
   @ApiOperation({ summary: 'Get the current status of an owned media upload' })
   @ApiResponse({ status: 200, description: 'Upload status returned' })
   @ApiResponse({ status: 403, description: 'Media is not owned by the caller' })

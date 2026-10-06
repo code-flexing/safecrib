@@ -147,7 +147,8 @@ Webhook delivery remains a fallback if the client cannot reach completion. A
 client may retry completion after an uncertain network result; it is safe to
 repeat. `LISTING_VIDEO` is intentionally different: its actual uploaded byte
 count must pass webhook validation, so clients must wait for the media status to
-become ready before attaching a video.
+become ready before attaching a video. Clients should not call `/complete` for
+listing videos; that endpoint intentionally rejects them.
 
 The legacy `POST /api/v1/media/{mediaId}/confirm` endpoint remains for
 compatibility. New clients should use `/complete`, which verifies Cloudinary's

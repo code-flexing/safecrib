@@ -591,10 +591,19 @@ export async function uploadSignedMedia(file: File, purpose: UploadPurpose, enti
   if (completionPayload && identityMismatch) {
     status = "PENDING";
     completionError = `Cloudinary response does not match the signed upload (${identityCheckDetails}).`;
-  } else if (completionPayload) {
+  } else if (completionPayload && purpose !== "LISTING_VIDEO") {
     try {
       status = await completeMediaUpload(mediaId, completionPayload);
     } catch (error) {
+      if (
+        error instanceof ApiError
+        && error.status >= 400
+        && error.status < 500
+        && error.status !== 408
+        && error.status !== 429
+      ) {
+        throw error;
+      }
       status = "PENDING";
       const reason = error instanceof Error ? error.message : "SafeCrib could not confirm the uploaded media.";
       completionError = `${reason} Client comparison: ${identityCheckDetails}.`;
