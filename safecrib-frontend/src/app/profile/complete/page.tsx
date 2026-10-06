@@ -587,6 +587,20 @@ export default function CompleteStudentProfilePage() {
     setCourseSearch(form.courseOfStudy ?? "");
   }, [form.courseOfStudy]);
 
+  const courseSuggestions =
+    courseSearch.trim() === ""
+      ? []
+      : futminnaCourses
+          .filter((course) => {
+            const term = courseSearch.trim().toLowerCase();
+            return [course.name, ...course.aliases]
+              .join(" ")
+              .toLowerCase()
+              .includes(term);
+          })
+          .map((course) => course.name)
+          .slice(0, 12);
+
   useEffect(() => {
     if (
       !localStorage.getItem(
@@ -1099,20 +1113,6 @@ export default function CompleteStudentProfilePage() {
     </label>
   );
 
-  const filteredCourses =
-    courseSearch.trim() === ""
-      ? futminnaCourses.map((course) => course.name)
-      : futminnaCourses
-          .filter((course) => {
-            const term = courseSearch.trim().toLowerCase();
-            return [course.name, ...course.aliases]
-              .join(" ")
-              .toLowerCase()
-              .includes(term);
-          })
-          .map((course) => course.name)
-          .slice(0, 12);
-
   const nextStep = () => {
     const validationError =
       validateStep(step, form);
@@ -1349,12 +1349,12 @@ export default function CompleteStudentProfilePage() {
                       setCourseSearch(nextValue);
                       update("courseOfStudy", nextValue);
                     }}
-                    placeholder="Search course of study"
+                    placeholder="Type to search course of study"
                     className="mt-2 w-full rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none"
                   />
-                  {filteredCourses.length > 0 && (
+                  {courseSearch.trim() !== "" && courseSuggestions.length > 0 && (
                     <div className="mt-2 max-h-52 overflow-auto rounded-[8px] border border-black/10 bg-white shadow-sm">
-                      {filteredCourses.map((courseName) => (
+                      {courseSuggestions.map((courseName) => (
                         <button
                           key={courseName}
                           type="button"
@@ -1368,6 +1368,9 @@ export default function CompleteStudentProfilePage() {
                         </button>
                       ))}
                     </div>
+                  )}
+                  {courseSearch.trim() !== "" && courseSuggestions.length === 0 && (
+                    <p className="mt-2 text-xs text-black/50">No course matches your search yet.</p>
                   )}
                 </label>
 
