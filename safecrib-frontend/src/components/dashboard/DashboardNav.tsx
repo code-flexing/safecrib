@@ -60,12 +60,12 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           reference = unwrapData<{ profilePicture?: string } | null>(profile)?.profilePicture;
         }
       }
-      const cachedUrl = getCachedMediaUrl(reference);
+      const cachedUrl = getCachedMediaUrl(reference, "avatar_sm");
       if (cachedUrl) {
         setAvatarUrl(cachedUrl);
         return cachedUrl;
       }
-      return resolveMediaUrl(reference);
+      return resolveMediaUrl(reference, "avatar_sm");
     };
 
     const syncVerification = async (userId?: string, directVerification?: NavUser["verification"]) => {
@@ -101,7 +101,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
     const cachedUser = getCachedCurrentUser<NavUser>();
     if (cachedUser) {
       setNavUser(cachedUser);
-      setAvatarUrl(getCachedMediaUrl(cachedUser.profilePicture));
+      setAvatarUrl(getCachedMediaUrl(cachedUser.profilePicture, "avatar_sm"));
     }
     else {
       const tokenName = getAuthenticatedDisplayName();
@@ -124,9 +124,9 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       if (path === "/api/v1/student-profiles/me" || path === "/api/v1/provider-pages/me") {
         const profile = unwrapData<{ profilePicture?: string } | null>(value);
         if (profile?.profilePicture) {
-          const cachedUrl = getCachedMediaUrl(profile.profilePicture);
+          const cachedUrl = getCachedMediaUrl(profile.profilePicture, "avatar_sm");
           if (cachedUrl) setAvatarUrl(cachedUrl);
-          void resolveMediaUrl(profile.profilePicture).then((url) => { if (active) setAvatarUrl(url); });
+          void resolveMediaUrl(profile.profilePicture, "avatar_sm").then((url) => { if (active) setAvatarUrl(url); });
         }
       }
     });

@@ -684,11 +684,19 @@ const resolvedMediaUrlLimit = 200;
 const resolvedMediaUrls = new Map<string, { url: string; expiresAt?: number }>();
 const mediaUrlRequests = new Map<string, Promise<string | null>>();
 
-export function getCachedMediaUrl(reference: unknown) {
+function mediaUrlCacheKey(reference: string, transformation?: string) {
+  return `${reference}::${transformation ?? "default"}`;
+}
+
+function mediaUrlStorageKey(reference: string, transformation?: string) {
+  return `${resolvedMediaUrlPrefix}${encodeURIComponent(reference)}${transformation ? `:${encodeURIComponent(transformation)}` : ":default"}`;
+}
+
+export function getCachedMediaUrl(reference: unknown, transformation?: string) {
   if (typeof reference !== "string" || !reference.trim()) return null;
   const mediaReference = reference.trim();
   if (/^(https?:|data:|blob:)/.test(mediaReference)) return mediaReference;
-  return readResolvedMediaUrl(mediaReference);
+  return readResolvedMediaUrl(mediaReference, transformation);
 }
 
 function clearResolvedMediaUrlCache() {
@@ -701,39 +709,46 @@ function clearResolvedMediaUrlCache() {
   }
 }
 
-function readResolvedMediaUrl(reference: string) {
-  const inMemory = resolvedMediaUrls.get(reference);
+function readResolvedMediaUrl(reference: string, transformation?: string) {
+  const cacheKey = mediaUrlCacheKey(reference, transformation);
+  const inMemory = resolvedMediaUrls.get(cacheKey);
   if (inMemory && (!inMemory.expiresAt || inMemory.expiresAt > Date.now() + 30_000)) return inMemory.url;
-  if (inMemory) resolvedMediaUrls.delete(reference);
+  if (inMemory) resolvedMediaUrls.delete(cacheKey);
   if (typeof window === "undefined") return null;
   try {
-    const stored = localStorage.getItem(`${resolvedMediaUrlPrefix}${encodeURIComponent(reference)}`);
+    const storageKey = mediaUrlStorageKey(reference, transformation);
+    const stored = localStorage.getItem(storageKey);
     if (!stored) return null;
     const value = JSON.parse(stored) as { url?: unknown; expiresAt?: unknown; cachedAt?: unknown };
     const expiresAt = typeof value.expiresAt === "number" ? value.expiresAt : undefined;
     const isOld = typeof value.cachedAt !== "number" || Date.now() - value.cachedAt > resolvedMediaUrlTtlMs;
     if (typeof value.url !== "string" || isOld || (expiresAt !== undefined && expiresAt <= Date.now() + 30_000)) {
-      localStorage.removeItem(`${resolvedMediaUrlPrefix}${encodeURIComponent(reference)}`);
+      localStorage.removeItem(storageKey);
       return null;
     }
-    resolvedMediaUrls.set(reference, { url: value.url, expiresAt });
+    resolvedMediaUrls.set(cacheKey, { url: value.url, expiresAt });
     return value.url;
   } catch {
     return null;
   }
 }
 
-export async function resolveMediaUrl(reference: unknown): Promise<string | null> {
+export async function resolveMediaUrl(reference: unknown, transformation?: string): Promise<string | null> {
   if (typeof reference !== "string" || !reference.trim()) return null;
   const mediaReference = reference.trim();
   if (/^(https?:|data:|blob:)/.test(mediaReference)) return mediaReference;
 
-  const cachedUrl = readResolvedMediaUrl(mediaReference);
+  const cachedUrl = readResolvedMediaUrl(mediaReference, transformation);
   if (cachedUrl) return cachedUrl;
-  const existingRequest = mediaUrlRequests.get(mediaReference);
+  const requestKey = mediaUrlCacheKey(mediaReference, transformation);
+  const existingRequest = mediaUrlRequests.get(requestKey);
   if (existingRequest) return existingRequest;
 
-  const request = apiFetch<unknown>(`/api/v1/media/${encodeURIComponent(mediaReference)}/access`, { cache: "no-store" })
+  const accessPath = transformation
+    ? `/api/v1/media/${encodeURIComponent(mediaReference)}/access?transformation=${encodeURIComponent(transformation)}`
+    : `/api/v1/media/${encodeURIComponent(mediaReference)}/access`;
+
+  const request = apiFetch<unknown>(accessPath, { cache: "no-store" })
     .then((response) => {
       const mediaData = unwrapData<unknown>(response);
       const mediaResponse = typeof mediaData === "object" && mediaData !== null
@@ -751,11 +766,11 @@ export async function resolveMediaUrl(reference: unknown): Promise<string | null
         ? expiresAtValue < 1_000_000_000_000 ? expiresAtValue * 1000 : expiresAtValue
         : undefined;
       const cacheEntry = { url, expiresAt };
-      resolvedMediaUrls.set(mediaReference, cacheEntry);
-      if (expiresAt === undefined && typeof window !== "undefined") {
+      resolvedMediaUrls.set(requestKey, cacheEntry);
+      if (typeof window !== "undefined") {
         try {
-          const cacheKey = `${resolvedMediaUrlPrefix}${encodeURIComponent(mediaReference)}`;
-          localStorage.setItem(cacheKey, JSON.stringify({ ...cacheEntry, cachedAt: Date.now() }));
+          const storageKey = mediaUrlStorageKey(mediaReference, transformation);
+          localStorage.setItem(storageKey, JSON.stringify({ ...cacheEntry, cachedAt: Date.now() }));
           const entries = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
             .filter((key): key is string => Boolean(key?.startsWith(resolvedMediaUrlPrefix)))
             .map((key) => {
@@ -777,9 +792,9 @@ export async function resolveMediaUrl(reference: unknown): Promise<string | null
     })
     .catch(() => null)
     .finally(() => {
-      if (mediaUrlRequests.get(mediaReference) === request) mediaUrlRequests.delete(mediaReference);
+      if (mediaUrlRequests.get(requestKey) === request) mediaUrlRequests.delete(requestKey);
     });
-  mediaUrlRequests.set(mediaReference, request);
+  mediaUrlRequests.set(requestKey, request);
   return request;
 }
 
