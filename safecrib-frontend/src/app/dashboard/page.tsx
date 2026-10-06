@@ -369,19 +369,24 @@ export default function DashboardPage() {
             </div>
             <Skeleton className="h-10 w-36" />
           </div>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-[12px] border border-black/10 bg-white shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
-                <Skeleton className="h-44 w-full rounded-none" />
-                <div className="space-y-3 p-5">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-6 w-2/3" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-6 w-28" />
-                  <div className="flex gap-2 pt-2">
-                    <Skeleton className="h-10 flex-1" />
-                    <Skeleton className="h-10 w-20" />
+          <div className="mx-auto mt-8 max-w-3xl space-y-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-64 w-full rounded-xl" />
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -410,38 +415,49 @@ export default function DashboardPage() {
           </div>
         </div>
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto mt-8 max-w-3xl space-y-4">
           {listings.map((listing) => {
             const image = listing.photos?.[0] ?? listing.images?.[0];
-            return <article key={listing.id} className="overflow-hidden rounded-[12px] border border-black/10 bg-white shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
-              {image && <Image src={image} alt={listing.title ?? "Listing"} width={800} height={480} className="h-44 w-full object-cover" />}
-              <div className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-safecrib-green">Verified home</p>
-                <h2 className="mt-2 text-xl font-medium text-safecrib-black">{listing.title ?? "Untitled home"}</h2>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-black/60">{listing.description ?? "View this home for more details."}</p>
-                <p className="mt-4 font-medium text-safecrib-black">{typeof listing.price === "number" ? `₦${listing.price.toLocaleString()}` : "Price available in details"}</p>
-                <p className="mt-1 text-xs text-black/50">{listing.address ?? listing.campus ?? "Location available in details"}</p>
-                <p className="mt-2 text-xs text-black/45">{listing.viewCount ?? 0} views · {listing.likeCount ?? 0} likes</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Link href={`/dashboard/listings/${listing.id}`} className="rounded-[3px] bg-safecrib-green px-4 py-2.5 text-sm font-medium text-safecrib-white hover:bg-[#0a5f47]">View details</Link>
-                  {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="rounded-[3px] border border-black/15 px-4 py-2.5 text-sm font-medium text-black/65 hover:bg-black/[0.03]">View provider</Link>}
-                  {["UNVERIFIED", "STUDENT"].includes(String(profile?.role ?? "").toUpperCase()) && <Button type="button" variant="secondary" className="px-4 py-2.5 text-sm" onClick={() => void toggleBookmark(listing.id)}>{bookmarkedIds.includes(listing.id) ? "Saved" : "Save"}</Button>}
+            const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
+            return <article key={listing.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0">
+                  <ProfileAvatar src={profileImage} seed={listing.ownerId ?? listing.id ?? "home-listing-avatar"} alt={listing.title ?? "Home listing"} size="small" />
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-3">
-                  <button type="button" onClick={() => void toggleLike(listing)} disabled={listing.ownerId === profile?.id || pendingEngagement.has(`like:${listing.id}`)} aria-pressed={listing.likedByCurrentUser === true} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-black/65 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 11h9.2a3 3 0 0 0 2.9-2.2l2-7A3 3 0 0 0 18.2 8H14l.7-3.2A2.4 2.4 0 0 0 12.4 2L7 10v11Z" /></svg>
-                    <span>{listing.likeCount ?? 0}</span>
-                    <span className="sr-only">Like home</span>
-                  </button>
-                  <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-black/65 transition hover:bg-black/[0.04]">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-                    <span className="sr-only">Comment on home</span>
-                  </Link>
-                  <button type="button" onClick={() => listing.ownerId && void toggleRecommendation(listing.ownerId)} disabled={!listing.ownerId || String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)} aria-pressed={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))} title={String(profile?.role ?? "").toUpperCase() === "STUDENT" ? "Recommend this provider to students" : "Student accounts can recommend providers"} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm text-black/65 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-3 8h7l-6 12 2-9H6l7-11Z" /></svg>
-                    <span>{listing.providerRecommendationCount ?? 0}</span>
-                    <span className="sr-only">Recommend provider</span>
-                  </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-bold text-safecrib-black">{listing.title ?? "Verified home"}</span>
+                      <span className="text-xs text-black/45">·</span>
+                      <span className="text-xs text-black/45">{ownerLabel}</span>
+                    </div>
+                    <button type="button" aria-label="More options" className="rounded-full p-1 text-black/50 hover:bg-black/[0.04]">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-black/60">{listing.address ?? listing.campus ?? "Location details available"}</p>
+                  <p className="mt-3 text-[15px] leading-7 text-black/75">{listing.description ?? "View this home for more details."}</p>
+                  {image && <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-black/5"><Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-[270px] w-full object-cover sm:h-[360px]" /></div>}
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-3 text-sm text-black/60">
+                    <button type="button" onClick={() => void toggleLike(listing)} disabled={listing.ownerId === profile?.id || pendingEngagement.has(`like:${listing.id}`)} aria-pressed={listing.likedByCurrentUser === true} className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 11h9.2a3 3 0 0 0 2.9-2.2l2-7A3 3 0 0 0 18.2 8H14l.7-3.2A2.4 2.4 0 0 0 12.4 2L7 10v11Z" /></svg>
+                      <span>{listing.likeCount ?? 0}</span>
+                    </button>
+                    <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04]">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                      <span>{listing.viewCount ?? 0}</span>
+                    </Link>
+                    <button type="button" onClick={() => listing.ownerId && void toggleRecommendation(listing.ownerId)} disabled={!listing.ownerId || String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)} aria-pressed={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))} title={String(profile?.role ?? "").toUpperCase() === "STUDENT" ? "Recommend this provider to students" : "Student accounts can recommend providers"} className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-3 8h7l-6 12 2-9H6l7-11Z" /></svg>
+                      <span>{listing.providerRecommendationCount ?? 0}</span>
+                    </button>
+                    <Link href={`/dashboard/listings/${listing.id}`} className="rounded-full bg-safecrib-green px-3 py-1.5 text-xs font-medium text-safecrib-white hover:bg-[#0a5f47]">View details</Link>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="text-xs font-medium text-safecrib-green hover:underline">View provider</Link>}
+                    {["UNVERIFIED", "STUDENT"].includes(String(profile?.role ?? "").toUpperCase()) && <Button type="button" variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => void toggleBookmark(listing.id)}>{bookmarkedIds.includes(listing.id) ? "Saved" : "Save"}</Button>}
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-safecrib-black">{typeof listing.price === "number" ? `₦${listing.price.toLocaleString()}` : "Price available in details"}</p>
                 </div>
               </div>
             </article>;
