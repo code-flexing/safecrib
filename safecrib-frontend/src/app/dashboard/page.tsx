@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [openSupportCount, setOpenSupportCount] = useState(0);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
     if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
@@ -250,6 +251,27 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
+    const nextImageMap: Record<string, string | null> = {};
+    listings.forEach((listing) => {
+      const imageReference = listing.photos?.[0] ?? listing.images?.[0];
+      if (!imageReference) return;
+      const cachedImage = getCachedMediaUrl(imageReference);
+      if (cachedImage) {
+        nextImageMap[listing.id] = cachedImage;
+        return;
+      }
+      void resolveMediaUrl(imageReference).then((resolvedUrl) => {
+        if (resolvedUrl) {
+          setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
+        }
+      }).catch(() => undefined);
+    });
+    if (Object.keys(nextImageMap).length > 0) {
+      setResolvedListingImages((current) => ({ ...current, ...nextImageMap }));
+    }
+  }, [listings]);
+
+  useEffect(() => {
     if (accountStatus !== "pending" || !["STUDENT", "UNVERIFIED"].includes(String(profile?.role ?? "").toUpperCase())) return;
 
     let checkingStatus = false;
@@ -418,7 +440,8 @@ export default function DashboardPage() {
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
         <div className="mx-auto mt-8 max-w-3xl space-y-4">
           {listings.map((listing) => {
-            const image = listing.photos?.[0] ?? listing.images?.[0];
+            const imageReference = listing.photos?.[0] ?? listing.images?.[0];
+            const image = resolvedListingImages[listing.id] ?? imageReference ?? null;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             return <article key={listing.id} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
               <div className="flex items-start gap-3">
