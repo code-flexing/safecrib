@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
     if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
@@ -431,9 +432,27 @@ export default function DashboardPage() {
                       <span className="text-xs text-black/45">·</span>
                       <span className="text-xs text-black/45">{ownerLabel}</span>
                     </div>
-                    <button type="button" aria-label="More options" className="rounded-full p-1 text-black/50 hover:bg-black/[0.04]">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
-                    </button>
+                    <div className="relative">
+                      <button type="button" aria-label="More options" onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)} className="rounded-full p-1 text-black/50 hover:bg-black/[0.04]">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+                      </button>
+                      {openMenuId === listing.id && (
+                        <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+                          <Link href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View details</Link>
+                          {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
+                          {["UNVERIFIED", "STUDENT"].includes(String(profile?.role ?? "").toUpperCase()) && (
+                            <button type="button" onClick={() => { void toggleBookmark(listing.id); setOpenMenuId(null); }} className="block w-full border-b border-black/5 px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03]">
+                              {bookmarkedIds.includes(listing.id) ? "Remove save" : "Save listing"}
+                            </button>
+                          )}
+                          {listing.ownerId && (
+                            <button type="button" onClick={() => { void toggleRecommendation(listing.ownerId); setOpenMenuId(null); }} disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)} className="block w-full px-3 py-2.5 text-left text-sm text-black/75 transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50">
+                              {recommendedProviderIds.includes(listing.ownerId) ? "Remove recommendation" : "Recommend provider"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-1 text-sm text-black/60">{listing.address ?? listing.campus ?? "Location details available"}</p>
                   <p className="mt-3 text-[15px] leading-7 text-black/75">{listing.description ?? "View this home for more details."}</p>
