@@ -173,18 +173,40 @@ function cacheUpdatedAtKey(path: string) {
 
 function isClientCacheFresh(path: string) {
   if (typeof window === "undefined") return false;
-  const updatedAt = Number(localStorage.getItem(cacheUpdatedAtKey(path)));
-  return Number.isFinite(updatedAt) && Date.now() - updatedAt < clientCacheTtlMs;
+  for (const storage of getClientStorages()) {
+    const updatedAt = Number(storage.getItem(cacheUpdatedAtKey(path)));
+    if (Number.isFinite(updatedAt) && Date.now() - updatedAt < clientCacheTtlMs) return true;
+  }
+  return false;
+}
+
+function getClientStorages(): Storage[] {
+  if (typeof window === "undefined") return [];
+  const storages: Storage[] = [];
+  try {
+    if (window.sessionStorage) storages.push(window.sessionStorage);
+  } catch {
+    // Storage may be disabled in the browser.
+  }
+  try {
+    if (window.localStorage) storages.push(window.localStorage);
+  } catch {
+    // Storage may be disabled in the browser.
+  }
+  return storages;
 }
 
 function readClientCache<T>(path: string): T | null {
   if (typeof window === "undefined") return null;
-  try {
-    const value = localStorage.getItem(cacheKey(path));
-    return value ? JSON.parse(value) as T : null;
-  } catch {
-    return null;
+  for (const storage of getClientStorages()) {
+    try {
+      const value = storage.getItem(cacheKey(path));
+      if (value) return JSON.parse(value) as T;
+    } catch {
+      // Ignore stale or unreadable cached payloads and continue to the next store.
+    }
   }
+  return null;
 }
 
 export function getCachedCurrentUser<T>() {
@@ -193,25 +215,33 @@ export function getCachedCurrentUser<T>() {
 
 function writeClientCache(path: string, value: unknown) {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(cacheKey(path), JSON.stringify(value));
-    localStorage.setItem(cacheUpdatedAtKey(path), String(Date.now()));
-    notifyClientCacheUpdated(path, value);
-  } catch { /* Storage may be unavailable or full. */ }
+  const cachePayload = JSON.stringify(value);
+  for (const storage of getClientStorages()) {
+    try {
+      storage.setItem(cacheKey(path), cachePayload);
+      storage.setItem(cacheUpdatedAtKey(path), String(Date.now()));
+    } catch { /* Storage may be unavailable or full. */ }
+  }
+  notifyClientCacheUpdated(path, value);
 }
 
 export function clearClientCache(...paths: string[]) {
   if (typeof window === "undefined") return;
+  const storages = getClientStorages();
   if (paths.length === 0) {
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index);
-      if (key?.startsWith(clientCachePrefix)) localStorage.removeItem(key);
-    }
+    storages.forEach((storage) => {
+      for (let index = storage.length - 1; index >= 0; index -= 1) {
+        const key = storage.key(index);
+        if (key?.startsWith(clientCachePrefix)) storage.removeItem(key);
+      }
+    });
     return;
   }
   paths.forEach((path) => {
-    localStorage.removeItem(cacheKey(path));
-    localStorage.removeItem(cacheUpdatedAtKey(path));
+    storages.forEach((storage) => {
+      storage.removeItem(cacheKey(path));
+      storage.removeItem(cacheUpdatedAtKey(path));
+    });
   });
 }
 
