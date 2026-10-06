@@ -10,6 +10,7 @@ type ProfileAvatarProps = {
   alt: string;
   size?: "small" | "medium" | "large";
   className?: string;
+  loading?: boolean;
 };
 
 export function ProfileAvatar({
@@ -17,17 +18,21 @@ export function ProfileAvatar({
   alt,
   size = "medium",
   className = "",
+  loading = false,
 }: ProfileAvatarProps) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
 
   useEffect(() => {
-    if (src) setFailedSource(null);
+    setFailedSource(null);
+    setImageLoaded(false);
+    setShowMissing(false);
   }, [src]);
 
   const missing = !src || failedSource === src;
   useEffect(() => {
-    if (!missing) {
+    if (loading || !missing) {
       setShowMissing(false);
       return;
     }
@@ -37,16 +42,19 @@ export function ProfileAvatar({
     }
     const timer = window.setTimeout(() => setShowMissing(true), 5000);
     return () => window.clearTimeout(timer);
-  }, [failedSource, missing, src]);
+  }, [failedSource, loading, missing, src]);
 
   const sizeClass = size === "small" ? "h-12 w-12" : size === "large" ? "h-32 w-32" : "h-16 w-16";
   const imageClass = `${sizeClass} shrink-0 overflow-hidden rounded-full border border-black/10 ${className}`;
 
   if (src && failedSource !== src) {
-    return <Image src={src} alt={alt} width={128} height={128} unoptimized onError={() => setFailedSource(src)} className={`${imageClass} object-cover`} />;
+    return <div className="relative">
+      {!imageLoaded && <div aria-hidden="true" className={`${imageClass} absolute inset-0 animate-pulse bg-black/[0.06]`} />}
+      <Image src={src} alt={alt} width={128} height={128} unoptimized onLoad={() => setImageLoaded(true)} onError={() => setFailedSource(src)} className={`${imageClass} object-cover`} />
+    </div>;
   }
 
-  return <div role="img" aria-label={showMissing ? `${alt} unavailable` : "Loading profile picture"} className={`${imageClass} flex items-center justify-center bg-black/[0.04] text-black/35`}>
+  return <div role="img" aria-label={loading || !showMissing ? "Loading profile picture" : `${alt} unavailable`} className={`${imageClass} flex items-center justify-center bg-black/[0.04] text-black/35`}>
     {showMissing && <Icon name="image" className={size === "small" ? "h-5 w-5" : size === "large" ? "h-9 w-9" : "h-6 w-6"} />}
   </div>;
 }
