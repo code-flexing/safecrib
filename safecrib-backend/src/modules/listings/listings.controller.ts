@@ -48,6 +48,13 @@ export class ListingsController {
   @ApiOperation({ summary: 'List homes awaiting verification' })
   pendingReview() { return this.listingsService.listPendingReview(); }
 
+  @Get('admin/:id')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Get a home submission for admin review' })
+  adminGetListing(@Param('id') id: string) {
+    return this.listingsService.getListing(id);
+  }
+
   @Get('my')
   @Roles('AGENT', 'LANDLORD', 'ADMIN')
   @ApiOperation({ summary: 'Get my listings' })

@@ -244,6 +244,38 @@ describe('ListingsService listing media and pricing rules', () => {
     );
   });
 
+  it('requires a rejection reason and records the trimmed reason in the audit log', async () => {
+    const { service, prisma, tx, notifications } = makeService();
+    prisma.listing.findUnique.mockResolvedValue(makeListing({ status: 'SUBMITTED' }));
+
+    await expect(service.reviewListing('listing_1', 'admin_1', false, '  ')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+
+    await service.reviewListing('listing_1', 'admin_1', false, '  Missing photos  ');
+
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'LISTING_REJECTED',
+        metadata: { notes: 'Missing photos' },
+      }),
+    });
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      'agent_1',
+      expect.objectContaining({ body: 'Your home was not approved. Missing photos' }),
+    );
+  });
+
+  it('rejects listing review notes longer than 2,000 characters', async () => {
+    const { service, prisma } = makeService();
+
+    await expect(service.reviewListing('listing_1', 'admin_1', false, 'x'.repeat(2001))).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.listing.findUnique).not.toHaveBeenCalled();
+  });
+
   it('does not allow attaching a second video to a listing', async () => {
     const { service, prisma } = makeService();
     prisma.listing.findUnique.mockResolvedValueOnce(makeListing());

@@ -559,6 +559,14 @@ export class ListingsService {
   }
 
   async reviewListing(listingId: string, adminId: string, approved: boolean, notes?: string): Promise<ListingResponse> {
+    const reviewNotes = notes?.trim() || null;
+    if (!approved && !reviewNotes) {
+      throw new BadRequestException('A rejection reason is required');
+    }
+    if (reviewNotes && reviewNotes.length > 2000) {
+      throw new BadRequestException('The review reason must be 2,000 characters or fewer');
+    }
+
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, include: this.listingInclude() });
     if (!listing) throw new NotFoundException('Listing not found');
     if (!['SUBMITTED', 'UNDER_REVIEW'].includes(listing.status)) {
@@ -566,7 +574,7 @@ export class ListingsService {
     }
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.listing.update({ where: { id: listingId }, data: { status: approved ? 'VERIFIED' : 'REJECTED' }, include: this.listingInclude() });
-      await tx.auditLog.create({ data: { actorId: adminId, action: approved ? 'LISTING_VERIFIED' : 'LISTING_REJECTED', entityType: 'listing', entityId: listingId, metadata: { notes } } });
+      await tx.auditLog.create({ data: { actorId: adminId, action: approved ? 'LISTING_VERIFIED' : 'LISTING_REJECTED', entityType: 'listing', entityId: listingId, metadata: { notes: reviewNotes } } });
       return result;
     });
     await this.notifications.enqueue(listing.ownerId, {
@@ -574,7 +582,7 @@ export class ListingsService {
       title: approved ? 'Home approved' : 'Home needs changes',
       body: approved
         ? 'Your home has been approved and is now visible to students.'
-        : `Your home was not approved. ${notes?.trim() || 'Review the listing and update the requested details.'}`,
+        : `Your home was not approved. ${reviewNotes}`,
       href: `/page/homes/new?id=${encodeURIComponent(listingId)}`,
       data: { listingId, status: approved ? 'VERIFIED' : 'REJECTED' },
       dedupeKey: `listing-review:${listingId}:${approved ? 'approved' : 'rejected'}`,

@@ -331,13 +331,18 @@ or separate screens:
 | `GET` | `/api/v1/admin/users/:id` | View user details and trust events. |
 | `PATCH` | `/api/v1/admin/users/:id/verify-identity` | Verify a user identity. |
 | `PATCH` | `/api/v1/admin/listings/:id/flag` | Flag a listing. |
+| `GET` | `/api/v1/listings/admin/pending-review` | List homes waiting for review. |
+| `GET` | `/api/v1/listings/admin/:id` | Load a home submission and its attached media. |
+| `PATCH` | `/api/v1/listings/:id/verify` | Approve a submitted home and make it marketplace-visible. |
+| `PATCH` | `/api/v1/listings/:id/reject` | Reject a submitted home with a required `notes` reason (maximum 2,000 characters). |
 | `GET` | `/api/v1/provider-pages/admin/pending` | Provider-only pending list, if a separate provider screen is required. |
 | `PATCH` | `/api/v1/provider-pages/:id/verify` | Direct provider Page approval. |
 | `PATCH` | `/api/v1/provider-pages/:id/reject` | Direct provider Page rejection. |
 
-For the unified admin review product, prefer `/admin/review-queue` and
-`/admin/review`. Do not build two competing queue states unless the product
-specifically requires a provider-only moderation screen.
+Use `/admin/review-queue` and `/admin/review` for student profiles and provider
+Pages. Homes use the listing moderation endpoints above because they are stored
+as listings rather than profile submissions. All endpoints require an
+administrator bearer token.
 
 ## Error Handling
 

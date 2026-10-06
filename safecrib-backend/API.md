@@ -139,6 +139,10 @@ the API enforces `ADMIN` authorization server-side.
 | GET | `/admin/review-queue` | List student and provider/agent submissions; optional `status` and `tier` filters |
 | GET | `/admin/review-queue/:id` | Get one submission and its submitted data |
 | POST | `/admin/review` | Approve or reject a submission; rejection requires `reason` |
+| GET | `/listings/admin/pending-review` | List homes awaiting admin review |
+| GET | `/listings/admin/:id` | Get a home submission and its media for admin review |
+| PATCH | `/listings/:id/verify` | Approve a submitted home |
+| PATCH | `/listings/:id/reject` | Reject a submitted home; requires a reason in `notes` |
 | GET | `/provider-pages/admin/pending` | Direct provider Page pending list; admin only |
 | PATCH | `/provider-pages/:id/verify` | Directly approve a submitted provider Page; admin only |
 | PATCH | `/provider-pages/:id/reject` | Directly reject a submitted provider Page; admin only |
