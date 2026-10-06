@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
-import { ApiError, verifyAdminSession, type AuthUser } from "@/lib/api";
+import { ApiError, clearSession, verifyAdminSession, type AuthUser } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -23,8 +23,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
     void verifyAdminSession().then(setUser).catch((error) => {
-      if (error instanceof ApiError && error.status === 403) router.replace("/admin/login?reason=denied");
-      else router.replace("/admin/login?reason=session-expired");
+      if (error instanceof ApiError && error.status === 403) {
+        clearSession();
+        router.replace("/admin/login?reason=denied");
+        return;
+      }
+      clearSession();
+      router.replace("/admin/login?reason=session-expired");
     }).finally(() => setChecking(false));
   }, [pathname, router]);
 

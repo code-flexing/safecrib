@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ListingMediaImage, ListingMediaVideo } from "@/components/listings/ListingMediaPreview";
 import { Button } from "@/components/ui/Button";
-import { apiFetch, ApiError, clearClientCache, normalizePageStatus, unwrapData, uploadListingMedia, waitForMediaReady, type PageStatus } from "@/lib/api";
+import { apiFetch, ApiError, clearClientCache, clearSession, normalizePageStatus, unwrapData, uploadListingMedia, waitForMediaReady, type PageStatus } from "@/lib/api";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
 
 type ListingStatus = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "FLAGGED" | string;
@@ -86,8 +86,12 @@ export default function NewHomePage() {
       setStep(draft?.step ?? 1);
       setRestored(Boolean(draft && !existingListing));
     }).catch((loadError: unknown) => {
-      if (loadError instanceof ApiError && loadError.status === 401) router.replace("/login?reason=session-expired");
-      else setError(loadError instanceof Error ? loadError.message : "We could not load the home form.");
+      if (loadError instanceof ApiError && loadError.status === 401) {
+        clearSession();
+        router.replace("/login?reason=session-expired");
+        return;
+      }
+      setError(loadError instanceof Error ? loadError.message : "We could not load the home form.");
     });
   }, [router]);
 

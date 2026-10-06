@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Button } from "@/components/ui/Button";
-import { apiFetch, ApiError, cancelPendingUpload, clearClientCache, completeMediaUpload, getPendingUploads, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, unwrapData, uploadSignedMedia, type AccountStatus, type CloudinaryCompletionPayload, type PageStatus, type PendingUpload } from "@/lib/api";
+import { apiFetch, ApiError, cancelPendingUpload, clearClientCache, clearSession, completeMediaUpload, getPendingUploads, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, unwrapData, uploadSignedMedia, type AccountStatus, type CloudinaryCompletionPayload, type PageStatus, type PendingUpload } from "@/lib/api";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
 
 type PayoutAccountForm = { provider: string; accountName: string; accountNumber: string };
@@ -169,8 +169,12 @@ export default function NewProviderPage() {
       setStep(restoredStep);
       setRestored(Boolean(draft && !providerPage));
     }).catch((loadError: unknown) => {
-      if (loadError instanceof ApiError && loadError.status === 401) router.replace("/login?reason=session-expired");
-      else setError(loadError instanceof Error ? loadError.message : "We could not load provider setup.");
+      if (loadError instanceof ApiError && loadError.status === 401) {
+        clearSession();
+        router.replace("/login?reason=session-expired");
+        return;
+      }
+      setError(loadError instanceof Error ? loadError.message : "We could not load provider setup.");
     });
   }, [router]);
 

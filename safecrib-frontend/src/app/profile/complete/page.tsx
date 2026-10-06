@@ -18,6 +18,7 @@ import {
   cancelPendingUpload,
   clearClientCache,
   clearPendingUploads,
+  clearSession,
   getPendingUpload,
   getPendingUploads,
   getCurrentUser,
@@ -453,14 +454,7 @@ export default function CompleteStudentProfilePage() {
         if (
           isUnauthorizedError(loadError)
         ) {
-          localStorage.removeItem(
-            "safecrib_access_token"
-          );
-
-          localStorage.removeItem(
-            "safecrib_refresh_token"
-          );
-
+          clearSession();
           router.replace(
             "/login?reason=session-expired"
           );

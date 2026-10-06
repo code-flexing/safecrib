@@ -10,7 +10,7 @@ import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionMo
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: string[]; images?: string[]; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
@@ -228,8 +228,7 @@ export default function DashboardPage() {
       setOpenSupportCount(conversationList.filter((conversation) => typeof conversation === "object" && conversation !== null && "status" in conversation && String(conversation.status).toUpperCase() === "OPEN").length);
     }).catch((loadError: unknown) => {
       if (isUnauthorizedError(loadError)) {
-        localStorage.removeItem("safecrib_access_token");
-        localStorage.removeItem("safecrib_refresh_token");
+        clearSession();
         router.replace("/login?reason=session-expired");
         return;
       }
