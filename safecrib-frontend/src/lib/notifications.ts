@@ -17,6 +17,11 @@ function base64UrlToUint8Array(value: string): Uint8Array {
   return bytes;
 }
 
+function toArrayBuffer(value: Uint8Array): ArrayBuffer {
+  const slice = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+  return slice as ArrayBuffer;
+}
+
 function keyToBase64Url(key: CryptoKey | ArrayBuffer | null): string {
   if (!key) return "";
   const raw = key instanceof ArrayBuffer ? key : key instanceof Uint8Array ? key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) : null;
@@ -64,7 +69,7 @@ export async function enableBrowserPushNotifications(): Promise<boolean> {
 
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: base64UrlToUint8Array(config.publicKey),
+    applicationServerKey: toArrayBuffer(base64UrlToUint8Array(config.publicKey)),
   });
 
   const p256dh = subscription.getKey("p256dh");
