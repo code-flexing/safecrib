@@ -344,6 +344,14 @@ Pages. Homes use the listing moderation endpoints above because they are stored
 as listings rather than profile submissions. All endpoints require an
 administrator bearer token.
 
+Administrators receive in-app notifications for new support messages, student
+profile submissions, provider Page submissions, and submitted homes. Notification
+clients may request `GET /api/v1/notifications?after=<cursor>` to retrieve only
+newer notifications; use the initial list request when there is no locally
+stored notification history. The notifications page stores the fetched history
+in browser local storage per account and requests older pages only when the
+administrator explicitly chooses to load them.
+
 ## Error Handling
 
 | Status | Required frontend behavior |

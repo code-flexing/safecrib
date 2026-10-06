@@ -221,6 +221,17 @@ export class ProviderPagesService {
       return result;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
+    await this.notifications.enqueueAdmins({
+      type: 'ADMIN_REVIEW_SUBMISSION',
+      title: 'Provider Page awaiting review',
+      body: `${owner.displayName?.trim() || owner.email} submitted a provider Page.`,
+      href: `/admin/reviews/${encodeURIComponent(reviewId)}`,
+      data: {
+        submissionId: reviewId,
+        entityType: 'provider_page',
+      },
+      dedupeKey: `admin-review:provider-page:${reviewId}`,
+    });
     return { ...updated, reviewQueueId: reviewId };
   }
 

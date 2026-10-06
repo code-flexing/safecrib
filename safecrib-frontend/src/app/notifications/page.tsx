@@ -10,6 +10,10 @@ import { apiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/
 import {
   connectNotificationSocket,
   disconnectNotificationSocket,
+  advanceNotificationCursor,
+  getNotificationCache,
+  notificationCursor,
+  saveNotificationCache,
   type NotificationItem,
   type NotificationsResponse,
 } from "@/lib/notifications";
@@ -72,6 +76,7 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [latestCursor, setLatestCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,36 +86,102 @@ export default function NotificationsPage() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
   const pendingNotifications = useRef(new Map<string, NotificationItem>());
   const notificationFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cacheReady, setCacheReady] = useState(false);
+  const syncing = useRef(false);
 
-  const loadFirstPage = useCallback(async () => {
+  const syncNotifications = useCallback(async () => {
+    if (syncing.current) return;
+    syncing.current = true;
     setError(null);
     try {
-      const response = unwrapData<NotificationsResponse>(
-        await apiFetch<unknown>("/api/v1/notifications?limit=30", { cache: "no-store" }),
+      const cached = getNotificationCache();
+      const cursor = cached?.latestCursor
+        ?? notificationCursor(cached?.notifications[0]);
+      let response = unwrapData<NotificationsResponse>(
+        await apiFetch<unknown>(
+          `/api/v1/notifications?limit=30${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
+          { cache: "no-store" },
+        ),
       );
-      setItems(response.notifications);
+      const incoming = [...response.notifications];
+      let newestCursor = response.latestCursor;
+      while (response.hasMoreAfter && newestCursor) {
+        response = unwrapData<NotificationsResponse>(
+          await apiFetch<unknown>(
+            `/api/v1/notifications?limit=30&after=${encodeURIComponent(newestCursor)}`,
+            { cache: "no-store" },
+          ),
+        );
+        incoming.push(...response.notifications);
+        newestCursor = response.latestCursor;
+      }
+      if (cursor) {
+        setItems((current) => {
+          const merged = [
+            ...incoming,
+            ...current.filter((item) => !incoming.some((newItem) => newItem.id === item.id)),
+          ].sort((left, right) =>
+            right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+          );
+          return merged;
+        });
+        setLatestCursor((current) =>
+          incoming.reduce(
+            (latest, notification) => advanceNotificationCursor(latest, notification) ?? latest,
+            current ?? newestCursor ?? cursor,
+          ),
+        );
+      } else {
+        setItems(incoming);
+        setNextCursor(response.nextCursor);
+        setLatestCursor((current) =>
+          incoming.reduce(
+            (latest, notification) => advanceNotificationCursor(latest, notification) ?? latest,
+            current ?? response.latestCursor,
+          ),
+        );
+      }
       setUnreadCount(response.unreadCount);
-      setNextCursor(response.nextCursor);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load notifications.");
     } finally {
       setLoading(false);
+      setCacheReady(true);
+      syncing.current = false;
     }
   }, []);
 
   useEffect(() => {
-    void loadFirstPage();
+    const cached = getNotificationCache();
+    if (cached) {
+      setItems(cached.notifications);
+      setUnreadCount(cached.unreadCount);
+      setNextCursor(cached.nextCursor);
+      setLatestCursor(cached.latestCursor ?? notificationCursor(cached.notifications[0]));
+      setLoading(false);
+      setCacheReady(true);
+    }
+    void syncNotifications();
+  }, [syncNotifications]);
+
+  useEffect(() => {
+    if (!cacheReady) return;
+    saveNotificationCache({
+      notifications: items,
+      unreadCount,
+      nextCursor,
+      latestCursor,
+    });
+  }, [cacheReady, items, latestCursor, nextCursor, unreadCount]);
+
+  useEffect(() => {
     const socket = connectNotificationSocket();
-    socket?.on("connect", () => { void loadFirstPage(); });
+    socket?.on("connect", () => { void syncNotifications(); });
     socket?.on("notification:new", (notification: NotificationItem) => {
       if (!notification?.id) return;
       pendingNotifications.current.delete(notification.id);
       pendingNotifications.current.set(notification.id, notification);
-      while (pendingNotifications.current.size > 30) {
-        const oldestId = pendingNotifications.current.keys().next().value;
-        if (!oldestId) break;
-        pendingNotifications.current.delete(oldestId);
-      }
+      setLatestCursor((current) => advanceNotificationCursor(current, notification));
       if (notificationFlushTimer.current) return;
       notificationFlushTimer.current = setTimeout(() => {
         notificationFlushTimer.current = null;
@@ -119,7 +190,9 @@ export default function NotificationsPage() {
         setItems((current) => [
           ...incoming,
           ...current.filter((item) => !incoming.some((newItem) => newItem.id === item.id)),
-        ].slice(0, 30));
+        ].sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+        ));
         void apiFetch<unknown>("/api/v1/notifications/unread-count")
           .then((response) => {
             const unread = unwrapData<{ count: number }>(response);
@@ -134,7 +207,7 @@ export default function NotificationsPage() {
       disconnectNotificationSocket(socket);
       if (notificationFlushTimer.current) clearTimeout(notificationFlushTimer.current);
     };
-  }, [loadFirstPage]);
+  }, [syncNotifications]);
 
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {

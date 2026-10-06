@@ -85,7 +85,10 @@ function makeService() {
     deleteMedia: vi.fn(async () => {}),
   };
   const queue = { add: vi.fn(async () => {}) };
-  const notifications = { enqueue: vi.fn().mockResolvedValue(undefined) };
+  const notifications = {
+    enqueue: vi.fn().mockResolvedValue(undefined),
+    enqueueAdmins: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new ListingsService(prisma as never, queue as never, providerPages as never, mediaService as never, notifications as never);
   return { service, prisma, providerPages, mediaService, notifications, tx, transactionListing };
 }
@@ -219,7 +222,7 @@ describe('ListingsService listing media and pricing rules', () => {
   });
 
   it('allows submission with a video and location even when there are no photos', async () => {
-    const { service, prisma, transactionListing } = makeService();
+    const { service, prisma, transactionListing, notifications } = makeService();
     transactionListing.video = {
       mediaId: 'media_video',
       media: { id: 'media_video', durationSec: 30 },
@@ -233,6 +236,11 @@ describe('ListingsService listing media and pricing rules', () => {
 
     expect(result.status).toBe('SUBMITTED');
     expect(result.video?.mediaId).toBe('media_video');
+    expect(notifications.enqueueAdmins).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'ADMIN_REVIEW_SUBMISSION',
+      title: 'Home awaiting review',
+      href: '/admin/homes/listing_1',
+    }));
   });
 
   it('rejects submission without either media type or a location description', async () => {

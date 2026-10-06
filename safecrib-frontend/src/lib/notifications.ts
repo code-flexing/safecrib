@@ -131,7 +131,18 @@ export type NotificationsResponse = {
   notifications: NotificationItem[];
   unreadCount: number;
   nextCursor: string | null;
+  latestCursor: string | null;
+  hasMoreAfter?: boolean;
 };
+
+export type NotificationCache = {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  nextCursor: string | null;
+  latestCursor: string | null;
+};
+
+const NOTIFICATION_CACHE_PREFIX = "safecrib:notifications:v1:";
 
 let notificationSocket: Socket | null = null;
 let socketSubscribers = 0;
@@ -148,6 +159,86 @@ function tokenSubject(token: string) {
   } catch {
     return null;
   }
+}
+
+function notificationCacheKey() {
+  const token = typeof window === "undefined"
+    ? null
+    : localStorage.getItem("safecrib_access_token");
+  const userId = token ? tokenSubject(token) : null;
+  return userId ? `${NOTIFICATION_CACHE_PREFIX}${userId}` : null;
+}
+
+export function getNotificationCache(): NotificationCache | null {
+  const key = notificationCacheKey();
+  if (!key) return null;
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+    const cache: unknown = JSON.parse(stored);
+    if (
+      typeof cache !== "object" ||
+      cache === null ||
+      !Array.isArray((cache as NotificationCache).notifications)
+    ) {
+      return null;
+    }
+    return cache as NotificationCache;
+  } catch (error) {
+    console.error("Could not read locally stored notifications.", error);
+    return null;
+  }
+}
+
+export function saveNotificationCache(cache: NotificationCache): void {
+  const key = notificationCacheKey();
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify(cache));
+  } catch (error) {
+    console.error("Could not save notifications in local storage.", error);
+  }
+}
+
+export function notificationCursor(item: NotificationItem | undefined): string | null {
+  if (!item) return null;
+  try {
+    return btoa(`${item.createdAt}|${item.id}`)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+  } catch (error) {
+    console.error("Could not create a notification sync cursor.", error);
+    return null;
+  }
+}
+
+export function advanceNotificationCursor(
+  current: string | null,
+  item: NotificationItem,
+): string | null {
+  const candidate = notificationCursor(item);
+  if (!candidate || !current) return candidate ?? current;
+  try {
+    const decode = (cursor: string) => {
+      const normalized = cursor.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+      return atob(padded).split("|", 2);
+    };
+    const [candidateDate, candidateId] = decode(candidate);
+    const [currentDate, currentId] = decode(current);
+    if (
+      candidateDate &&
+      currentDate &&
+      (candidateDate > currentDate ||
+        (candidateDate === currentDate && (candidateId ?? "") > (currentId ?? "")))
+    ) {
+      return candidate;
+    }
+  } catch (error) {
+    console.error("Could not compare notification sync cursors.", error);
+  }
+  return current;
 }
 
 export function connectNotificationSocket(): Socket | null {

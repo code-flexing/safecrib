@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
-import { ApiError, clearSession, verifyAdminSession, type AuthUser } from "@/lib/api";
+import { connectNotificationSocket, disconnectNotificationSocket } from "@/lib/notifications";
+import { ApiError, apiFetch, clearSession, unwrapData, verifyAdminSession, type AuthUser } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checking, setChecking] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     if (pathname === "/admin/login") {
@@ -33,6 +35,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }).finally(() => setChecking(false));
   }, [pathname, router]);
 
+  useEffect(() => {
+    if (!user || pathname === "/admin/login") return;
+    let active = true;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refreshUnread = async () => {
+      try {
+        const response = unwrapData<{ count: number }>(
+          await apiFetch<unknown>("/api/v1/notifications/unread-count"),
+        );
+        if (active && Number.isInteger(response?.count)) setUnreadNotifications(response.count);
+      } catch (error) {
+        if (active) console.error("Could not refresh admin notification count.", error);
+      }
+    };
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        void refreshUnread();
+      }, 250);
+    };
+    const socket = connectNotificationSocket();
+    void refreshUnread();
+    window.addEventListener("safecrib:notifications-read", scheduleRefresh);
+    socket?.on("connect", scheduleRefresh);
+    socket?.on("notification:new", scheduleRefresh);
+    return () => {
+      active = false;
+      window.removeEventListener("safecrib:notifications-read", scheduleRefresh);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      disconnectNotificationSocket(socket);
+    };
+  }, [pathname, user]);
+
   if (pathname === "/admin/login") return <>{children}</>;
   if (checking || !user) return <main className="flex min-h-screen items-center justify-center text-sm text-black/55">Checking administrator access...</main>;
 
@@ -51,6 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Admin console</p>
           <nav className="mt-4 flex gap-2 overflow-x-auto lg:block lg:space-y-1">
             <Link href="/admin" className={`block whitespace-nowrap rounded-[4px] px-3 py-2 text-sm font-medium ${pathname === "/admin" ? "bg-safecrib-green text-white" : "text-black/65 hover:bg-white"}`}>Review queue</Link>
+            <Link href="/admin/notifications" className={`inline-flex items-center gap-2 whitespace-nowrap rounded-[4px] px-3 py-2 text-sm font-medium ${pathname.startsWith("/admin/notifications") ? "bg-safecrib-green text-white" : "text-black/65 hover:bg-white"}`}><Icon name="notifications" /><span>Notifications</span>{unreadNotifications > 0 && <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${pathname.startsWith("/admin/notifications") ? "bg-white/20 text-white" : "bg-red-600 text-white"}`}>{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
             <Link href="/admin/admins/new" className={`block whitespace-nowrap rounded-[4px] px-3 py-2 text-sm font-medium ${pathname === "/admin/admins/new" ? "bg-safecrib-green text-white" : "text-black/65 hover:bg-white"}`}>Create admin</Link>
             <Link href="/admin/support" aria-label="Support inbox" title="Support inbox" className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${pathname.startsWith("/admin/support") ? "border-safecrib-green/20 bg-safecrib-green text-white" : "border-transparent text-black/65 hover:bg-white"}`}><Icon name="support" /></Link>
             <Link href="/admin/settings" aria-label="Settings" title="Settings" className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${pathname === "/admin/settings" ? "border-safecrib-green/20 bg-safecrib-green text-white" : "border-transparent text-black/65 hover:bg-white"}`}><Icon name="settings" /></Link>

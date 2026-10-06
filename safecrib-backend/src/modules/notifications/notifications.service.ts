@@ -4,6 +4,7 @@ import { InjectJobQueue } from '../../infra/queue/queue-injection.js';
 import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { NOTIFICATION_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { NotificationInput, NotificationQueuePayload } from './notification.types.js';
+import { PrismaService } from '../../infra/prisma/prisma.service.js';
 
 const MAX_TITLE_LENGTH = 160;
 const MAX_BODY_LENGTH = 500;
@@ -16,6 +17,7 @@ export class NotificationsService {
 
   constructor(
     @InjectJobQueue(NOTIFICATION_QUEUE) private readonly queue: JobQueueClient,
+    private readonly prisma: PrismaService,
   ) {}
 
   async enqueue(userId: string, input: NotificationInput): Promise<void> {
@@ -42,6 +44,21 @@ export class NotificationsService {
     } catch (error) {
       this.logger.error(
         `Could not queue notification ${input.type} for user ${userId}: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
+
+  async enqueueAdmins(input: NotificationInput): Promise<void> {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: { role: 'ADMIN', emailVerified: true },
+        select: { id: true },
+      });
+      await Promise.all(admins.map((admin) => this.enqueue(admin.id, input)));
+    } catch (error) {
+      this.logger.error(
+        `Could not deliver admin notification ${input.type}: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error.stack : undefined,
       );
     }

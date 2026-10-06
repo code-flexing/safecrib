@@ -550,6 +550,17 @@ export class ListingsService {
       await tx.auditLog.create({ data: { actorId: ownerId, action: 'LISTING_SUBMITTED', entityType: 'listing', entityId: listingId } });
       return result;
     });
+    await this.notifications.enqueueAdmins({
+      type: 'ADMIN_REVIEW_SUBMISSION',
+      title: 'Home awaiting review',
+      body: `${listing.title} was submitted for review.`,
+      href: `/admin/homes/${encodeURIComponent(listingId)}`,
+      data: {
+        listingId,
+        entityType: 'listing',
+      },
+      dedupeKey: `admin-review:listing:${listingId}:${updated.updatedAt.toISOString()}`,
+    });
     return this.toResponse(updated, updated.photos);
   }
 

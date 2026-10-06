@@ -23,7 +23,7 @@ describe('StudentProfileService.completeProfile', () => {
       studentProfile: { findUnique: vi.fn() },
       $transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     } as unknown as PrismaService;
-    const service = new StudentProfileService(prisma);
+    const service = new StudentProfileService(prisma, { enqueueAdmins: vi.fn() } as never);
 
     await expect(
       service.completeProfile('user-id', {

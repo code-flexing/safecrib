@@ -12,7 +12,7 @@ describe('NotificationsController', () => {
     };
     const controller = new NotificationsController(prisma as never);
 
-    const response = await controller.list({ id: 'user-1' }, undefined, undefined);
+    const response = await controller.list({ id: 'user-1' }, undefined, undefined, undefined);
 
     expect(prisma.notification.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { userId: 'user-1' },
@@ -36,8 +36,39 @@ describe('NotificationsController', () => {
       notifications: [],
       unreadCount: 0,
       nextCursor: null,
+      latestCursor: null,
+      hasMoreAfter: false,
     });
     await expect(controller.unreadCount({ id: 'user-1' })).resolves.toEqual({ count: 0 });
+  });
+
+  it('returns only notifications newer than the supplied cursor', async () => {
+    const createdAt = new Date('2026-10-06T12:00:00.000Z');
+    const prisma = {
+      notification: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'notification-2', createdAt, type: 'WELCOME' },
+        ]),
+        count: vi.fn().mockResolvedValue(1),
+      },
+    };
+    const controller = new NotificationsController(prisma as never);
+    const cursor = Buffer.from(`${new Date('2026-10-06T11:00:00.000Z').toISOString()}|notification-1`).toString('base64url');
+
+    const response = await controller.list({ id: 'user-1' }, undefined, '30', cursor);
+
+    expect(prisma.notification.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        userId: 'user-1',
+        OR: [
+          { createdAt: { gt: new Date('2026-10-06T11:00:00.000Z') } },
+          { createdAt: new Date('2026-10-06T11:00:00.000Z'), id: { gt: 'notification-1' } },
+        ],
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    }));
+    expect(response.notifications).toHaveLength(1);
+    expect(response.latestCursor).toBe(Buffer.from(`${createdAt.toISOString()}|notification-2`).toString('base64url'));
   });
 
   it('does not mark or reveal another user’s notification', async () => {

@@ -122,17 +122,24 @@ export class NotificationsController {
     @CurrentUser() user: { id: string },
     @Query('before') before?: string,
     @Query('limit') limitValue?: string,
+    @Query('after') after?: string,
   ) {
     const requestedLimit = limitValue === undefined ? DEFAULT_PAGE_SIZE : Number(limitValue);
     if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
       throw new BadRequestException('Notification limit must be a positive integer');
     }
     const limit = Math.min(requestedLimit, MAX_PAGE_SIZE);
+    if (before && after) {
+      throw new BadRequestException('Use either before or after, not both');
+    }
     const cursor = decodeCursor(before);
+    const newerThan = decodeCursor(after);
     return this.withNotificationTableFallback({
       notifications: [],
       unreadCount: 0,
       nextCursor: null,
+      latestCursor: null,
+      hasMoreAfter: false,
     }, async () => {
       const rows = await this.prisma.notification.findMany({
         where: {
@@ -143,8 +150,16 @@ export class NotificationsController {
               { createdAt: cursor.createdAt, id: { lt: cursor.id } },
             ],
           } : {}),
+          ...(newerThan ? {
+            OR: [
+              { createdAt: { gt: newerThan.createdAt } },
+              { createdAt: newerThan.createdAt, id: { gt: newerThan.id } },
+            ],
+          } : {}),
         },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: newerThan
+          ? [{ createdAt: 'asc' }, { id: 'asc' }]
+          : [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit + 1,
         select: {
           id: true,
@@ -158,15 +173,19 @@ export class NotificationsController {
         },
       });
       const hasMore = rows.length > limit;
-      const notifications = rows.slice(0, limit);
+      const selectedRows = rows.slice(0, limit);
+      const notifications = newerThan ? selectedRows.reverse() : selectedRows;
       const unreadCount = await this.prisma.notification.count({
         where: { userId: user.id, readAt: null },
       });
       const last = notifications.at(-1);
+      const latest = notifications[0];
       return {
         notifications,
         unreadCount,
-        nextCursor: hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
+        nextCursor: !newerThan && hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
+        latestCursor: latest ? encodeCursor(latest.createdAt, latest.id) : null,
+        hasMoreAfter: Boolean(newerThan && hasMore),
       };
     });
   }

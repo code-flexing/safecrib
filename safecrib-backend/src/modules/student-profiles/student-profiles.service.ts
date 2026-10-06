@@ -15,6 +15,7 @@ import type {
 } from '../../common/types.js';
 import type { StudentSignupDto } from './dto/student-signup.dto.js';
 import type { CompleteStudentProfileDto } from './dto/student-signup.dto.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 type StudentProfileStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -22,7 +23,10 @@ type StudentProfileStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED
 export class StudentProfileService {
   private readonly logger = new Logger(StudentProfileService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async submitSignup(_dto: StudentSignupDto): Promise<SubmissionRecord> {
     throw new BadRequestException(
@@ -159,6 +163,17 @@ export class StudentProfileService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     this.logger.log(`Student profile submitted for ${user.email}`);
+    await this.notifications.enqueueAdmins({
+      type: 'ADMIN_REVIEW_SUBMISSION',
+      title: 'Student profile awaiting review',
+      body: `${submittedData.displayName || user.email} submitted a student profile.`,
+      href: `/admin/reviews/${encodeURIComponent(result.queue.id)}`,
+      data: {
+        submissionId: result.queue.id,
+        entityType: 'student_profile',
+      },
+      dedupeKey: `admin-review:student-profile:${result.queue.id}`,
+    });
     return this.toRecord(result.profile, result.queue);
   }
 
