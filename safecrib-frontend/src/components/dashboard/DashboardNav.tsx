@@ -200,7 +200,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   const accountName = getDisplayName(navUser) || getAuthenticatedDisplayName() || "Your profile";
   const profileLinkClass = `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${pathname === "/profile" ? "bg-black/[0.04]" : "hover:bg-black/[0.03]"}`;
   const handleSignOut = () => {
-    void logoutSession().finally(() => router.replace("/login"));
+    void logoutSession();
   };
 
   return (
@@ -251,6 +251,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/notifications") ? "bg-black/[0.05] text-current shadow-sm scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
           {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pageActive ? "bg-black/[0.05] text-current shadow-sm scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="page" className="h-5 w-5" /></button>}
           <Link href="/settings" aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/settings" ? "bg-black/[0.05] text-current shadow-sm scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="settings" className="h-5 w-5" /></Link>
+          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="flex h-12 flex-1 items-center justify-center rounded-[1.9rem] text-current/70 transition-all duration-200 ease-out hover:bg-black/[0.03] hover:scale-[1.01]"><Icon name="logout" className="h-5 w-5" /></button>
         </div>
       </nav>
     </>

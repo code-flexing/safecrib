@@ -137,11 +137,14 @@ export async function verifyAdminSession() {
 
 export async function logoutSession() {
   const refreshToken = typeof window === "undefined" ? null : localStorage.getItem("safecrib_refresh_token");
-  try {
-    if (refreshToken) await apiFetch("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) });
-  } finally {
-    clearUserSession();
+  if (refreshToken) {
+    void apiFetch("/api/v1/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+      keepalive: true,
+    }).catch(() => undefined);
   }
+  clearUserSession();
 }
 
 export async function getCurrentUser<T>() {
