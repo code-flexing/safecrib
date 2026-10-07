@@ -1256,23 +1256,31 @@ export default function DashboardPage() {
       <main className="relative h-[100dvh] overflow-hidden bg-neutral-900 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          <div className="absolute left-4 right-4 top-12 mx-auto flex max-w-2xl items-center gap-3">
+          <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] mx-auto flex max-w-2xl items-center gap-3">
             <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10" />
-            <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
+            <div className="h-10 w-10 animate-pulse rounded-full border-2 border-white/70 bg-white/10" />
           </div>
-          <div className="absolute bottom-24 left-16 right-4 max-w-xl space-y-3 md:bottom-8 md:left-24 md:right-8">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
-              <div className="space-y-2">
-                <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
-                <div className="h-3 w-40 animate-pulse rounded bg-white/10" />
+          <div className="absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end gap-3 md:inset-x-8 md:bottom-6">
+            <div className="min-w-0 max-w-xl flex-1">
+              <div className="mb-2 h-1 animate-pulse rounded-full bg-white/25" />
+              <div className="space-y-2 rounded-2xl border border-white/15 bg-black/45 p-4 backdrop-blur-xl">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
+                  <div className="h-3 w-24 animate-pulse rounded bg-white/15" />
+                  <div className="h-5 w-5 animate-pulse rounded-full bg-safecrib-green/70" />
+                  <div className="h-3 min-w-0 flex-1 animate-pulse rounded bg-white/10" />
+                </div>
+                <div className="h-5 w-2/3 animate-pulse rounded bg-white/15" />
+                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <div className="h-6 w-28 animate-pulse rounded bg-white/15" />
+                  <div className="h-10 w-28 animate-pulse rounded-full bg-safecrib-green/60" />
+                </div>
               </div>
             </div>
-            <div className="h-6 w-2/3 animate-pulse rounded bg-white/10" />
-            <div className="h-4 w-full animate-pulse rounded bg-white/10" />
-            <div className="h-4 w-4/5 animate-pulse rounded bg-white/10" />
+            <div className="h-12 w-12 animate-pulse rounded-full border border-white/50 bg-safecrib-green/60 shadow-xl" />
           </div>
-          <div className="absolute left-3 top-1/2 h-52 w-12 -translate-y-1/2 animate-pulse rounded-full border border-white/20 bg-white/15 md:left-6" />
         </section>
       </main>
     );
