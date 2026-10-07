@@ -140,10 +140,10 @@ function formatEngagementCount(count: number) {
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
   return (
-    <div className="flex shrink-0 flex-col items-end leading-tight">
-      <span className={`font-display font-bold text-safecrib-green ${priced ? "text-lg sm:text-xl" : "text-sm"}`}>{formatListingPrice(listing)}</span>
+    <div className="flex min-w-0 items-baseline gap-2 leading-tight">
+      <span className={`font-display font-bold text-white ${priced ? "text-xl" : "text-sm"}`}>{formatListingPrice(listing)}</span>
       {priced && hasDiscount(listing) && (
-        <span className="text-xs text-black/40 line-through">{formatOriginalPrice(listing)}</span>
+        <span className="text-xs text-white/60 line-through">{formatOriginalPrice(listing)}</span>
       )}
     </div>
   );
@@ -187,7 +187,7 @@ function formatVideoTime(seconds: number) {
   return `${minutes}:${remainingSeconds}`;
 }
 
-function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string }) {
+function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string; onProgress?: (currentTime: number, duration: number) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const directVideoUrl = video?.url && isUsableImageSource(video.url) ? video.url.trim() : null;
@@ -260,7 +260,12 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
           ref={videoRef}
           src={videoUrl}
           poster={poster ?? fallbackSrc ?? undefined}
-          aria-label={`${alt} video`}
+          role="button"
+          tabIndex={0}
+          aria-label={`${alt} video. ${isPlaying ? "Playing" : "Paused"}. Press Space to toggle playback.`}
+          data-playing={isPlaying}
+          data-current-time={currentTime}
+          data-duration={duration}
           autoPlay={isActive}
           muted={isMuted}
           loop
@@ -268,10 +273,25 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
           preload={isActive ? "auto" : isNear ? "metadata" : "none"}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
-          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+          onTimeUpdate={(event) => {
+            const time = event.currentTarget.currentTime;
+            setCurrentTime(time);
+            onProgress?.(time, duration);
+          }}
+          onLoadedMetadata={(event) => {
+            const mediaDuration = event.currentTarget.duration;
+            setDuration(mediaDuration);
+            onProgress?.(currentTime, mediaDuration);
+          }}
           onError={() => setVideoFailed(true)}
           onClick={(event) => { const element = event.currentTarget; if (element.paused) void element.play().catch(() => undefined); else element.pause(); }}
+          onKeyDown={(event) => {
+            if (event.key !== " " && event.key !== "Enter") return;
+            event.preventDefault();
+            const element = event.currentTarget;
+            if (element.paused) void element.play().catch(() => undefined);
+            else element.pause();
+          }}
           className="h-full w-full cursor-pointer object-cover"
         />
       ) : poster || fallbackSrc ? (
@@ -280,45 +300,13 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
         <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />
       )}
       {videoUrl && !videoFailed && (
-        <div className="absolute bottom-20 left-16 right-4 z-20 flex max-w-xl items-center gap-2 text-white md:bottom-4 md:left-24 md:right-8">
-          <button
-            type="button"
-            onClick={() => {
-              const element = videoRef.current;
-              if (!element) return;
-              if (element.paused) void element.play().catch(() => undefined);
-              else element.pause();
-            }}
-            aria-label={isPlaying ? "Pause video" : "Play video"}
-            title={isPlaying ? "Pause" : "Play"}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-          >
-            <Icon name={isPlaying ? "pause" : "play"} className="h-5 w-5" />
-          </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-black/50 px-3 py-2 backdrop-blur-sm">
-            <input
-              type="range"
-              min={0}
-              max={duration || 1}
-              step={0.1}
-              value={Math.min(currentTime, duration || 1)}
-              onChange={(event) => {
-                const nextTime = Number(event.currentTarget.value);
-                if (videoRef.current) videoRef.current.currentTime = nextTime;
-                setCurrentTime(nextTime);
-              }}
-              aria-label="Seek video"
-              disabled={!duration}
-              className="h-1 min-w-0 flex-1 cursor-pointer accent-white disabled:cursor-default"
-            />
-            <span className="shrink-0 text-[11px] tabular-nums" aria-live="off">{formatVideoTime(currentTime)} / {formatVideoTime(duration)}</span>
-          </div>
+        <div className="absolute right-4 top-20 z-40">
           <button
             type="button"
             onClick={() => setIsMuted((muted) => !muted)}
             aria-label={isMuted ? "Unmute video" : "Mute video"}
             title={isMuted ? "Unmute" : "Mute"}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-md backdrop-blur-xl hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
             <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
           </button>
@@ -522,6 +510,157 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
   );
 }
 
+type ListingActionTrayProps = {
+  listing: Listing;
+  isOpen: boolean;
+  isSaved: boolean;
+  isRecommended: boolean;
+  canRecommend: boolean;
+  menuOpen: boolean;
+  isStudent: boolean;
+  commentCount: number;
+  recommendationDisabled: boolean;
+  role: string;
+  onToggle: () => void;
+  onClose: () => void;
+  onLike: (listingId: string, liked: boolean) => Promise<void>;
+  onComment: () => void;
+  onRecommend: (providerId: string, recommended: boolean) => Promise<void>;
+  onSave: () => void;
+  onMore: () => void;
+  onCloseMenu: () => void;
+};
+
+function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecommend, menuOpen, isStudent, commentCount, recommendationDisabled, role, onToggle, onClose, onLike, onComment, onRecommend, onSave, onMore, onCloseMenu }: ListingActionTrayProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
+  const restoreFocusRef = useRef(true);
+  const trayId = `listing-actions-${listing.id}`;
+
+  useEffect(() => {
+    let frame = 0;
+    if (isOpen) {
+      restoreFocusRef.current = true;
+      frame = requestAnimationFrame(() => trayRef.current?.querySelector<HTMLButtonElement>("button")?.focus());
+    } else if (wasOpenRef.current && restoreFocusRef.current) {
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+    wasOpenRef.current = isOpen;
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !rootRef.current?.contains(target)) onClose();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const frame = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [menuOpen]);
+
+  const itemClass = (open: boolean) => `flex items-center gap-2 transition-all duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity ${open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`;
+  const delay = (index: number): React.CSSProperties => ({ transitionDelay: isOpen ? `${index * 40}ms` : "0ms" });
+  const countChip = (text: string) => <span className="rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-xs font-semibold leading-none text-white shadow-sm backdrop-blur-md">{text}</span>;
+  const iconButtonClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/95 text-safecrib-black shadow-lg transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green";
+
+  return (
+    <div ref={rootRef} className="relative z-40 flex h-12 w-12 shrink-0 items-center justify-center" data-listing-menu-open={menuOpen ? "true" : undefined}>
+      {menuOpen && (
+        <div ref={menuRef} role="menu" aria-label="More listing options" className="absolute bottom-full right-0 z-50 mb-3 w-52 overflow-hidden rounded-2xl border border-white/20 bg-white text-safecrib-black shadow-xl">
+          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={onCloseMenu} className="block border-b border-black/5 px-4 py-3 text-sm font-medium text-black/75 transition hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">Open post</Link>
+          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={onCloseMenu} className="block px-4 py-3 text-sm font-medium text-black/75 transition hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">View provider</Link>}
+        </div>
+      )}
+      <div
+        ref={trayRef}
+        id={trayId}
+        role="group"
+        aria-label="Listing actions"
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        className={`absolute bottom-full right-0 mb-3 flex flex-col-reverse items-end gap-3 transition-opacity duration-150 ease-out ${isOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+      >
+        <div className={itemClass(isOpen)} style={delay(0)}>
+          {countChip(formatEngagementCount(listing.likeCount ?? 0))}
+          <LikeButton
+            listingId={listing.id}
+            initialLikeCount={listing.likeCount ?? 0}
+            initialIsLiked={listing.likedByCurrentUser ?? false}
+            onLike={onLike}
+            size="lg"
+            showLabel={false}
+          />
+        </div>
+        <div className={itemClass(isOpen)} style={delay(1)}>
+          {countChip(formatEngagementCount(commentCount))}
+          <button type="button" onClick={() => { restoreFocusRef.current = false; onComment(); onClose(); }} aria-label={`Comments, ${commentCount}`} title="Comments" className={iconButtonClass}>
+            <Icon name="message-circle" className="h-5 w-5" />
+          </button>
+        </div>
+        {canRecommend && (
+          <div className={itemClass(isOpen)} style={delay(2)}>
+            {countChip(formatEngagementCount(listing.providerRecommendationCount ?? 0))}
+            <RecommendButton
+              providerId={listing.ownerId}
+              initialRecommendationCount={listing.providerRecommendationCount ?? 0}
+              initialIsRecommended={isRecommended}
+              onRecommend={onRecommend}
+              disabled={recommendationDisabled}
+              role={role}
+              size="lg"
+              showLabel={false}
+            />
+          </div>
+        )}
+        {isStudent && (
+          <div className={itemClass(isOpen)} style={delay(3)}>
+            {countChip(isSaved ? "Saved" : "Save")}
+            <button type="button" onClick={onSave} aria-pressed={isSaved} aria-label={isSaved ? "Remove from saved listings" : "Save listing"} title={isSaved ? "Saved" : "Save"} className={`${iconButtonClass} ${isSaved ? "text-safecrib-green" : ""}`}>
+              <Icon name="bookmark" className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+        <div className={itemClass(isOpen)} style={delay(4)}>
+          {countChip("More")}
+          <button type="button" onClick={() => { restoreFocusRef.current = false; onMore(); onClose(); }} aria-label="More listing options" title="More" className={iconButtonClass}>
+            <Icon name="more-horizontal" className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={trayId}
+        aria-label={isOpen ? "Close listing actions" : "Open listing actions"}
+        title={isOpen ? "Close actions" : "More actions"}
+        onClick={onToggle}
+        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-safecrib-green text-white shadow-xl transition-all duration-150 ease-out hover:bg-safecrib-green/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-opacity ${isOpen ? "rotate-45" : "rotate-0"}`}
+      >
+        <Icon name={isOpen ? "x" : "zap"} className="h-5 w-5" />
+        {!isOpen && (listing.likedByCurrentUser || isSaved) && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border border-white bg-white" />}
+      </button>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -551,6 +690,8 @@ export default function DashboardPage() {
     }
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openActionTrayId, setOpenActionTrayId] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<{ listingId: string; currentTime: number; duration: number } | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const scrollRestoredRef = useRef(false);
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
