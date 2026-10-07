@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { NameHandle } from "@/components/common/NameHandle";
@@ -12,6 +12,7 @@ import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, refreshCachedApi, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
@@ -181,7 +182,10 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [fullDiscussionOpen, setFullDiscussionOpen] = useState(false);
   const inputId = `home-comment-${listingId}`;
+  const titleId = useId();
+  const closeFullDiscussion = useCallback(() => setFullDiscussionOpen(false), []);
 
   useEffect(() => {
     let active = true;
@@ -266,7 +270,7 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
     setMentionCandidates([]);
   };
 
-  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
+  const renderComment = (item: ListingComment, depth = 0, preview = false): ReactNode => {
     const replies = comments.filter((candidate) => candidate.parentId === item.id);
     const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
     return (
@@ -276,16 +280,16 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
           {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
           <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
         </p>
-        {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70">{item.body}</p>}
-        {item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
-        <button
+        {item.body && <p className={`mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70 ${preview ? "line-clamp-2" : ""}`}>{item.body}</p>}
+        {!preview && item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
+        {!preview && <button
           type="button"
           onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById(inputId)?.focus(); }}
           className="mt-1.5 text-xs font-semibold text-safecrib-green hover:underline"
         >
           Reply
-        </button>
-        {replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+        </button>}
+        {!preview && replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
       </li>
     );
   };
@@ -294,48 +298,77 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
 
   return (
     <section id={`comments-${listingId}`} className="border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4" aria-label="Home comments">
-      <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
-      <textarea
-        id={inputId}
-        value={commentBody}
-        onChange={(event) => updateCommentBody(event.target.value)}
-        maxLength={1000}
-        rows={2}
-        placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
-        className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
-      />
-      {mentionCandidates.length > 0 && (
-        <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
-          {mentionCandidates.map((person) => (
-            <li key={person.id}>
-              <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
-                <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
-      <div className="mt-2 flex items-center justify-between gap-3">
-        {commentBody.length > 0 && <span className="text-xs text-black/45">{commentBody.length}/1000</span>}
-        <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
-      </div>
-      {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
-
       {loading ? (
-        <div className="mt-4 space-y-3" aria-hidden="true">
+        <div className="space-y-2 py-2" aria-hidden="true">
           <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
         </div>
       ) : (
-        <ul className="mt-3 max-h-96 divide-y divide-black/10 overflow-y-auto">
-          {topLevel.map((comment) => renderComment(comment))}
-          {!comments.length && !commentError && <li className="py-3 text-sm text-black/50">No comments yet. Start the conversation.</li>}
+        <ul className="divide-y divide-black/10">
+          {topLevel.slice(0, 2).map((comment) => renderComment(comment, 0, true))}
+          {!comments.length && !commentError && <li className="py-2 text-sm text-black/50">No comments yet. Start the conversation.</li>}
         </ul>
       )}
-
-      <Link href={`/dashboard/listings/${listingId}#comments`} className="mt-3 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <button type="button" onClick={() => setFullDiscussionOpen(true)} className="text-xs font-semibold text-safecrib-green hover:underline">
+          {comments.length > 0 ? `View all ${comments.length} comments` : "View discussion"}
+        </button>
+        <Button type="button" onClick={() => setFullDiscussionOpen(true)}>Add a comment</Button>
+      </div>
+      <Modal open={fullDiscussionOpen} onClose={closeFullDiscussion} titleId={titleId}>
+        <div className="flex max-h-[85dvh] min-h-0 flex-col">
+          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/10 px-4 py-3 sm:px-6">
+            <h2 id={titleId} className="text-base font-bold text-safecrib-black">Comments on this home</h2>
+            <button type="button" onClick={closeFullDiscussion} aria-label="Close comments" className="flex h-9 w-9 items-center justify-center rounded-full text-black/55 hover:bg-black/[0.05]">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+            </button>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+            {loading ? (
+              <div className="space-y-3 py-4" aria-hidden="true">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : (
+              <ul className="divide-y divide-black/10">
+                {topLevel.map((comment) => renderComment(comment))}
+                {!comments.length && !commentError && <li className="py-3 text-sm text-black/50">No comments yet. Start the conversation.</li>}
+              </ul>
+            )}
+            <Link href={`/dashboard/listings/${listingId}#comments`} className="mb-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
+          </div>
+          <div className="shrink-0 border-t border-black/10 px-4 py-3 sm:px-6">
+            <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
+            <textarea
+              id={inputId}
+              value={commentBody}
+              onChange={(event) => updateCommentBody(event.target.value)}
+              maxLength={1000}
+              rows={2}
+              placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
+              className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
+            />
+            {mentionCandidates.length > 0 && (
+              <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
+                {mentionCandidates.map((person) => (
+                  <li key={person.id}>
+                    <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
+                      <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
+            <div className="mt-2 flex items-center justify-between gap-3">
+              {commentBody.length > 0 && <span className="text-xs text-black/45">{commentBody.length}/1000</span>}
+              <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
+            </div>
+            {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }
