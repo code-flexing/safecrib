@@ -18,12 +18,79 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, refreshCachedApi, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
+import {
+  apiFetch,
+  cachedApiFetch,
+  cachedCurrentUser,
+  clearClientCache,
+  clearSession,
+  displayName,
+  getAuthenticatedDisplayName,
+  getCachedApi,
+  getCachedCurrentUser,
+  getCachedMediaUrl,
+  getPersistedVerification,
+  isUnauthorizedError,
+  normalizeAccountStatus,
+  normalizePageStatus,
+  primeCurrentUserCache,
+  refreshCachedApi,
+  resolveMediaUrl,
+  setPersistedVerification,
+  subscribeClientCacheUpdates,
+  unwrapData,
+  userSessionClearedEvent,
+  getCachedUserAvatar,
+  setCachedUserAvatar,
+  type AccountStatus,
+  type PageStatus,
+} from "@/lib/api";
 
-type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
-type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; video?: { mediaId?: string; url?: string } | null; likeCount?: number; viewCount?: number; commentCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
-type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; username?: string | null; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
-type ListingComment = {
+export type ListingPhotoValue =
+  | string
+  | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
+
+export type Listing = {
+  id: string;
+  ownerId?: string;
+  owner?: { displayName?: string | null; profilePicture?: string | null };
+  title?: string;
+  description?: string;
+  price?: number;
+  discountAmount?: number | null;
+  discountedPrice?: number;
+  address?: string;
+  campus?: string;
+  photos?: ListingPhotoValue[];
+  images?: ListingPhotoValue[];
+  photo?: ListingPhotoValue;
+  image?: ListingPhotoValue;
+  video?: { mediaId?: string; url?: string } | null;
+  likeCount?: number;
+  viewCount?: number;
+  commentCount?: number;
+  followedPage?: boolean;
+  likedByCurrentUser?: boolean;
+  providerRecommendationCount?: number;
+  providerTrustScore?: number | null;
+  providerActiveDays?: number;
+  recommendationScore?: number;
+};
+
+export type Profile = {
+  id?: string;
+  displayName?: unknown;
+  email?: string;
+  role?: string;
+  profilePicture?: string;
+  username?: string | null;
+  studentProfileStatus?: unknown;
+  studentProfile?: { profilePicture?: string };
+  verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null;
+  verificationStage?: unknown;
+};
+
+export type ListingComment = {
   id: string;
   body: string;
   parentId?: string | null;
@@ -31,13 +98,16 @@ type ListingComment = {
   user: { id: string; displayName?: string | null; username?: string | null; role?: string };
   mentions?: Array<{ user: { id: string; displayName?: string | null; username?: string | null } }>;
 };
-type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string };
-type StudentProfile = { profilePicture?: string } | null;
-type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
+
+export type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string };
+export type StudentProfile = { profilePicture?: string } | null;
+export type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
 function accountMessage(status: AccountStatus, action: string) {
-  if (status === "pending" || status === "not_submitted") return `Your account is still under review. You'll be able to ${action} once it's approved.`;
-  if (status === "rejected") return "Your account submission wasn't approved. Please update and resubmit your profile.";
+  if (status === "pending" || status === "not_submitted")
+    return `Your account is still under review. You'll be able to ${action} once it's approved.`;
+  if (status === "rejected")
+    return "Your account submission wasn't approved. Please update and resubmit your profile.";
   return null;
 }
 
@@ -51,100 +121,87 @@ function resolveAccountName(profile: Profile | null) {
 }
 
 function isUsableImageSource(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "" && /^(https?:|data:|blob:)/i.test(value.trim());
+  return typeof value === "string" && value.trim().length > 0 && !value.includes("undefined") && !value.includes("null");
 }
 
 function extractListingImageReference(value: unknown): string | null {
-  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "string" && isUsableImageSource(value)) return value.trim();
   if (!value || typeof value !== "object") return null;
-
-  const record = value as Record<string, unknown>;
-  for (const key of ["mediaId", "media_id"]) {
-    const candidate = record[key];
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-  for (const key of ["url", "accessUrl", "deliveryUrl", "imageUrl", "src"]) {
-    const candidate = record[key];
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-  for (const key of ["mediaId", "media_id", "id"]) {
-    const candidate = record[key];
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
+  const candidate = value as Record<string, unknown>;
+  const direct = candidate.accessUrl ?? candidate.deliveryUrl ?? candidate.imageUrl ?? candidate.url ?? candidate.src;
+  if (typeof direct === "string" && isUsableImageSource(direct)) return direct.trim();
+  const mediaId = candidate.mediaId ?? candidate.media_id ?? candidate.id;
+  if (typeof mediaId === "string" && isUsableImageSource(mediaId)) return mediaId.trim();
   return null;
 }
 
 function getListingImageReference(listing: Listing): string | null {
-  const candidates: unknown[] = [
-    ...(Array.isArray(listing.photos) ? listing.photos : []),
-    ...(Array.isArray(listing.images) ? listing.images : []),
-    listing.photo,
-    listing.image,
-  ];
-
-  for (const candidate of candidates) {
-    const extracted = extractListingImageReference(candidate);
-    if (extracted) return extracted;
+  const collection = Array.isArray(listing.photos) && listing.photos.length > 0
+    ? listing.photos
+    : Array.isArray(listing.images) && listing.images.length > 0
+    ? listing.images
+    : null;
+  if (collection) {
+    for (const item of collection) {
+      const reference = extractListingImageReference(item);
+      if (reference) return reference;
+    }
   }
-
-  return null;
+  return extractListingImageReference(listing.photo) ?? extractListingImageReference(listing.image);
 }
 
 function getListingImageUrl(listing: Listing): string | null {
-  const candidates: unknown[] = [
-    ...(Array.isArray(listing.photos) ? listing.photos : []),
-    ...(Array.isArray(listing.images) ? listing.images : []),
-    listing.photo,
-    listing.image,
-  ];
-
-  for (const candidate of candidates) {
-    if (isUsableImageSource(candidate)) return candidate;
-    if (!candidate || typeof candidate !== "object") continue;
-    const record = candidate as Record<string, unknown>;
-    for (const key of ["url", "accessUrl", "deliveryUrl", "imageUrl", "src"]) {
-      if (isUsableImageSource(record[key])) return record[key];
-    }
-  }
-  return null;
+  const direct = [listing.photo, listing.image, ...(listing.photos ?? []), ...(listing.images ?? [])]
+    .map(extractListingImageReference)
+    .find((candidate): candidate is string => Boolean(candidate && candidate.startsWith("http")));
+  if (direct) return direct;
+  const ref = getListingImageReference(listing);
+  return ref && ref.startsWith("http") ? ref : null;
 }
 
 function formatListingPrice(listing: Listing) {
-  if (typeof listing.price !== "number") return "See details";
-  const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(price);
+  if (typeof listing.price !== "number") return "Contact for pricing";
+  const price = typeof listing.discountedPrice === "number" && listing.discountedPrice < listing.price
+    ? listing.discountedPrice
+    : listing.price;
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(price);
 }
 
 function hasDiscount(listing: Listing) {
-  if (typeof listing.price !== "number") return false;
-  const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
-  return price < listing.price;
+  return typeof listing.discountAmount === "number" && listing.discountAmount > 0;
 }
 
 function formatOriginalPrice(listing: Listing) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(listing.price ?? 0);
+  if (typeof listing.price !== "number") return "";
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(listing.price);
 }
 
 function formatEngagementCount(count: number) {
-  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count);
+  if (!Number.isFinite(count) || count <= 0) return "0";
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return String(count);
 }
 
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
+  const isDiscounted = priced && hasDiscount(listing);
   return (
-    <div className="flex min-w-0 items-baseline gap-2 leading-tight">
-      <span className={`font-display font-black tracking-tight text-white ${priced ? "text-2xl" : "text-base"}`}>{formatListingPrice(listing)}</span>
-      {priced && hasDiscount(listing) && (
-        <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
+    <div className="flex flex-col">
+      {isDiscounted && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+            DISCOUNT
+          </span>
+        </div>
       )}
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <span className={`font-display font-extrabold tracking-tight text-white drop-shadow-sm ${priced ? "text-xl sm:text-2xl" : "text-sm font-semibold"}`}>
+          {formatListingPrice(listing)}
+        </span>
+        {priced && <span className="text-xs font-medium text-white/60">/ yr</span>}
+      </div>
     </div>
   );
 }
@@ -161,17 +218,17 @@ function ListingCardImage({ src, fallbackSrc, alt, priority = false }: { src: st
   const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
 
   return (
-    <div className="absolute inset-0 bg-neutral-950 overflow-hidden">
-      {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5 backdrop-blur-md" />}
+    <div className="absolute inset-0 overflow-hidden bg-neutral-950">
+      {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5" />}
       <Image
         src={imageSrc}
         alt={alt}
         fill
         priority={priority}
         sizes="100vw"
-        quality={95}
+        quality={90}
         onLoad={() => setLoadedSrc(imageSrc)}
-        className={`object-cover transform transition-all duration-700 ease-out ${loadedSrc === imageSrc ? "opacity-100 scale-100" : "opacity-0 scale-105"}`}
+        className={`object-cover transition-all duration-700 ease-out ${loadedSrc === imageSrc ? "scale-100 opacity-100" : "scale-105 opacity-0"}`}
         onError={() => {
           if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
         }}
@@ -180,7 +237,19 @@ function ListingCardImage({ src, fallbackSrc, alt, priority = false }: { src: st
   );
 }
 
-function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string; onProgress?: (currentTime: number, duration: number) => void }) {
+function ListingCardVideo({
+  video,
+  poster,
+  fallbackSrc,
+  alt,
+  onProgress,
+}: {
+  video: Listing["video"];
+  poster: string | null;
+  fallbackSrc: string | null;
+  alt: string;
+  onProgress?: (currentTime: number, duration: number) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const directVideoUrl = video?.url && isUsableImageSource(video.url) ? video.url.trim() : null;
@@ -192,6 +261,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
   const [isMuted, setIsMuted] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [showPlayIcon, setShowPlayIcon] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -246,62 +316,85 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
     }
   }, [isActive, videoFailed, videoUrl]);
 
+  const togglePlayback = () => {
+    const element = videoRef.current;
+    if (!element) return;
+    if (element.paused) {
+      void element.play().catch(() => undefined);
+      setIsPlaying(true);
+    } else {
+      element.pause();
+      setIsPlaying(false);
+    }
+    setShowPlayIcon(true);
+    setTimeout(() => setShowPlayIcon(false), 600);
+  };
+
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-neutral-950 overflow-hidden">
+    <div ref={containerRef} className="absolute inset-0 select-none overflow-hidden bg-neutral-950">
       {videoUrl && !videoFailed ? (
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          poster={poster ?? fallbackSrc ?? undefined}
-          role="button"
-          tabIndex={0}
-          aria-label={`${alt} video. ${isPlaying ? "Playing" : "Paused"}. Press Space to toggle playback.`}
-          data-playing={isPlaying}
-          data-current-time={currentTime}
-          data-duration={duration}
-          autoPlay={isActive}
-          muted={isMuted}
-          loop
-          playsInline
-          preload={isActive ? "auto" : isNear ? "metadata" : "none"}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onTimeUpdate={(event) => {
-            const time = event.currentTarget.currentTime;
-            setCurrentTime(time);
-            onProgress?.(time, duration);
-          }}
-          onLoadedMetadata={(event) => {
-            const mediaDuration = event.currentTarget.duration;
-            setDuration(mediaDuration);
-            onProgress?.(currentTime, mediaDuration);
-          }}
-          onError={() => setVideoFailed(true)}
-          onClick={(event) => { const element = event.currentTarget; if (element.paused) void element.play().catch(() => undefined); else element.pause(); }}
-          onKeyDown={(event) => {
-            if (event.key !== " " && event.key !== "Enter") return;
-            event.preventDefault();
-            const element = event.currentTarget;
-            if (element.paused) void element.play().catch(() => undefined);
-            else element.pause();
-          }}
-          className="h-full w-full cursor-pointer object-cover"
-        />
+        <>
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            poster={poster ?? fallbackSrc ?? undefined}
+            role="button"
+            tabIndex={0}
+            aria-label={`${alt} video. ${isPlaying ? "Playing" : "Paused"}. Tap to toggle.`}
+            data-playing={isPlaying}
+            data-current-time={currentTime}
+            data-duration={duration}
+            autoPlay={isActive}
+            muted={isMuted}
+            loop
+            playsInline
+            preload={isActive ? "auto" : isNear ? "metadata" : "none"}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={(event) => {
+              const time = event.currentTarget.currentTime;
+              setCurrentTime(time);
+              onProgress?.(time, duration);
+            }}
+            onLoadedMetadata={(event) => {
+              const mediaDuration = event.currentTarget.duration;
+              setDuration(mediaDuration);
+              onProgress?.(currentTime, mediaDuration);
+            }}
+            onError={() => setVideoFailed(true)}
+            onClick={togglePlayback}
+            onKeyDown={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              togglePlayback();
+            }}
+            className="h-full w-full cursor-pointer object-cover"
+          />
+          {showPlayIcon && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center animate-out fade-out duration-500">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-black/60 text-white shadow-2xl backdrop-blur-md">
+                <Icon name={isPlaying ? "play" : "pause"} className="h-10 w-10 fill-current" />
+              </div>
+            </div>
+          )}
+        </>
       ) : poster || fallbackSrc ? (
         <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
       ) : (
-        <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5 backdrop-blur-md" />
+        <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5" />
       )}
+
+      {/* Floating Audio Controller */}
       {videoUrl && !videoFailed && (
-        <div className="absolute right-5 top-24 z-40">
+        <div className="absolute right-4 top-24 z-40 transition-transform active:scale-95">
           <button
             type="button"
             onClick={() => setIsMuted((muted) => !muted)}
             aria-label={isMuted ? "Unmute video" : "Mute video"}
-            title={isMuted ? "Unmute" : "Mute"}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-xl backdrop-blur-md transition-all hover:bg-black/60 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            title={isMuted ? "Unmute sound" : "Mute sound"}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-xl backdrop-blur-xl transition hover:scale-105 hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
-            <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-4 w-4" />
+            <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
           </button>
         </div>
       )}
@@ -309,7 +402,17 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
   );
 }
 
-function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void }) {
+function ListingComments({
+  listingId,
+  ownerId,
+  onCountChange,
+  onClose,
+}: {
+  listingId: string;
+  ownerId?: string;
+  onCountChange: (count: number) => void;
+  onClose: (listingId: string) => void;
+}) {
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentBody, setCommentBody] = useState("");
@@ -335,7 +438,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
         onCountChange(items.length);
       })
       .catch(() => {
-        if (active) setCommentError("We could not load home comments. Please refresh to retry.");
+        if (active) setCommentError("We could not load comments. Please refresh to retry.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -360,15 +463,15 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
           mentionUserIds: commentMentionIds,
         }),
       });
-      clearClientCache(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`);
-      const next = [unwrapData<ListingComment>(response), ...comments];
-      setComments(next);
-      onCountChange(next.length);
+      const newComment = unwrapData<ListingComment>(response);
+      setComments((current) => [...current, newComment]);
+      onCountChange(comments.length + 1);
       setCommentBody("");
-      setCommentMentionIds([]);
       setReplyParentId(null);
-    } catch (error) {
-      setCommentError(error instanceof Error ? error.message : "We could not post your comment.");
+      setCommentMentionIds([]);
+      setTaggedUsers([]);
+    } catch {
+      setCommentError("Could not post comment. Please try again.");
     } finally {
       setCommentSubmitting(false);
     }
@@ -410,29 +513,56 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
     const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
     const createdAt = new Date(item.createdAt);
     const commentTime = Number.isNaN(createdAt.getTime())
-      ? "Unknown time"
-      : formatDistanceToNow(createdAt, { addSuffix: true, includeSeconds: true });
+      ? "Just now"
+      : formatDistanceToNow(createdAt, { addSuffix: true });
+
     return (
-      <li key={item.id} className="py-3.5 transition-colors" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="font-semibold text-sm text-neutral-900 hover:text-safecrib-green transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-              <NameHandle displayName={item.user.displayName} username={item.user.username} />
-            </Link>
-            {isCreatorReply && <span className="rounded-full bg-safecrib-green/10 px-2 py-0.5 text-[10px] font-bold text-safecrib-green tracking-wide uppercase">Creator</span>}
+      <li key={item.id} className="py-3.5" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
+        <div className="flex items-start gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700">
+            {(item.user.displayName?.[0] ?? item.user.username?.[0] ?? "?").toUpperCase()}
           </div>
-          <time dateTime={item.createdAt} className="text-xs font-normal text-neutral-400">{commentTime}</time>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="font-semibold text-neutral-900 transition hover:text-emerald-600">
+                <NameHandle displayName={item.user.displayName} username={item.user.username} />
+              </Link>
+              {isCreatorReply && (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                  Host
+                </span>
+              )}
+              <time dateTime={item.createdAt} className="font-normal text-neutral-400">
+                • {commentTime}
+              </time>
+            </div>
+            {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">{item.body}</p>}
+            {item.mentions && item.mentions.length > 0 && (
+              <p className="mt-1 text-xs text-neutral-400">
+                Tagged: {item.mentions.map((m) => `@${m.user.username ?? m.user.displayName ?? "member"}`).join(", ")}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setReplyParentId(item.id);
+                  setCommentBody("");
+                  setCommentError("");
+                  document.getElementById(inputId)?.focus();
+                }}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+              >
+                Reply
+              </button>
+            </div>
+          </div>
         </div>
-        {item.body && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">{item.body}</p>}
-        {item.mentions?.length ? <p className="mt-1 text-xs text-neutral-400">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
-        <button
-          type="button"
-          onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById(inputId)?.focus(); }}
-          className="mt-2 text-xs font-semibold text-safecrib-green hover:underline"
-        >
-          Reply
-        </button>
-        {replies.length > 0 && <ul className="mt-2 divide-y divide-neutral-100 border-l-2 border-neutral-100 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+        {replies.length > 0 && (
+          <ul className="mt-2 space-y-2 border-l-2 border-neutral-100 pl-3">
+            {replies.map((reply) => renderComment(reply, depth + 1))}
+          </ul>
+        )}
       </li>
     );
   };
@@ -441,60 +571,107 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
 
   return createPortal(
     <Modal open onClose={closeDiscussion} titleId={titleId}>
-      <div className="flex max-h-[85dvh] min-h-[50dvh] flex-col bg-white rounded-3xl overflow-hidden shadow-2xl">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-neutral-100 px-6 py-4">
-          <h2 id={titleId} className="text-base font-bold text-neutral-900 tracking-tight">
-            Comments{comments.length > 0 ? ` (${comments.length})` : ""}
-          </h2>
-          <button type="button" onClick={closeDiscussion} aria-label="Close comments" className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+      <div className="flex max-h-[85dvh] min-h-[50dvh] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-neutral-200 sm:hidden" />
+        <header className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <h2 id={titleId} className="text-base font-bold text-neutral-900">
+              Comments
+            </h2>
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
+              {comments.length}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={closeDiscussion}
+            aria-label="Close comments"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            <Icon name="x" className="h-4 w-4" />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3 sm:px-6">
           {loading ? (
             <div className="space-y-4 py-4" aria-hidden="true">
-              <Skeleton className="h-4 w-32 rounded-lg" />
-              <Skeleton className="h-4 w-full rounded-lg" />
-              <Skeleton className="h-4 w-4/5 rounded-lg" />
+              <Skeleton className="h-4 w-40 rounded-full" />
+              <Skeleton className="h-12 w-full rounded-2xl" />
+              <Skeleton className="h-12 w-4/5 rounded-2xl" />
             </div>
           ) : (
             <ul className="divide-y divide-neutral-100">
               {topLevel.map((comment) => renderComment(comment))}
               {!comments.length && !commentError && (
-                <li className="py-12 text-center text-sm font-medium text-neutral-400">No comments yet. Start the conversation!</li>
+                <li className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+                    <Icon name="message-circle" className="h-6 w-6" />
+                  </div>
+                  <p className="text-sm font-medium text-neutral-700">No comments yet</p>
+                  <p className="mt-0.5 text-xs text-neutral-400">Be the first to share your thoughts about this crib.</p>
+                </li>
               )}
             </ul>
           )}
-          <Link href={`/dashboard/listings/${listingId}#comments`} className="my-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full discussion</Link>
-        </div>
-        <div className="shrink-0 border-t border-neutral-100 bg-neutral-50/50 p-4 sm:p-6">
-          <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
-          <textarea
-            id={inputId}
-            value={commentBody}
-            onChange={(event) => updateCommentBody(event.target.value)}
-            maxLength={1000}
-            rows={2}
-            placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a note..."}
-            className="w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-safecrib-green focus:outline-none focus:ring-2 focus:ring-safecrib-green/20 transition-all shadow-sm"
-          />
-          {mentionCandidates.length > 0 && (
-            <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-2xl border border-neutral-100 bg-white shadow-xl">
-              {mentionCandidates.map((person) => (
-                <li key={person.id}>
-                  <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-safecrib-green/5 transition-colors">
-                    <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-neutral-400">{person.role?.toLowerCase()}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-neutral-400">{commentBody.length > 0 ? `${commentBody.length}/1000` : ""}</span>
-            <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()} className="rounded-xl px-5 py-2">{replyParentId ? "Post reply" : "Post comment"}</Button>
+          <div className="pb-2 pt-4">
+            <Link href={`/dashboard/listings/${listingId}#comments`} className="text-xs font-semibold text-emerald-600 hover:underline">
+              Open full discussion thread →
+            </Link>
           </div>
-          {commentError && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{commentError}</p>}
+        </div>
+
+        <div className="shrink-0 border-t border-neutral-100 bg-neutral-50/50 p-4 sm:px-6">
+          {replyParentId && (
+            <div className="mb-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-neutral-500">
+              <span>Replying to comment...</span>
+              <button type="button" onClick={() => setReplyParentId(null)} className="font-semibold text-emerald-700 hover:underline">
+                Cancel
+              </button>
+            </div>
+          )}
+          <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment"}</label>
+          <div className="relative">
+            <textarea
+              id={inputId}
+              value={commentBody}
+              onChange={(event) => updateCommentBody(event.target.value)}
+              maxLength={1000}
+              rows={2}
+              placeholder={replyParentId ? "Write your reply..." : "Ask a question or leave a note..."}
+              className="w-full resize-none rounded-2xl border border-neutral-200 bg-white p-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            />
+            {mentionCandidates.length > 0 && (
+              <ul aria-label="Tag a user" className="absolute bottom-full left-0 z-20 mb-2 max-h-44 w-full overflow-auto rounded-2xl border border-neutral-200 bg-white p-1 shadow-xl">
+                {mentionCandidates.map((person) => (
+                  <li key={person.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectMention(person)}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition hover:bg-emerald-50"
+                    >
+                      <NameHandle displayName={person.displayName} username={person.username} />
+                      <span className="text-xs font-medium text-neutral-400">{person.role?.toLowerCase()}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="mt-2.5 flex items-center justify-between gap-3">
+            <span className="text-[11px] font-medium text-neutral-400">
+              {commentBody.length > 0 ? `${commentBody.length}/1000` : ""}
+            </span>
+            <Button
+              type="button"
+              loading={commentSubmitting}
+              onClick={() => void submitComment()}
+              className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white shadow-md transition-all hover:bg-emerald-700 active:scale-95"
+            >
+              {replyParentId ? "Post Reply" : "Post Comment"}
+            </Button>
+          </div>
+          {commentError && <p role="alert" className="mt-2 text-xs font-medium text-rose-600">{commentError}</p>}
         </div>
       </div>
     </Modal>,
@@ -502,7 +679,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
   );
 }
 
-type ListingActionTrayProps = {
+export type ListingActionTrayProps = {
   listing: Listing;
   isOpen: boolean;
   isSaved: boolean;
@@ -523,74 +700,84 @@ type ListingActionTrayProps = {
   onCloseMenu: () => void;
 };
 
-function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecommend, menuOpen, isStudent, commentCount, recommendationDisabled, role, onToggle, onClose, onLike, onComment, onRecommend, onSave, onMore, onCloseMenu }: ListingActionTrayProps) {
+export function ListingActionTray({
+  listing,
+  isOpen,
+  isSaved,
+  isRecommended,
+  canRecommend,
+  menuOpen,
+  isStudent,
+  commentCount,
+  recommendationDisabled,
+  role,
+  onToggle,
+  onClose,
+  onLike,
+  onComment,
+  onRecommend,
+  onSave,
+  onMore,
+  onCloseMenu,
+}: ListingActionTrayProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const trayRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const wasOpenRef = useRef(false);
-  const restoreFocusRef = useRef(true);
-  const trayId = `listing-actions-${listing.id}`;
-
-  useEffect(() => {
-    let frame = 0;
-    if (isOpen) {
-      restoreFocusRef.current = true;
-      frame = requestAnimationFrame(() => trayRef.current?.querySelector<HTMLButtonElement>("button")?.focus());
-    } else if (wasOpenRef.current && restoreFocusRef.current) {
-      triggerRef.current?.focus({ preventScroll: true });
-    }
-    wasOpenRef.current = isOpen;
-    return () => cancelAnimationFrame(frame);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const closeOutside = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Node && !rootRef.current?.contains(target)) onClose();
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!menuOpen) return;
-    const frame = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [menuOpen]);
+    const closeOutside = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        onCloseMenu();
+      }
+    };
+    const closeOnEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseMenu();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEsc);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEsc);
+    };
+  }, [menuOpen, onCloseMenu]);
 
-  const itemClass = (open: boolean) => `flex items-center gap-2.5 transition-all duration-200 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity ${open ? "translate-y-0 opacity-100 scale-100" : "pointer-events-none translate-y-3 opacity-0 scale-95"}`;
-  const delay = (index: number): React.CSSProperties => ({ transitionDelay: isOpen ? `${index * 30}ms` : "0ms" });
-  const countChip = (text: string) => <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-semibold leading-none text-white shadow-lg backdrop-blur-md">{text}</span>;
-  const iconButtonClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/90 text-neutral-900 shadow-xl backdrop-blur-md transition-all hover:bg-white hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green";
+  const copyListingLink = async () => {
+    try {
+      const url = `${window.location.origin}/dashboard/listings/${listing.id}`;
+      await navigator.clipboard.writeText(url);
+      onCloseMenu();
+    } catch {
+      // ignore
+    }
+  };
 
   return (
-    <div ref={rootRef} className="relative z-40 flex h-12 w-12 shrink-0 items-center justify-center" data-listing-menu-open={menuOpen ? "true" : undefined}>
-      {menuOpen && (
-        <div ref={menuRef} role="menu" aria-label="More listing options" className="absolute bottom-full right-0 z-50 mb-3 w-52 overflow-hidden rounded-2xl border border-white/20 bg-white/95 text-neutral-900 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={onCloseMenu} className="block border-b border-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">Open post</Link>
-          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={onCloseMenu} className="block px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">View provider</Link>}
+    <div ref={rootRef} className="relative flex select-none flex-col items-center gap-3.5" data-listing-menu-open={menuOpen ? "true" : undefined}>
+      {/* Provider avatar shortcut */}
+      {listing.ownerId && (
+        <div className="group flex flex-col items-center">
+          <Link
+            href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+            aria-label="View provider profile"
+            className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-emerald-400/90 shadow-xl transition-transform duration-200 group-hover:border-emerald-300 active:scale-90"
+          >
+            <ProfileAvatar
+              src={listing.owner?.profilePicture ?? null}
+              seed={listing.ownerId}
+              alt={listing.owner?.displayName ?? "Host"}
+              size="small"
+              className="h-full w-full object-cover"
+            />
+          </Link>
+          <span className="-mt-2 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow-md">
+            ★
+          </span>
         </div>
       )}
-      <div
-        ref={trayRef}
-        id={trayId}
-        role="group"
-        aria-label="Listing actions"
-        aria-hidden={!isOpen}
-        inert={!isOpen}
-        className={`absolute bottom-full right-0 mb-3 flex flex-col-reverse items-end gap-3 transition-opacity duration-200 ease-out ${isOpen ? "visible opacity-100" : "invisible opacity-0"}`}
-      >
-        <div className={itemClass(isOpen)} style={delay(0)}>
-          {countChip(formatEngagementCount(listing.likeCount ?? 0))}
+
+      {/* Like Button & Counter */}
+      <div className="flex flex-col items-center gap-1">
+        <div className="rounded-full border border-white/20 bg-black/40 p-1 shadow-lg backdrop-blur-xl transition-transform hover:bg-black/60 active:scale-90">
           <LikeButton
             listingId={listing.id}
             initialLikeCount={listing.likeCount ?? 0}
@@ -600,15 +787,30 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
             showLabel={false}
           />
         </div>
-        <div className={itemClass(isOpen)} style={delay(1)}>
-          {countChip(formatEngagementCount(commentCount))}
-          <button type="button" onClick={() => { restoreFocusRef.current = false; onComment(); onClose(); }} aria-label={`Comments, ${commentCount}`} title="Comments" className={iconButtonClass}>
-            <Icon name="message-circle" className="h-5 w-5" />
-          </button>
-        </div>
-        {listing.ownerId && canRecommend && (
-          <div className={itemClass(isOpen)} style={delay(2)}>
-            {countChip(formatEngagementCount(listing.providerRecommendationCount ?? 0))}
+        <span className="text-[11px] font-bold text-white drop-shadow-md">
+          {formatEngagementCount(listing.likeCount ?? 0)}
+        </span>
+      </div>
+
+      {/* Comments Button & Counter */}
+      <div className="flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={onComment}
+          aria-label={`Open comments, ${commentCount} total`}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-lg backdrop-blur-xl transition-all hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90"
+        >
+          <Icon name="message-circle" className="h-5 w-5" />
+        </button>
+        <span className="text-[11px] font-bold text-white drop-shadow-md">
+          {formatEngagementCount(commentCount)}
+        </span>
+      </div>
+
+      {/* Trust / Recommend Button */}
+      {listing.ownerId && canRecommend && (
+        <div className="flex flex-col items-center gap-1">
+          <div className="rounded-full border border-white/20 bg-black/40 p-1 shadow-lg backdrop-blur-xl transition-transform hover:bg-black/60 active:scale-90">
             <RecommendButton
               providerId={listing.ownerId}
               initialRecommendationCount={listing.providerRecommendationCount ?? 0}
@@ -620,35 +822,85 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
               showLabel={false}
             />
           </div>
-        )}
-        {isStudent && (
-          <div className={itemClass(isOpen)} style={delay(3)}>
-            {countChip(isSaved ? "Saved" : "Save")}
-            <button type="button" onClick={onSave} aria-pressed={isSaved} aria-label={isSaved ? "Remove from saved listings" : "Save listing"} title={isSaved ? "Saved" : "Save"} className={`${iconButtonClass} ${isSaved ? "text-safecrib-green font-bold" : ""}`}>
-              <Icon name="bookmark" className="h-5 w-5" />
+          <span className="text-[11px] font-bold text-white drop-shadow-md">
+            {formatEngagementCount(listing.providerRecommendationCount ?? 0)}
+          </span>
+        </div>
+      )}
+
+      {/* Bookmark / Save Button */}
+      {isStudent && (
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={onSave}
+            aria-pressed={isSaved}
+            aria-label={isSaved ? "Remove from bookmarks" : "Save to bookmarks"}
+            className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90 ${
+              isSaved
+                ? "border-amber-400 bg-amber-400/20 text-amber-300 shadow-amber-500/20"
+                : "border-white/20 bg-black/40 text-white hover:bg-black/60"
+            }`}
+          >
+            <Icon name="bookmark" className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`} />
+          </button>
+          <span className="text-[11px] font-bold text-white drop-shadow-md">
+            {isSaved ? "Saved" : "Save"}
+          </span>
+        </div>
+      )}
+
+      {/* More Options Popover */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label="More options"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-lg backdrop-blur-xl transition-all hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90"
+        >
+          <Icon name="more-horizontal" className="h-5 w-5" />
+        </button>
+
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            role="menu"
+            className="absolute bottom-0 right-14 z-50 w-48 overflow-hidden rounded-2xl border border-white/15 bg-neutral-900/95 p-1 text-white shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+          >
+            <Link
+              role="menuitem"
+              href={`/dashboard/listings/${listing.id}`}
+              onClick={onCloseMenu}
+              className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
+            >
+              <Icon name="external-link" className="h-4 w-4 text-emerald-400" />
+              Open post
+            </Link>
+            {listing.ownerId && (
+              <Link
+                role="menuitem"
+                href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+                onClick={onCloseMenu}
+                className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
+              >
+                <Icon name="user" className="h-4 w-4 text-emerald-400" />
+                View provider
+              </Link>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => void copyListingLink()}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
+            >
+              <Icon name="share-2" className="h-4 w-4 text-emerald-400" />
+              Copy link
             </button>
           </div>
         )}
-        <div className={itemClass(isOpen)} style={delay(4)}>
-          {countChip("More")}
-          <button type="button" onClick={() => { restoreFocusRef.current = false; onMore(); onClose(); }} aria-label="More listing options" title="More" className={iconButtonClass}>
-            <Icon name="more-horizontal" className="h-5 w-5" />
-          </button>
-        </div>
       </div>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={isOpen}
-        aria-controls={trayId}
-        aria-label={isOpen ? "Close listing actions" : "Open listing actions"}
-        title={isOpen ? "Close actions" : "More actions"}
-        onClick={onToggle}
-        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/30 bg-safecrib-green text-white shadow-2xl transition-all duration-300 ease-out hover:bg-safecrib-green/90 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${isOpen ? "rotate-45 bg-neutral-900 border-white/20" : "rotate-0"}`}
-      >
-        <Icon name={isOpen ? "x" : "zap"} className="h-5 w-5 transition-transform duration-300" />
-        {!isOpen && (listing.likedByCurrentUser || isSaved) && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-safecrib-green bg-white shadow-sm" />}
-      </button>
     </div>
   );
 }
@@ -674,8 +926,10 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("safecrib_access_token");
       if (!token) return false;
-      return localStorage.getItem("safecrib_cache:/api/v1/users/me") === null &&
-             localStorage.getItem("safecrib_cache:/api/v1/auth/me") === null;
+      return (
+        localStorage.getItem("safecrib_cache:/api/v1/users/me") === null &&
+        localStorage.getItem("safecrib_cache:/api/v1/auth/me") === null
+      );
     } catch {
       return true;
     }
@@ -689,95 +943,120 @@ export default function DashboardPage() {
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
 
-  useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
-    if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
-      const currentUser = unwrapData<Profile | null>(value);
-      if (!currentUser) return;
-      setProfile({ ...currentUser, displayName: displayName(currentUser) || getAuthenticatedDisplayName() });
-      const userVerification = currentUser.verification ?? getPersistedVerification(currentUser.id);
-      if (userVerification) {
-        const normalized = normalizeVerificationStage(userVerification);
-        if (normalized) setVerification(normalized);
+  useEffect(() =>
+    subscribeClientCacheUpdates(({ path, value }) => {
+      if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
+        const currentUser = unwrapData<Profile | null>(value);
+        if (!currentUser) return;
+        setProfile({ ...currentUser, displayName: displayName(currentUser) || getAuthenticatedDisplayName() });
+        const userVerification = currentUser.verification ?? getPersistedVerification(currentUser.id);
+        if (userVerification) {
+          const normalized = normalizeVerificationStage(userVerification);
+          if (normalized) setVerification(normalized);
+        }
+        if (["STUDENT", "UNVERIFIED"].includes(String(currentUser.role ?? "").toUpperCase())) {
+          setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
+        }
+        const picture = currentUser.profilePicture ?? currentUser.studentProfile?.profilePicture;
+        if (currentUser.id) {
+          const cachedAvatar = getCachedUserAvatar(currentUser.id);
+          if (cachedAvatar) setProfileImage(cachedAvatar);
+        }
+        const cachedPicture = getCachedMediaUrl(picture);
+        if (cachedPicture) {
+          setProfileImage(cachedPicture);
+          if (currentUser.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+        }
+        if (picture) void resolveMediaUrl(picture).then((url) => {
+          if (url) {
+            setProfileImage(url);
+            if (currentUser.id) setCachedUserAvatar(currentUser.id, url, picture);
+          }
+        });
+        return;
       }
-      if (["STUDENT", "UNVERIFIED"].includes(String(currentUser.role ?? "").toUpperCase())) {
-        setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
-      }
-      const picture = currentUser.profilePicture ?? currentUser.studentProfile?.profilePicture;
-      if (currentUser.id) {
-        const cachedAvatar = getCachedUserAvatar(currentUser.id);
-        if (cachedAvatar) setProfileImage(cachedAvatar);
-      }
-      const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) {
-        setProfileImage(cachedPicture);
-        if (currentUser.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
-      }
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser.id) setCachedUserAvatar(currentUser.id, url, picture); } });
-      return;
-    }
 
-    if (path === "/api/v1/student-profiles/me") {
-      const student = unwrapData<StudentProfile>(value);
-      const currentUser = getCachedCurrentUser<Profile>();
-      const picture = currentUser?.profilePicture ?? student?.profilePicture;
-      if (currentUser?.id) {
-        const cachedAvatar = getCachedUserAvatar(currentUser.id);
-        if (cachedAvatar) setProfileImage(cachedAvatar);
+      if (path === "/api/v1/student-profiles/me") {
+        const student = unwrapData<StudentProfile>(value);
+        const currentUser = getCachedCurrentUser<Profile>();
+        const picture = currentUser?.profilePicture ?? student?.profilePicture;
+        if (currentUser?.id) {
+          const cachedAvatar = getCachedUserAvatar(currentUser.id);
+          if (cachedAvatar) setProfileImage(cachedAvatar);
+        }
+        const cachedPicture = getCachedMediaUrl(picture);
+        if (cachedPicture) {
+          setProfileImage(cachedPicture);
+          if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+        }
+        if (picture) void resolveMediaUrl(picture).then((url) => {
+          if (url) {
+            setProfileImage(url);
+            if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture);
+          }
+        });
+        return;
       }
-      const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) {
-        setProfileImage(cachedPicture);
-        if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+
+      if (path === "/api/v1/provider-pages/me") {
+        const page = unwrapData<ProviderPage>(value);
+        setPageStatus(normalizePageStatus(page?.status));
+        const currentUser = getCachedCurrentUser<Profile>();
+        const picture = currentUser?.profilePicture ?? page?.profilePicture;
+        if (currentUser?.id) {
+          const cachedAvatar = getCachedUserAvatar(currentUser.id);
+          if (cachedAvatar) setProfileImage(cachedAvatar);
+        }
+        const cachedPicture = getCachedMediaUrl(picture);
+        if (cachedPicture) {
+          setProfileImage(cachedPicture);
+          if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+        }
+        if (picture) void resolveMediaUrl(picture).then((url) => {
+          if (url) {
+            setProfileImage(url);
+            if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture);
+          }
+        });
+        return;
       }
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture); } });
-      return;
-    }
 
-    if (path === "/api/v1/provider-pages/me") {
-      const page = unwrapData<ProviderPage>(value);
-      setPageStatus(normalizePageStatus(page?.status));
-      const currentUser = getCachedCurrentUser<Profile>();
-      const picture = currentUser?.profilePicture ?? page?.profilePicture;
-      if (currentUser?.id) {
-        const cachedAvatar = getCachedUserAvatar(currentUser.id);
-        if (cachedAvatar) setProfileImage(cachedAvatar);
+      if (path === "/api/v1/listings") {
+        const freshListings = unwrapData<Listing[]>(value);
+        setListings(Array.isArray(freshListings) ? freshListings : []);
+        return;
       }
-      const cachedPicture = getCachedMediaUrl(picture);
-      if (cachedPicture) {
-        setProfileImage(cachedPicture);
-        if (currentUser?.id) setCachedUserAvatar(currentUser.id, cachedPicture, picture);
+
+      if (path === "/api/v1/listings/bookmarks") {
+        const bookmarks = unwrapData<Listing[]>(value);
+        setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
+        return;
       }
-      if (picture) void resolveMediaUrl(picture).then((url) => { if (url) { setProfileImage(url); if (currentUser?.id) setCachedUserAvatar(currentUser.id, url, picture); } });
-      return;
-    }
 
-    if (path === "/api/v1/listings") {
-      const listings = unwrapData<Listing[]>(value);
-      setListings(Array.isArray(listings) ? listings : []);
-      return;
-    }
+      if (path === "/api/v1/trust/me/recommendations") {
+        const recommendations = unwrapData<string[]>(value);
+        setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
+        setRecommendationsLoaded(true);
+        return;
+      }
 
-    if (path === "/api/v1/listings/bookmarks") {
-      const bookmarks = unwrapData<Listing[]>(value);
-      setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
-      return;
-    }
-
-    if (path === "/api/v1/trust/me/recommendations") {
-      const recommendations = unwrapData<string[]>(value);
-      setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
-      setRecommendationsLoaded(true);
-      return;
-    }
-
-    if (path === "/api/v1/support/conversations") {
-      const conversations = unwrapData<unknown[]>(value);
-      setOpenSupportCount(Array.isArray(conversations)
-        ? conversations.filter((conversation) => typeof conversation === "object" && conversation !== null && "status" in conversation && String(conversation.status).toUpperCase() === "OPEN").length
-        : 0);
-    }
-  }), []);
+      if (path === "/api/v1/support/conversations") {
+        const conversations = unwrapData<unknown[]>(value);
+        setOpenSupportCount(
+          Array.isArray(conversations)
+            ? conversations.filter(
+                (conversation) =>
+                  typeof conversation === "object" &&
+                  conversation !== null &&
+                  "status" in conversation &&
+                  String(conversation.status).toUpperCase() === "OPEN",
+              ).length
+            : 0,
+        );
+      }
+    }), []);
 
   useEffect(() => {
     const handleSessionCleared = () => {
@@ -831,8 +1110,7 @@ export default function DashboardPage() {
         setProfileImage(cachedPicture);
         if (cachedProfile.id) setCachedUserAvatar(cachedProfile.id, cachedPicture, cachedProfile.profilePicture ?? cachedProfile.studentProfile?.profilePicture);
       }
-    }
-    else {
+    } else {
       const tokenName = getAuthenticatedDisplayName();
       if (tokenName) setProfile({ displayName: tokenName });
     }
@@ -982,10 +1260,10 @@ export default function DashboardPage() {
         .catch(() => null)
         .then((resolvedUrl) => resolvedUrl ?? resolveMediaUrl(imageReference))
         .then((resolvedUrl) => {
-        if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
-          setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
-        }
-      }).catch(() => undefined);
+          if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
+            setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
+          }
+        }).catch(() => undefined);
     });
     if (Object.keys(nextImageMap).length > 0) {
       setResolvedListingImages((current) => ({ ...current, ...nextImageMap }));
@@ -1050,7 +1328,7 @@ export default function DashboardPage() {
           setAccountStatus(latestStatus);
         }
       } catch {
-        // Keep the current dashboard state if a temporary status check fails.
+        // Keep current state on temporary failure
       } finally {
         checkingStatus = false;
       }
@@ -1066,28 +1344,6 @@ export default function DashboardPage() {
       window.clearInterval(interval);
     };
   }, [accountStatus, profile?.role]);
-
-  const toggleLike = async (listing: Listing) => {
-    const actionKey = `like:${listing.id}`;
-    if (pendingEngagement.has(actionKey)) return;
-    const liked = listing.likedByCurrentUser === true;
-    setPendingEngagement((current) => new Set(current).add(actionKey));
-    try {
-      await apiFetch(`/api/v1/listings/${encodeURIComponent(listing.id)}/like`, { method: liked ? "DELETE" : "POST" });
-      setListings((current) => current.map((item) => item.id === listing.id
-        ? { ...item, likedByCurrentUser: !liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? -1 : 1)) }
-        : item));
-    } catch {
-      setActionMessage("We could not update your like. Please try again.");
-    } finally {
-      setPendingEngagement((current) => {
-        const next = new Set(current);
-        next.delete(actionKey);
-        return next;
-      });
-    }
-  };
-  void toggleLike;
 
   useEffect(() => {
     if (dashboardLoading || listings.length === 0 || scrollRestoredRef.current) return;
@@ -1155,7 +1411,7 @@ export default function DashboardPage() {
       const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
       setListings(items);
     } catch {
-      // Keep current feed
+      // Keep feed
     }
   };
 
@@ -1216,6 +1472,7 @@ export default function DashboardPage() {
       return next;
     });
   };
+
   const closeComments = useCallback((listingId: string) => {
     setOpenCommentIds((current) => {
       if (!current.has(listingId)) return current;
@@ -1224,9 +1481,15 @@ export default function DashboardPage() {
       return next;
     });
   }, []);
+
   const closeActionTray = useCallback(() => setOpenActionTrayId(null), []);
+
   const setCommentCount = (listingId: string, count: number) => {
     setCommentCounts((current) => current[listingId] === count ? current : { ...current, [listingId]: count });
+  };
+
+  const toggleDescriptionExpand = (listingId: string) => {
+    setExpandedDescriptions((prev) => ({ ...prev, [listingId]: !prev[listingId] }));
   };
 
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
@@ -1239,29 +1502,40 @@ export default function DashboardPage() {
       <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          <div className="absolute left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3">
-            <div className="h-12 flex-1 animate-pulse rounded-2xl bg-white/10 backdrop-blur-md" />
-            <div className="h-11 w-11 animate-pulse rounded-2xl bg-white/10 backdrop-blur-md" />
+          {/* Top header skeleton */}
+          <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
+            <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10 backdrop-blur-md" />
+            <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
           </div>
-          <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-4xl items-end gap-4 md:bottom-8">
-            <div className="min-w-0 max-w-xl flex-1 space-y-3">
-              <div className="rounded-3xl border border-white/10 bg-black/40 p-5 backdrop-blur-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 animate-pulse rounded-full bg-white/15" />
-                  <div className="space-y-1.5 flex-1">
-                    <div className="h-3.5 w-28 animate-pulse rounded-md bg-white/15" />
-                    <div className="h-2.5 w-16 animate-pulse rounded-md bg-white/10" />
-                  </div>
-                </div>
-                <div className="mt-4 h-6 w-3/4 animate-pulse rounded-md bg-white/15" />
-                <div className="mt-2 h-3.5 w-full animate-pulse rounded-md bg-white/10" />
-                <div className="mt-5 flex items-center justify-between gap-3 pt-2">
-                  <div className="h-7 w-32 animate-pulse rounded-md bg-white/20" />
-                  <div className="h-10 w-28 animate-pulse rounded-2xl bg-safecrib-green/60" />
+
+          {/* Bottom card & interaction rail skeleton */}
+          <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end justify-between gap-4 md:inset-x-8 md:bottom-8">
+            <div className="min-w-0 max-w-xl flex-1 space-y-3 rounded-3xl border border-white/15 bg-black/50 p-5 backdrop-blur-2xl">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 animate-pulse rounded-full bg-white/15" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-28 animate-pulse rounded-full bg-white/20" />
+                  <div className="h-2.5 w-20 animate-pulse rounded-full bg-white/10" />
                 </div>
               </div>
+              <div className="h-5 w-3/4 animate-pulse rounded-lg bg-white/20" />
+              <div className="space-y-1.5">
+                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <div className="h-7 w-32 animate-pulse rounded-lg bg-white/20" />
+                <div className="h-10 w-28 animate-pulse rounded-full bg-emerald-500/50" />
+              </div>
             </div>
-            <div className="h-12 w-12 animate-pulse rounded-full border border-white/20 bg-safecrib-green/60 shadow-2xl" />
+
+            {/* Vertical action rail skeleton */}
+            <div className="flex flex-col items-center gap-3.5 pb-2">
+              <div className="h-12 w-12 animate-pulse rounded-full border border-white/20 bg-white/10" />
+              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
+              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
+              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
+            </div>
           </div>
         </section>
       </main>
@@ -1274,81 +1548,120 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72 selection:bg-safecrib-green selection:text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-      <section className="relative h-full w-full overflow-hidden bg-neutral-950">
-        <div className="absolute left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3">
+      <section className="relative h-full w-full overflow-hidden bg-black">
+        {/* Floating Search Bar & Profile Header */}
+        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
           <form
             role="search"
             onSubmit={(event) => {
               event.preventDefault();
               submitSearch();
             }}
-            className="group flex h-12 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/15 bg-black/40 px-4 text-white shadow-2xl backdrop-blur-xl transition-all focus-within:border-safecrib-green focus-within:ring-2 focus-within:ring-safecrib-green/20"
+            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-white/20 bg-black/45 pl-4 pr-2 text-white shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all hover:bg-black/60 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30"
           >
-            <Icon name="search" className="h-4 w-4 shrink-0 text-white/50 transition-colors group-focus-within:text-safecrib-green" />
+            <Icon name="search" className="h-4 w-4 shrink-0 text-white/50" />
             <input
               type="search"
               enterKeyHint="search"
-              aria-label="Search homes, people, and pages"
+              aria-label="Search verified student cribs, hostels, or providers"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search homes, locations, or providers..."
-              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-white placeholder:text-white/40 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Search verified cribs, campus, or host..."
+              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/45 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
             {searchQuery.length > 0 && (
-              <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+              >
+                <Icon name="x" className="h-3.5 w-3.5" />
               </button>
             )}
           </form>
-          <Link href="/profile" aria-label="View your profile" title={accountName || "View your profile"} className="shrink-0 rounded-2xl border border-white/20 p-0.5 shadow-xl transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-            <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="small" className="rounded-xl" />
+
+          <Link
+            href="/profile"
+            aria-label="View your profile"
+            title={accountName || "Your Profile"}
+            className="shrink-0 rounded-full border-2 border-white/40 shadow-xl transition-transform hover:border-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
+          >
+            <ProfileAvatar
+              src={profileImage}
+              seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
+              alt={`${accountName || "Your"} profile photo`}
+              size="small"
+              className="h-10 w-10 rounded-full object-cover"
+            />
           </Link>
         </div>
 
+        {/* Empty state when no listings exist */}
         {listings.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-900 px-6 text-center" aria-label="No listings are available yet">
-            <div className="rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-2xl max-w-sm flex flex-col items-center">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-950 px-6 pb-12 pt-28 text-center" aria-label="No listings available">
+            <div className="flex max-w-sm flex-col items-center rounded-3xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl backdrop-blur-2xl">
               <EmptyListingsIllustration />
-              <h2 className="mt-6 font-display text-xl font-bold text-white tracking-tight">No homes listed yet</h2>
-              <p className="mt-2 text-sm text-neutral-400 leading-relaxed">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
+              <h2 className="mt-5 font-display text-xl font-bold text-white">No homes listed yet</h2>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+                Verified student accommodation and listings from trusted landlords will show up here as soon as they go live.
+              </p>
+              <Button
+                type="button"
+                onClick={() => void refreshFeed()}
+                className="mt-6 rounded-full bg-emerald-500 px-6 font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600"
+              >
+                Refresh feed
+              </Button>
             </div>
           </div>
         )}
 
-        <div ref={feedRef} onScroll={() => { if (openActionTrayId) setOpenActionTrayId(null); }} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Main TikTok/Reels vertical snap feed */}
+        <div
+          ref={feedRef}
+          onScroll={() => {
+            if (openActionTrayId) setOpenActionTrayId(null);
+            if (openMenuId) setOpenMenuId(null);
+          }}
+          className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {/* Floating Pill: New Posts Available */}
           {newPostsAvailable && (
-            <div className="pointer-events-none sticky top-20 z-30 flex h-0 justify-center">
+            <div className="pointer-events-none sticky top-20 z-40 flex h-0 justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-safecrib-green/90 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-2xl backdrop-blur-md transition-all hover:bg-safecrib-green hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white animate-bounce"
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_10px_25px_rgba(16,185,129,0.4)] backdrop-blur-md transition hover:scale-105 hover:bg-emerald-600 active:scale-95"
                 aria-live="polite"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
-                New posts available
+                <Icon name="arrow-up" className="h-3.5 w-3.5 animate-bounce" />
+                New homes posted
               </button>
             </div>
           )}
+
           {listings.map((listing, index) => {
-            const imageReference = getListingImageReference(listing);
-            const fallbackImage = getListingImageUrl(listing) ?? (isUsableImageSource(imageReference) ? imageReference : null);
-            const image = isUsableImageSource(resolvedListingImages[listing.id])
-              ? resolvedListingImages[listing.id]
-              : fallbackImage;
-            const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
-            const providerName = listing.owner?.displayName ?? "Provider";
-            const location = listing.address ?? listing.campus ?? null;
+            const image = resolvedListingImages[listing.id] ?? getListingImageUrl(listing);
+            const fallbackImage = getListingImageUrl(listing);
+            const providerName = listing.owner?.displayName || "Verified Host";
+            const location = listing.campus || listing.address;
             const isSaved = bookmarkedIds.includes(listing.id);
             const commentsOpen = openCommentIds.has(listing.id);
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
+            const isDescExpanded = Boolean(expandedDescriptions[listing.id]);
+
             return (
               <article
                 key={listing.id}
-                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${hasMedia ? "bg-neutral-950" : "bg-gradient-to-br from-safecrib-green/80 via-neutral-900 to-black"}`}
+                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${
+                  hasMedia ? "bg-neutral-950" : "bg-gradient-to-br from-emerald-950 via-neutral-900 to-black"
+                }`}
               >
+                {/* Media Layer (Video or High-Res Image) */}
                 {hasMedia && (
                   <div className="absolute inset-0">
                     {listing.video ? (
@@ -1357,67 +1670,118 @@ export default function DashboardPage() {
                         poster={image ?? null}
                         fallbackSrc={fallbackImage}
                         alt={listing.title ?? "Listing"}
-                        onProgress={(currentTime, duration) => setVideoProgress({ listingId: listing.id, currentTime, duration })}
+                        onProgress={(currentTime, duration) =>
+                          setVideoProgress({ listingId: listing.id, currentTime, duration })
+                        }
                       />
                     ) : image ? (
                       <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
-                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} priority={index === 0} />
+                        <ListingCardImage
+                          src={image}
+                          fallbackSrc={fallbackImage}
+                          alt={listing.title ?? "Listing"}
+                          priority={index === 0}
+                        />
                       </Link>
                     ) : null}
                   </div>
                 )}
-                
-                {/* Visual Gradients */}
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
-                <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
-                <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-4xl items-end gap-3 md:bottom-8">
-                  <div className="min-w-0 max-w-xl flex-1">
+                {/* Cinematic Vignette Overlay for Crisp Readability */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 via-45% to-black/40"
+                />
+
+                {/* Floating Content Area & Bottom UI */}
+                <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end justify-between gap-3.5 md:inset-x-8 md:bottom-8">
+                  {/* Left: Listing Information Glass Card */}
+                  <div className="min-w-0 max-w-lg flex-1">
+                    {/* Video Progress Line */}
                     {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
-                      <div aria-label="Video progress" className="mb-3 h-1 overflow-hidden rounded-full bg-white/20 backdrop-blur-md">
-                        <div className="h-full rounded-full bg-safecrib-green transition-all duration-100 ease-linear" style={{ width: `${Math.min(100, videoProgress.currentTime / videoProgress.duration * 100)}%` }} />
+                      <div aria-label="Video progress" className="mb-2.5 h-1 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
+                        <div
+                          className="h-full rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-150"
+                          style={{ width: `${Math.min(100, (videoProgress.currentTime / videoProgress.duration) * 100)}%` }}
+                        />
                       </div>
                     )}
-                    <div className="rounded-3xl border border-white/15 bg-black/40 p-5 text-white shadow-2xl backdrop-blur-2xl">
-                      <div className="flex min-w-0 items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" className="h-8 w-8 shrink-0 rounded-full border border-white/20" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="truncate text-xs font-bold tracking-tight text-white/90">{providerName}</p>
-                              <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white">
-                                <Icon name="check-circle" className="h-3 w-3" />
-                              </span>
-                            </div>
-                            {location && (
-                              <p className="truncate text-[11px] font-medium text-white/60 flex items-center gap-1 mt-0.5">
-                                <Icon name="map-pin" className="h-3 w-3 shrink-0 text-white/40" />
-                                <span className="truncate">{location}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
+
+                    <div className="rounded-3xl border border-white/15 bg-black/45 p-4 text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all sm:p-5">
+                      {/* Provider Header Pill */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
+                          className="group flex items-center gap-2"
+                        >
+                          <ProfileAvatar
+                            src={resolvedProviderAvatars[listing.id] ?? null}
+                            alt={`${providerName} avatar`}
+                            size="small"
+                            className="h-8 w-8 rounded-full border border-white/30 object-cover"
+                          />
+                          <span className="truncate text-xs font-bold text-white transition group-hover:text-emerald-300">
+                            {providerName}
+                          </span>
+                        </Link>
+                        <span
+                          title="Verified Host"
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
+                        >
+                          <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                        </span>
+
+                        {location && (
+                          <span className="inline-flex max-w-[200px] items-center gap-1 truncate rounded-full border border-white/10 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-md">
+                            <Icon name="map-pin" className="h-3 w-3 shrink-0 text-emerald-400" />
+                            <span className="truncate">{location}</span>
+                          </span>
+                        )}
                       </div>
 
-                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-3 block group focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                        <h2 className="line-clamp-2 text-lg font-bold leading-snug tracking-tight text-white group-hover:text-white/80 transition-colors">{listing.title ?? "Verified home"}</h2>
+                      {/* Title */}
+                      <Link
+                        href={`/dashboard/listings/${listing.id}`}
+                        className="mt-2.5 block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+                      >
+                        <h2 className="line-clamp-2 font-display text-base font-bold leading-snug tracking-tight text-white transition hover:text-emerald-300 sm:text-lg">
+                          {listing.title ?? "Verified Campus Home"}
+                        </h2>
                       </Link>
 
+                      {/* Description with Expand toggle */}
                       {listing.description && (
-                        <div className="mt-1.5">
-                          <p className="line-clamp-2 text-xs leading-relaxed text-white/70 font-normal">{listing.description}</p>
+                        <div className="mt-1.5 text-xs text-neutral-300 sm:text-sm">
+                          <p className={`leading-relaxed text-white/85 ${isDescExpanded ? "" : "line-clamp-2"}`}>
+                            {listing.description}
+                          </p>
+                          {listing.description.length > 80 && (
+                            <button
+                              type="button"
+                              onClick={() => toggleDescriptionExpand(listing.id)}
+                              className="mt-1 font-semibold text-emerald-400 transition hover:text-emerald-300 focus-visible:outline-none"
+                            >
+                              {isDescExpanded ? "Show less" : "Read more"}
+                            </button>
+                          )}
                         </div>
                       )}
 
-                      <div className="mt-4 flex items-center justify-between gap-3 pt-3 border-t border-white/10">
+                      {/* Pricing & Primary Action Bar */}
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3.5">
                         <ListingPriceTag listing={listing} />
-                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-safecrib-green px-5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-safecrib-green/90 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-                          View details
+                        <Link
+                          href={`/dashboard/listings/${listing.id}`}
+                          className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-5 text-xs font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95 sm:text-sm"
+                        >
+                          View Crib
+                          <Icon name="arrow-right" className="h-3.5 w-3.5" />
                         </Link>
                       </div>
                     </div>
                   </div>
 
+                  {/* Right: Vertical Interaction Rail */}
                   <ListingActionTray
                     listing={listing}
                     isOpen={openActionTrayId === listing.id}
@@ -1427,24 +1791,42 @@ export default function DashboardPage() {
                     menuOpen={openMenuId === listing.id}
                     isStudent={isStudent}
                     commentCount={commentCount}
-                    recommendationDisabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                    recommendationDisabled={
+                      String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
+                      !recommendationsLoaded ||
+                      pendingEngagement.has(`recommend:${listing.ownerId}`)
+                    }
                     role={String(profile?.role ?? "").toUpperCase()}
-                    onToggle={() => setOpenActionTrayId((current) => current === listing.id ? null : listing.id)}
+                    onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
                     onClose={closeActionTray}
                     onLike={async (id, liked) => {
-                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
-                      setListings((current) => current.map((item) => item.id === id
-                        ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
-                        : item));
+                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
+                        method: liked ? "POST" : "DELETE",
+                      });
+                      setListings((current) =>
+                        current.map((item) =>
+                          item.id === id
+                            ? {
+                                ...item,
+                                likedByCurrentUser: liked,
+                                likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
+                              }
+                            : item,
+                        ),
+                      );
                     }}
                     onComment={() => toggleComments(listing.id)}
-                    onRecommend={async (providerId, recommended) => { await toggleRecommendation(providerId); void recommended; }}
+                    onRecommend={async (providerId, recommended) => {
+                      await toggleRecommendation(providerId);
+                      void recommended;
+                    }}
                     onSave={() => void toggleBookmark(listing.id)}
-                    onMore={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
+                    onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
                     onCloseMenu={() => setOpenMenuId(null)}
                   />
                 </div>
 
+                {/* Comments Modal Drawer */}
                 {commentsOpen && (
                   <ListingComments
                     listingId={listing.id}
