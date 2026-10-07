@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 import {
   apiFetch,
   cachedApiFetch,
@@ -952,8 +952,7 @@ export default function DashboardPage() {
         setProfile({ ...currentUser, displayName: displayName(currentUser) || getAuthenticatedDisplayName() });
         const userVerification = currentUser.verification ?? getPersistedVerification(currentUser.id);
         if (userVerification) {
-          const normalized = normalizeVerificationStage(userVerification);
-          if (normalized) setVerification(normalized);
+          normalizeVerificationStage(userVerification);
         }
         if (["STUDENT", "UNVERIFIED"].includes(String(currentUser.role ?? "").toUpperCase())) {
           setAccountStatus(normalizeAccountStatus(currentUser.studentProfileStatus));
@@ -1099,7 +1098,7 @@ export default function DashboardPage() {
     }
     if (cachedProfile) {
       setProfile({ ...cachedProfile, displayName: resolveAccountName(cachedProfile) });
-      setVerification(normalizeVerificationStage(getPersistedVerification(cachedProfile.id)));
+      normalizeVerificationStage(getPersistedVerification(cachedProfile.id));
       if (cachedProfile.id) {
         const cachedAvatar = getCachedUserAvatar(cachedProfile.id);
         if (cachedAvatar) setProfileImage(cachedAvatar);
