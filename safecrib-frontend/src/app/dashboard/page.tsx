@@ -178,26 +178,36 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const directVideoUrl = video?.url && isUsableImageSource(video.url) ? video.url.trim() : null;
-  const [isVisible, setIsVisible] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [isNear, setIsNear] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(directVideoUrl);
   const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof IntersectionObserver === "undefined") {
-      setIsVisible(true);
+      setIsActive(true);
+      setIsNear(true);
       return;
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      setIsVisible(Boolean(entry?.isIntersecting));
-    }, { threshold: 0.25 });
-    observer.observe(container);
-    return () => observer.disconnect();
+    const activeObserver = new IntersectionObserver(([entry]) => {
+      setIsActive((entry?.intersectionRatio ?? 0) >= 0.7);
+    }, { threshold: [0, 0.7] });
+    const preloadMargin = `${window.innerHeight}px 0px`;
+    const warmObserver = new IntersectionObserver(([entry]) => {
+      setIsNear(Boolean(entry?.isIntersecting));
+    }, { rootMargin: preloadMargin });
+    activeObserver.observe(container);
+    warmObserver.observe(container);
+    return () => {
+      activeObserver.disconnect();
+      warmObserver.disconnect();
+    };
   }, []);
 
   useEffect(() => {
-    if (!isVisible || videoUrl || videoFailed) return;
+    if (!isNear || videoUrl || videoFailed) return;
     if (!video?.mediaId) {
       setVideoFailed(true);
       return;
@@ -214,17 +224,17 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
         if (active) setVideoFailed(true);
       });
     return () => { active = false; };
-  }, [isVisible, video?.mediaId, videoFailed, videoUrl]);
+  }, [isNear, video?.mediaId, videoFailed, videoUrl]);
 
   useEffect(() => {
     const element = videoRef.current;
     if (!element) return;
-    if (isVisible && videoUrl && !videoFailed) {
+    if (isActive && videoUrl && !videoFailed) {
       void element.play().catch(() => undefined);
     } else {
       element.pause();
     }
-  }, [isVisible, videoFailed, videoUrl]);
+  }, [isActive, videoFailed, videoUrl]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 bg-black/[0.04]">
@@ -234,12 +244,12 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
           src={videoUrl}
           poster={poster ?? fallbackSrc ?? undefined}
           aria-label={`${alt} video`}
-          autoPlay={isVisible}
+          autoPlay={isActive}
           muted
           loop
           playsInline
           controls
-          preload={isVisible ? "metadata" : "none"}
+          preload={isActive ? "auto" : isNear ? "metadata" : "none"}
           onError={() => setVideoFailed(true)}
           className="h-full w-full object-cover"
         />
@@ -252,7 +262,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
   );
 }
 
-function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void }) {
+function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOverlay = false }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void; compactOverlay?: boolean }) {
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentBody, setCommentBody] = useState("");
@@ -395,7 +405,14 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
   const topLevel = comments.filter((comment) => !comment.parentId);
 
   return (
-    <section ref={sectionRef} id={`comments-${listingId}`} className="border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4" aria-label="Home comments">
+    <section
+      ref={sectionRef}
+      id={`comments-${listingId}`}
+      className={compactOverlay
+        ? "absolute bottom-36 left-3 right-20 z-30 max-h-[32dvh] overflow-y-auto rounded-xl border border-black/10 bg-white/95 px-3 pb-3 pt-2 shadow-xl backdrop-blur-sm md:left-auto md:right-24 md:w-96"
+        : "border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4"}
+      aria-label="Home comments"
+    >
       {loading ? (
         <div className="space-y-2 py-2" aria-hidden="true">
           <Skeleton className="h-4 w-40" />
@@ -500,6 +517,7 @@ export default function DashboardPage() {
     }
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const feedRef = useRef<HTMLDivElement>(null);
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
@@ -909,18 +927,21 @@ export default function DashboardPage() {
 
   // Scroll-position save/restore: saves on route-change/unload, restores after feed renders.
   useEffect(() => {
+    if (dashboardLoading) return;
+    const feed = feedRef.current;
+    if (!feed) return;
     const SCROLL_KEY = "safecrib_dashboard_scroll";
     const savedY = Number(sessionStorage.getItem(SCROLL_KEY) ?? "0");
     if (savedY > 0) {
       // Restore after a brief tick so layout has settled.
-      const id = requestAnimationFrame(() => window.scrollTo({ top: savedY, behavior: "instant" }));
+      const id = requestAnimationFrame(() => feed.scrollTo({ top: savedY, behavior: "instant" }));
       return () => {
         cancelAnimationFrame(id);
-        sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)));
+        sessionStorage.setItem(SCROLL_KEY, String(Math.round(feed.scrollTop)));
       };
     }
-    return () => sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)));
-  }, []);
+    return () => sessionStorage.setItem(SCROLL_KEY, String(Math.round(feed.scrollTop)));
+  }, [dashboardLoading]);
 
   // Background "new posts" polling: every 60s while tab is visible, check if there are
   // newer listings than the top of the current feed. If so, show the pill.
@@ -1083,44 +1104,44 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
+    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-      <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+      <section className="relative h-full w-full overflow-hidden bg-black">
+        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-xl border border-white/20 bg-black/45 p-3 text-white shadow-lg backdrop-blur-md">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/profile" aria-label="View your profile" title="View your profile" className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
               <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="medium" />
             </Link>
             {accountName && (
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h1 className="min-w-0 truncate font-display text-xl font-bold text-safecrib-green sm:text-2xl"><NameHandle displayName={accountName} username={profile?.username} /></h1>
+                <h1 className="min-w-0 truncate font-display text-base font-bold text-white"><NameHandle displayName={accountName} username={profile?.username} /></h1>
                 {verification && <VerificationBadge verification={verification} compact iconOnly />}
               </div>
             )}
           </div>
           {canCreateProviderPage && (
-            <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="shrink-0 rounded-full border border-safecrib-green/30 px-4 py-2 text-sm font-semibold text-safecrib-green transition hover:bg-safecrib-green/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+            <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="shrink-0 rounded-full border border-white/40 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               {pageStatus === "none" ? "Create a provider Page" : "View my Page"}
             </Link>
           )}
         </div>
 
         {listings.length === 0 && (
-          <div className="mx-auto mt-8 flex max-w-2xl flex-col items-center justify-center rounded-2xl border border-black/10 bg-white px-5 py-10 text-center" aria-label="No listings are available yet">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white px-5 py-10 text-center" aria-label="No listings are available yet">
             <EmptyListingsIllustration />
             <h2 className="mt-4 font-display text-lg font-bold text-safecrib-black">No homes listed yet</h2>
             <p className="mt-1 max-w-xs text-sm text-black/55">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
           </div>
         )}
 
-        <div className="mx-auto mt-6 max-w-2xl space-y-5">
+        <div ref={feedRef} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none]">
           {/* New posts pill — appears when background polling detects newer listings */}
           {newPostsAvailable && (
-            <div className="sticky top-20 z-30 flex justify-center">
+            <div className="pointer-events-none sticky top-3 z-30 flex h-0 justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green"
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                 aria-live="polite"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
@@ -1143,32 +1164,29 @@ export default function DashboardPage() {
             return (
               <article
                 key={listing.id}
-                className="relative z-10 overflow-visible rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                className="relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black text-white"
               >
-                <div className="flex items-center gap-3 p-3 sm:p-4">
-                  <div className="shrink-0">
-                    <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
+                {(image || listing.video) && (
+                  <div className="absolute inset-0">
+                    {listing.video ? (
+                      <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                    ) : image ? (
+                      <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
+                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                      </Link>
+                    ) : null}
                   </div>
+                )}
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/45" />
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-sm font-bold text-safecrib-black">{providerName}</span>
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-safecrib-green/10 px-2 py-0.5 text-[11px] font-medium text-safecrib-green">
-                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
-                        {ownerLabel}
-                      </span>
-                    </div>
-                    {location && <p className="mt-0.5 truncate text-xs text-black/55">{location}</p>}
-                  </div>
-
-                  <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
+                <div className="absolute right-4 top-24 z-20" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
                     <button
                       type="button"
                       aria-label="More options"
                       aria-haspopup="menu"
                       aria-expanded={openMenuId === listing.id}
                       onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                     >
                       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
                     </button>
@@ -1178,35 +1196,26 @@ export default function DashboardPage() {
                         {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
                       </div>
                     )}
-                  </div>
                 </div>
 
-                {(image || listing.video) && (
-                  listing.video ? (
-                    <div className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
-                      <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                <div className="absolute bottom-28 left-4 right-20 z-20 max-w-xl text-white md:bottom-8 md:left-8 md:right-24">
+                  <div className="mb-3 flex items-center gap-3">
+                    <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{providerName}</p>
+                      <p className="text-xs text-white/75">{ownerLabel}{location ? ` · ${location}` : ""}</p>
                     </div>
-                  ) : image ? (
-                    <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
-                      <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
-                    </Link>
-                  ) : null
-                )}
-
-                <div className="px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <Link href={`/dashboard/listings/${listing.id}`} className="min-w-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-                      <h2 className="line-clamp-2 text-base font-bold leading-snug text-safecrib-black hover:underline sm:text-lg">{listing.title ?? "Verified home"}</h2>
-                    </Link>
-                    <ListingPriceTag listing={listing} />
                   </div>
-                  {listing.description && (
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-black/65">{listing.description}</p>
-                  )}
+                  <div className="flex items-end justify-between gap-3">
+                    <Link href={`/dashboard/listings/${listing.id}`} className="min-w-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                      <h2 className="line-clamp-2 text-lg font-bold leading-snug text-white hover:underline sm:text-xl">{listing.title ?? "Verified home"}</h2>
+                      {listing.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/85">{listing.description}</p>}
+                    </Link>
+                    <div className="shrink-0 rounded-md bg-white px-2 py-1 text-safecrib-black"><ListingPriceTag listing={listing} /></div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-black/5 px-2 py-1.5 text-sm text-black/60 sm:px-3">
-                  <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                <div className="absolute bottom-20 right-3 z-20 flex flex-col items-center gap-2 rounded-full bg-white/90 p-1.5 text-black shadow-lg backdrop-blur-sm md:bottom-8 md:right-6">
                     <LikeButton
                       listingId={listing.id}
                       initialLikeCount={listing.likeCount ?? 0}
@@ -1227,7 +1236,7 @@ export default function DashboardPage() {
                       aria-controls={`comments-${listing.id}`}
                       aria-label={`${commentCount} comments`}
                       title="Comments"
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-safecrib-green/10 font-semibold text-safecrib-green" : ""}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm text-black transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-black/10 font-semibold" : ""}`}
                     >
                       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
                       <span>{commentCount}</span>
@@ -1244,7 +1253,6 @@ export default function DashboardPage() {
                         size="lg"
                       />
                     )}
-                  </div>
 
                   {isStudent && (
                     <button
@@ -1253,7 +1261,7 @@ export default function DashboardPage() {
                       aria-pressed={isSaved}
                       aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
                       title={isSaved ? "Saved" : "Save"}
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/50"}`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/60"}`}
                     >
                       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
                     </button>
@@ -1262,6 +1270,7 @@ export default function DashboardPage() {
 
                 {commentsOpen && (
                   <ListingComments
+                    compactOverlay
                     listingId={listing.id}
                     ownerId={listing.ownerId}
                     onClose={closeComments}
