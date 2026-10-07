@@ -114,6 +114,28 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
   );
 }
 
+function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc: string | null; alt: string }) {
+  const [useFallback, setUseFallback] = useState(false);
+
+  useEffect(() => setUseFallback(false), [src]);
+
+  const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
+
+  return (
+    <Image
+      src={imageSrc}
+      alt={alt}
+      width={1200}
+      height={800}
+      quality={90}
+      className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]"
+      onError={() => {
+        if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
+      }}
+    />
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -436,7 +458,10 @@ export default function DashboardPage() {
         return;
       }
       if (fallbackUrl) nextImageMap[listing.id] = fallbackUrl;
-      void resolveMediaUrl(imageReference, "listing_hero").then((resolvedUrl) => {
+      void resolveMediaUrl(imageReference, "listing_hero")
+        .catch(() => null)
+        .then((resolvedUrl) => resolvedUrl ?? resolveMediaUrl(imageReference))
+        .then((resolvedUrl) => {
         if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
           setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
         }
@@ -731,11 +756,10 @@ export default function DashboardPage() {
           )}
           {listings.map((listing) => {
             const imageReference = getListingImageReference(listing);
+            const fallbackImage = getListingImageUrl(listing) ?? (isUsableImageSource(imageReference) ? imageReference : null);
             const image = isUsableImageSource(resolvedListingImages[listing.id])
               ? resolvedListingImages[listing.id]
-              : isUsableImageSource(imageReference)
-                ? imageReference
-                : null;
+              : fallbackImage;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             const providerName = listing.owner?.displayName ?? "Provider";
             return (
@@ -790,7 +814,7 @@ export default function DashboardPage() {
                     {image ? (
                       <div className="relative mt-3 pb-5">
                         <Link href={`/dashboard/listings/${listing.id}`} className="block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                          <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={800} quality={90} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
+                          <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
                         </Link>
                         <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
                           <ListingPriceTag listing={listing} />
