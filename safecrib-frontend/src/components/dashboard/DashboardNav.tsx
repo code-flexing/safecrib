@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { connectNotificationSocket, disconnectNotificationSocket } from "@/lib/notifications";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
@@ -39,7 +39,6 @@ function SupportCount({ count }: { count: number }) {
 
 export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, supportCount = 0 }: DashboardNavProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const pageLabel = pageStatus === "none" ? "Create provider Page" : "My provider Page";
   const pageActive = pathname.startsWith("/page");
   const [navUser, setNavUser] = useState<NavUser | null>(null);
