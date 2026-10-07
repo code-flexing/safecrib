@@ -614,7 +614,7 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
             <Icon name="message-circle" className="h-5 w-5" />
           </button>
         </div>
-        {canRecommend && (
+        {listing.ownerId && canRecommend && (
           <div className={itemClass(isOpen)} style={delay(2)}>
             {countChip(formatEngagementCount(listing.providerRecommendationCount ?? 0))}
             <RecommendButton
