@@ -96,7 +96,7 @@ function getListingImageUrl(listing: Listing): string | null {
 }
 
 function formatListingPrice(listing: Listing) {
-  if (typeof listing.price !== "number") return "Price available in details";
+  if (typeof listing.price !== "number") return "See details";
   const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -105,11 +105,28 @@ function formatListingPrice(listing: Listing) {
   }).format(price);
 }
 
+function hasDiscount(listing: Listing) {
+  if (typeof listing.price !== "number") return false;
+  const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
+  return price < listing.price;
+}
+
+function formatOriginalPrice(listing: Listing) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(listing.price ?? 0);
+}
+
 function ListingPriceTag({ listing }: { listing: Listing }) {
+  const priced = typeof listing.price === "number";
   return (
-    <div className="inline-flex items-baseline gap-2 rounded-xl border border-black/10 bg-white px-3.5 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.18)]">
-      <span className="text-[10px] font-medium text-black/50">Price</span>
-      <span className="text-base font-bold leading-none text-safecrib-black">{formatListingPrice(listing)}</span>
+    <div className="flex shrink-0 flex-col items-end leading-tight">
+      <span className={`font-display font-bold text-safecrib-green ${priced ? "text-lg sm:text-xl" : "text-sm"}`}>{formatListingPrice(listing)}</span>
+      {priced && hasDiscount(listing) && (
+        <span className="text-xs text-black/40 line-through">{formatOriginalPrice(listing)}</span>
+      )}
     </div>
   );
 }
@@ -132,7 +149,7 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
         src={imageSrc}
         alt={alt}
         fill
-        sizes="(max-width: 640px) calc(100vw - 56px), 672px"
+        sizes="(max-width: 640px) calc(100vw - 32px), 672px"
         quality={90}
         onLoad={() => setLoadedSrc(imageSrc)}
         className={`object-cover transition-opacity duration-200 ${loadedSrc === imageSrc ? "opacity-100" : "opacity-0"}`}
@@ -575,6 +592,7 @@ export default function DashboardPage() {
       });
     }
   };
+  void toggleLike;
 
   // Scroll-position save/restore: saves on route-change/unload, restores after feed renders.
   useEffect(() => {
@@ -685,41 +703,43 @@ export default function DashboardPage() {
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
   const accountName = resolveAccountName(profile);
   const canCreateProviderPage = ["AGENT", "LANDLORD"].includes(String(profile?.role ?? "").toUpperCase());
+  const isStudent = String(profile?.role ?? "").toUpperCase() === "STUDENT";
 
   if (dashboardLoading) {
     return (
       <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-        <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-40" />
-                <Skeleton className="h-4 w-28" />
-              </div>
+        <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-3 w-24" />
             </div>
-            <Skeleton className="h-10 w-36" />
           </div>
-          <div className="mx-auto mt-8 max-w-3xl space-y-4">
+          <div className="mx-auto mt-6 max-w-2xl space-y-5">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-                <div className="flex items-start gap-3">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-28" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-64 w-full rounded-xl" />
-                    <div className="flex items-center justify-between gap-3 pt-2">
-                      <Skeleton className="h-5 w-16" />
-                      <Skeleton className="h-5 w-16" />
-                      <Skeleton className="h-5 w-16" />
-                    </div>
+              <div key={index} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <div className="flex items-center gap-3 p-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
                   </div>
+                </div>
+                <Skeleton className="aspect-[3/2] w-full rounded-none" />
+                <div className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+                <div className="flex items-center gap-6 border-t border-black/5 px-4 py-3">
+                  <Skeleton className="h-5 w-14" />
+                  <Skeleton className="h-5 w-14" />
+                  <Skeleton className="h-5 w-14" />
                 </div>
               </div>
             ))}
@@ -732,29 +752,42 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-      <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div className="flex items-center gap-4">
-            <Link href="/profile" aria-label="View your profile" title="View your profile" className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+      <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/profile" aria-label="View your profile" title="View your profile" className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
               <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="medium" />
             </Link>
-            <div>
-              {accountName && <div className="flex flex-wrap items-center gap-3"><h1 className="font-display text-3xl font-bold text-safecrib-green sm:text-4xl"><NameHandle displayName={accountName} username={profile?.username} /></h1>{verification && <VerificationBadge verification={verification} compact iconOnly />}</div>}
-            </div>
+            {accountName && (
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="min-w-0 truncate font-display text-xl font-bold text-safecrib-green sm:text-2xl"><NameHandle displayName={accountName} username={profile?.username} /></h1>
+                {verification && <VerificationBadge verification={verification} compact iconOnly />}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-3 text-sm font-medium">
-            {canCreateProviderPage && <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="text-safecrib-green hover:underline">{pageStatus === "none" ? "Create a provider Page" : "View my Page"}</Link>}
-          </div>
+          {canCreateProviderPage && (
+            <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="shrink-0 rounded-full border border-safecrib-green/30 px-4 py-2 text-sm font-semibold text-safecrib-green transition hover:bg-safecrib-green/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+              {pageStatus === "none" ? "Create a provider Page" : "View my Page"}
+            </Link>
+          )}
         </div>
-        {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
-        <div className="mx-auto mt-8 max-w-3xl space-y-4">
+
+        {listings.length === 0 && (
+          <div className="mx-auto mt-8 flex max-w-2xl flex-col items-center justify-center rounded-2xl border border-black/10 bg-white px-5 py-10 text-center" aria-label="No listings are available yet">
+            <EmptyListingsIllustration />
+            <h2 className="mt-4 font-display text-lg font-bold text-safecrib-black">No homes listed yet</h2>
+            <p className="mt-1 max-w-xs text-sm text-black/55">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
+          </div>
+        )}
+
+        <div className="mx-auto mt-6 max-w-2xl space-y-5">
           {/* New posts pill — appears when background polling detects newer listings */}
           {newPostsAvailable && (
-            <div className="sticky top-4 z-20 flex justify-center">
+            <div className="sticky top-20 z-30 flex justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                className="inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green"
                 aria-live="polite"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
@@ -770,102 +803,112 @@ export default function DashboardPage() {
               : fallbackImage;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
             const providerName = listing.owner?.displayName ?? "Provider";
+            const location = listing.address ?? listing.campus ?? null;
+            const isSaved = bookmarkedIds.includes(listing.id);
             return (
               <article
                 key={listing.id}
-                className="relative z-10 overflow-visible rounded-2xl border border-black/10 bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:p-4"
+                className="relative z-10 overflow-visible rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
               >
-                <div className="flex items-start gap-3">
-                  <div className="shrink-0 pt-0.5">
+                <div className="flex items-center gap-3 p-3 sm:p-4">
+                  <div className="shrink-0">
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                   </div>
 
-                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 leading-none">
-                        <span className="truncate text-sm font-bold text-safecrib-black sm:text-[15px]">
-                          {listing.title ?? "Verified home"}
-                        </span>
-                        <span className="hidden text-xs text-black/45 sm:inline">·</span>
-                        <span className="text-[11px] text-black/45 sm:text-xs">{ownerLabel}</span>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-black/60 sm:text-sm">
-                        {listing.address ?? listing.campus ?? "Location details available"}
-                      </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-bold text-safecrib-black">{providerName}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-safecrib-green/10 px-2 py-0.5 text-[11px] font-medium text-safecrib-green">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+                        {ownerLabel}
+                      </span>
                     </div>
+                    {location && <p className="mt-0.5 truncate text-xs text-black/55">{location}</p>}
+                  </div>
 
-                    <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
-                      <button
-                        type="button"
-                        aria-label="More options"
-                        aria-haspopup="menu"
-                        aria-expanded={openMenuId === listing.id}
-                        onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04]"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
-                      </button>
-                      {openMenuId === listing.id && (
-                        <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-                          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
-                          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
-                        </div>
-                      )}
-                    </div>
+                  <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
+                    <button
+                      type="button"
+                      aria-label="More options"
+                      aria-haspopup="menu"
+                      aria-expanded={openMenuId === listing.id}
+                      onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+                    </button>
+                    {openMenuId === listing.id && (
+                      <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+                        <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
+                        {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mx-auto mt-4 w-full max-w-[42rem]">
-                  <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-black/75 sm:text-[15px]">
-                    {listing.description ?? "View this home for more details."}
-                  </p>
+                {image && (
+                  <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
+                    <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                  </Link>
+                )}
 
-                  {image ? (
-                    <div className="relative mt-4 pb-5">
-                      <Link href={`/dashboard/listings/${listing.id}`} className="relative block aspect-[3/2] overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
-                      </Link>
-                      <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
-                        <ListingPriceTag listing={listing} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 flex justify-center"><ListingPriceTag listing={listing} /></div>
-                  )}
-
-                  <div className="mt-4 border-t border-black/10 pt-3">
-                    <div className="flex w-full flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-black/60">
-                        <LikeButton
-                          listingId={listing.id}
-                          initialLikeCount={listing.likeCount ?? 0}
-                          initialIsLiked={listing.likedByCurrentUser ?? false}
-                          onLike={async (id, liked) => {
-                            await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
-                            setListings((current) => current.map((item) => item.id === id
-                              ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
-                              : item));
-                          }}
-                          size="lg"
-                        />
-
-                        <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex min-w-0 max-w-full items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04]">
-                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-                          <span className="min-w-0 truncate">{listing.viewCount ?? 0}</span>
-                        </Link>
-
-                        {listing.ownerId && listing.ownerId !== profile?.id && (
-                          <RecommendButton
-                            providerId={listing.ownerId}
-                            initialRecommendationCount={listing.providerRecommendationCount ?? 0}
-                            initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
-                            onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
-                            disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                            role={String(profile?.role ?? "").toUpperCase()}
-                            size="lg"
-                          />
-                        )}
-                    </div>
+                <div className="px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <Link href={`/dashboard/listings/${listing.id}`} className="min-w-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+                      <h2 className="line-clamp-2 text-base font-bold leading-snug text-safecrib-black hover:underline sm:text-lg">{listing.title ?? "Verified home"}</h2>
+                    </Link>
+                    <ListingPriceTag listing={listing} />
                   </div>
+                  {listing.description && (
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-black/65">{listing.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-black/5 px-2 py-1.5 text-sm text-black/60 sm:px-3">
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                    <LikeButton
+                      listingId={listing.id}
+                      initialLikeCount={listing.likeCount ?? 0}
+                      initialIsLiked={listing.likedByCurrentUser ?? false}
+                      onLike={async (id, liked) => {
+                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
+                        setListings((current) => current.map((item) => item.id === id
+                          ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
+                          : item));
+                      }}
+                      size="lg"
+                    />
+
+                    <Link href={`/dashboard/listings/${listing.id}`} aria-label={`${listing.viewCount ?? 0} views`} title="Views" className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04]">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                      <span>{listing.viewCount ?? 0}</span>
+                    </Link>
+
+                    {listing.ownerId && listing.ownerId !== profile?.id && (
+                      <RecommendButton
+                        providerId={listing.ownerId}
+                        initialRecommendationCount={listing.providerRecommendationCount ?? 0}
+                        initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
+                        onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
+                        disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                        role={String(profile?.role ?? "").toUpperCase()}
+                        size="lg"
+                      />
+                    )}
+                  </div>
+
+                  {isStudent && (
+                    <button
+                      type="button"
+                      onClick={() => void toggleBookmark(listing.id)}
+                      aria-pressed={isSaved}
+                      aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
+                      title={isSaved ? "Saved" : "Save"}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/50"}`}
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
+                    </button>
+                  )}
                 </div>
               </article>
             );
