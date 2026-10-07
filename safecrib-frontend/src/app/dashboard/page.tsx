@@ -141,9 +141,9 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
   return (
     <div className="flex min-w-0 items-baseline gap-2 leading-tight">
-      <span className={`font-display font-bold text-white ${priced ? "text-xl" : "text-sm"}`}>{formatListingPrice(listing)}</span>
+      <span className={`font-display font-black tracking-tight text-white ${priced ? "text-2xl" : "text-base"}`}>{formatListingPrice(listing)}</span>
       {priced && hasDiscount(listing) && (
-        <span className="text-xs text-white/60 line-through">{formatOriginalPrice(listing)}</span>
+        <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
       )}
     </div>
   );
@@ -161,30 +161,23 @@ function ListingCardImage({ src, fallbackSrc, alt, priority = false }: { src: st
   const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
 
   return (
-    <div className="absolute inset-0 bg-neutral-900">
-      {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />}
+    <div className="absolute inset-0 bg-neutral-950 overflow-hidden">
+      {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5 backdrop-blur-md" />}
       <Image
         src={imageSrc}
         alt={alt}
         fill
         priority={priority}
         sizes="100vw"
-        quality={90}
+        quality={95}
         onLoad={() => setLoadedSrc(imageSrc)}
-        className={`object-cover transition-opacity duration-200 ${loadedSrc === imageSrc ? "opacity-100" : "opacity-0"}`}
+        className={`object-cover transform transition-all duration-700 ease-out ${loadedSrc === imageSrc ? "opacity-100 scale-100" : "opacity-0 scale-105"}`}
         onError={() => {
           if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
         }}
       />
     </div>
   );
-}
-
-function formatVideoTime(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${remainingSeconds}`;
 }
 
 function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string; onProgress?: (currentTime: number, duration: number) => void }) {
@@ -254,7 +247,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
   }, [isActive, videoFailed, videoUrl]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-neutral-900">
+    <div ref={containerRef} className="absolute inset-0 bg-neutral-950 overflow-hidden">
       {videoUrl && !videoFailed ? (
         <video
           ref={videoRef}
@@ -297,18 +290,18 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
       ) : poster || fallbackSrc ? (
         <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
       ) : (
-        <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />
+        <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5 backdrop-blur-md" />
       )}
       {videoUrl && !videoFailed && (
-        <div className="absolute right-4 top-20 z-40">
+        <div className="absolute right-5 top-24 z-40">
           <button
             type="button"
             onClick={() => setIsMuted((muted) => !muted)}
             aria-label={isMuted ? "Unmute video" : "Mute video"}
             title={isMuted ? "Unmute" : "Mute"}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-md backdrop-blur-xl hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-xl backdrop-blur-md transition-all hover:bg-black/60 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
-            <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
+            <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -316,10 +309,6 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt, onProgress }: { vid
   );
 }
 
-/**
- * Comments open straight into the discussion sheet (one tap from the feed icon).
- * Closing the sheet calls onClose so the feed can reset the icon state.
- */
 function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void }) {
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,8 +341,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
         if (active) setLoading(false);
       });
     return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listingId]);
+  }, [listingId, onCountChange]);
 
   const submitComment = async () => {
     const body = commentBody.trim();
@@ -425,24 +413,26 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
       ? "Unknown time"
       : formatDistanceToNow(createdAt, { addSuffix: true, includeSeconds: true });
     return (
-      <li key={item.id} className="py-3" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
-        <p className="text-sm font-semibold text-safecrib-black">
-          <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-            <NameHandle displayName={item.user.displayName} username={item.user.username} />
-          </Link>
-          {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
-          <time dateTime={item.createdAt} className="ml-2 text-xs font-normal text-black/45">{commentTime}</time>
-        </p>
-        {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70">{item.body}</p>}
-        {item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
+      <li key={item.id} className="py-3.5 transition-colors" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="font-semibold text-sm text-neutral-900 hover:text-safecrib-green transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+              <NameHandle displayName={item.user.displayName} username={item.user.username} />
+            </Link>
+            {isCreatorReply && <span className="rounded-full bg-safecrib-green/10 px-2 py-0.5 text-[10px] font-bold text-safecrib-green tracking-wide uppercase">Creator</span>}
+          </div>
+          <time dateTime={item.createdAt} className="text-xs font-normal text-neutral-400">{commentTime}</time>
+        </div>
+        {item.body && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">{item.body}</p>}
+        {item.mentions?.length ? <p className="mt-1 text-xs text-neutral-400">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
         <button
           type="button"
           onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById(inputId)?.focus(); }}
-          className="mt-1.5 text-xs font-semibold text-safecrib-green hover:underline"
+          className="mt-2 text-xs font-semibold text-safecrib-green hover:underline"
         >
           Reply
         </button>
-        {replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+        {replies.length > 0 && <ul className="mt-2 divide-y divide-neutral-100 border-l-2 border-neutral-100 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
       </li>
     );
   };
@@ -451,31 +441,33 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
 
   return createPortal(
     <Modal open onClose={closeDiscussion} titleId={titleId}>
-      <div className="flex max-h-[85dvh] min-h-0 flex-col">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/10 px-4 py-3 sm:px-6">
-          <h2 id={titleId} className="text-base font-bold text-safecrib-black">
+      <div className="flex max-h-[85dvh] min-h-[50dvh] flex-col bg-white rounded-3xl overflow-hidden shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-neutral-100 px-6 py-4">
+          <h2 id={titleId} className="text-base font-bold text-neutral-900 tracking-tight">
             Comments{comments.length > 0 ? ` (${comments.length})` : ""}
           </h2>
-          <button type="button" onClick={closeDiscussion} aria-label="Close comments" className="flex h-9 w-9 items-center justify-center rounded-full text-black/55 hover:bg-black/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+          <button type="button" onClick={closeDiscussion} aria-label="Close comments" className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
           {loading ? (
-            <div className="space-y-3 py-4" aria-hidden="true">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+            <div className="space-y-4 py-4" aria-hidden="true">
+              <Skeleton className="h-4 w-32 rounded-lg" />
+              <Skeleton className="h-4 w-full rounded-lg" />
+              <Skeleton className="h-4 w-4/5 rounded-lg" />
             </div>
           ) : (
-            <ul className="divide-y divide-black/10">
+            <ul className="divide-y divide-neutral-100">
               {topLevel.map((comment) => renderComment(comment))}
-              {!comments.length && !commentError && <li className="py-6 text-center text-sm text-black/50">No comments yet. Start the conversation.</li>}
+              {!comments.length && !commentError && (
+                <li className="py-12 text-center text-sm font-medium text-neutral-400">No comments yet. Start the conversation!</li>
+              )}
             </ul>
           )}
-          <Link href={`/dashboard/listings/${listingId}#comments`} className="my-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
+          <Link href={`/dashboard/listings/${listingId}#comments`} className="my-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full discussion</Link>
         </div>
-        <div className="shrink-0 border-t border-black/10 px-4 py-3 sm:px-6">
+        <div className="shrink-0 border-t border-neutral-100 bg-neutral-50/50 p-4 sm:p-6">
           <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
           <textarea
             id={inputId}
@@ -483,26 +475,26 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
             onChange={(event) => updateCommentBody(event.target.value)}
             maxLength={1000}
             rows={2}
-            placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
-            className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
+            placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a note..."}
+            className="w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-safecrib-green focus:outline-none focus:ring-2 focus:ring-safecrib-green/20 transition-all shadow-sm"
           />
           {mentionCandidates.length > 0 && (
-            <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
+            <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-2xl border border-neutral-100 bg-white shadow-xl">
               {mentionCandidates.map((person) => (
                 <li key={person.id}>
-                  <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
-                    <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
+                  <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-safecrib-green/5 transition-colors">
+                    <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-neutral-400">{person.role?.toLowerCase()}</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
           {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-xs text-black/45">{commentBody.length > 0 ? `${commentBody.length}/1000` : ""}</span>
-            <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-neutral-400">{commentBody.length > 0 ? `${commentBody.length}/1000` : ""}</span>
+            <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()} className="rounded-xl px-5 py-2">{replyParentId ? "Post reply" : "Post comment"}</Button>
           </div>
-          {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
+          {commentError && <p role="alert" className="mt-2 text-xs font-medium text-red-600">{commentError}</p>}
         </div>
       </div>
     </Modal>,
@@ -575,17 +567,17 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
     return () => cancelAnimationFrame(frame);
   }, [menuOpen]);
 
-  const itemClass = (open: boolean) => `flex items-center gap-2 transition-all duration-150 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity ${open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`;
-  const delay = (index: number): React.CSSProperties => ({ transitionDelay: isOpen ? `${index * 40}ms` : "0ms" });
-  const countChip = (text: string) => <span className="rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-xs font-semibold leading-none text-white shadow-sm backdrop-blur-md">{text}</span>;
-  const iconButtonClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/95 text-safecrib-black shadow-lg transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green";
+  const itemClass = (open: boolean) => `flex items-center gap-2.5 transition-all duration-200 ease-out motion-reduce:translate-y-0 motion-reduce:transition-opacity ${open ? "translate-y-0 opacity-100 scale-100" : "pointer-events-none translate-y-3 opacity-0 scale-95"}`;
+  const delay = (index: number): React.CSSProperties => ({ transitionDelay: isOpen ? `${index * 30}ms` : "0ms" });
+  const countChip = (text: string) => <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-semibold leading-none text-white shadow-lg backdrop-blur-md">{text}</span>;
+  const iconButtonClass = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/90 text-neutral-900 shadow-xl backdrop-blur-md transition-all hover:bg-white hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green";
 
   return (
     <div ref={rootRef} className="relative z-40 flex h-12 w-12 shrink-0 items-center justify-center" data-listing-menu-open={menuOpen ? "true" : undefined}>
       {menuOpen && (
-        <div ref={menuRef} role="menu" aria-label="More listing options" className="absolute bottom-full right-0 z-50 mb-3 w-52 overflow-hidden rounded-2xl border border-white/20 bg-white text-safecrib-black shadow-xl">
-          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={onCloseMenu} className="block border-b border-black/5 px-4 py-3 text-sm font-medium text-black/75 transition hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">Open post</Link>
-          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={onCloseMenu} className="block px-4 py-3 text-sm font-medium text-black/75 transition hover:bg-black/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">View provider</Link>}
+        <div ref={menuRef} role="menu" aria-label="More listing options" className="absolute bottom-full right-0 z-50 mb-3 w-52 overflow-hidden rounded-2xl border border-white/20 bg-white/95 text-neutral-900 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={onCloseMenu} className="block border-b border-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">Open post</Link>
+          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={onCloseMenu} className="block px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">View provider</Link>}
         </div>
       )}
       <div
@@ -595,7 +587,7 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
         aria-label="Listing actions"
         aria-hidden={!isOpen}
         inert={!isOpen}
-        className={`absolute bottom-full right-0 mb-3 flex flex-col-reverse items-end gap-3 transition-opacity duration-150 ease-out ${isOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+        className={`absolute bottom-full right-0 mb-3 flex flex-col-reverse items-end gap-3 transition-opacity duration-200 ease-out ${isOpen ? "visible opacity-100" : "invisible opacity-0"}`}
       >
         <div className={itemClass(isOpen)} style={delay(0)}>
           {countChip(formatEngagementCount(listing.likeCount ?? 0))}
@@ -632,7 +624,7 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
         {isStudent && (
           <div className={itemClass(isOpen)} style={delay(3)}>
             {countChip(isSaved ? "Saved" : "Save")}
-            <button type="button" onClick={onSave} aria-pressed={isSaved} aria-label={isSaved ? "Remove from saved listings" : "Save listing"} title={isSaved ? "Saved" : "Save"} className={`${iconButtonClass} ${isSaved ? "text-safecrib-green" : ""}`}>
+            <button type="button" onClick={onSave} aria-pressed={isSaved} aria-label={isSaved ? "Remove from saved listings" : "Save listing"} title={isSaved ? "Saved" : "Save"} className={`${iconButtonClass} ${isSaved ? "text-safecrib-green font-bold" : ""}`}>
               <Icon name="bookmark" className="h-5 w-5" />
             </button>
           </div>
@@ -652,10 +644,10 @@ function ListingActionTray({ listing, isOpen, isSaved, isRecommended, canRecomme
         aria-label={isOpen ? "Close listing actions" : "Open listing actions"}
         title={isOpen ? "Close actions" : "More actions"}
         onClick={onToggle}
-        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/70 bg-safecrib-green text-white shadow-xl transition-all duration-150 ease-out hover:bg-safecrib-green/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-reduce:transition-opacity ${isOpen ? "rotate-45" : "rotate-0"}`}
+        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/30 bg-safecrib-green text-white shadow-2xl transition-all duration-300 ease-out hover:bg-safecrib-green/90 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${isOpen ? "rotate-45 bg-neutral-900 border-white/20" : "rotate-0"}`}
       >
-        <Icon name={isOpen ? "x" : "zap"} className="h-5 w-5" />
-        {!isOpen && (listing.likedByCurrentUser || isSaved) && <span aria-hidden="true" className="absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full border border-white bg-white" />}
+        <Icon name={isOpen ? "x" : "zap"} className="h-5 w-5 transition-transform duration-300" />
+        {!isOpen && (listing.likedByCurrentUser || isSaved) && <span aria-hidden="true" className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-safecrib-green bg-white shadow-sm" />}
       </button>
     </div>
   );
@@ -678,7 +670,6 @@ export default function DashboardPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
   const [dashboardLoading, setDashboardLoading] = useState(() => {
-    // Show skeleton only on first load (no cache). On navigation returns, render instantly.
     if (typeof window === "undefined") return true;
     try {
       const token = localStorage.getItem("safecrib_access_token");
@@ -813,12 +804,9 @@ export default function DashboardPage() {
     }
 
     const cachedProfile = getCachedCurrentUser<Profile>();
-    // Only show the skeleton on first load (no cached data). On subsequent navigations
-    // we have cached data so we render instantly with no flash.
     const hasCachedData = cachedProfile !== null;
     if (!hasCachedData) setDashboardLoading(true);
 
-    // Pre-populate listings from cache so the feed shows immediately on navigation.
     const cachedListings = getCachedApi<unknown>("/api/v1/listings");
     const cachedListingItems = cachedListings === null ? null : unwrapData<Listing[]>(cachedListings);
     if (cachedListings) {
@@ -1101,8 +1089,6 @@ export default function DashboardPage() {
   };
   void toggleLike;
 
-  // Scroll-position restore/save for the snap feed (the feed container scrolls, not the window).
-  // Restore waits until listings exist, otherwise the saved offset would be clamped to 0.
   useEffect(() => {
     if (dashboardLoading || listings.length === 0 || scrollRestoredRef.current) return;
     const feed = feedRef.current;
@@ -1132,8 +1118,6 @@ export default function DashboardPage() {
     };
   }, [dashboardLoading]);
 
-  // Background "new posts" polling: every 60s while tab is visible, check if there are
-  // newer listings than the top of the current feed. If so, show the pill.
   useEffect(() => {
     if (typeof window === "undefined") return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -1146,7 +1130,7 @@ export default function DashboardPage() {
         const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
         if (items.length > 0 && items[0].id !== topId) setNewPostsAvailable(true);
       } catch {
-        // Silent failure — don't surface polling errors to the user.
+        // Silent failure
       }
     };
     const schedule = () => { timer = setTimeout(() => { void check(); schedule(); }, 60_000); };
@@ -1165,13 +1149,13 @@ export default function DashboardPage() {
     setNewPostsAvailable(false);
     clearClientCache("/api/v1/listings");
     sessionStorage.removeItem("safecrib_dashboard_scroll");
-    feedRef.current?.scrollTo({ top: 0 });
+    feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     try {
       const result = await apiFetch<unknown>("/api/v1/listings");
       const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
       setListings(items);
     } catch {
-      // Keep current feed if refresh fails.
+      // Keep current feed
     }
   };
 
@@ -1251,35 +1235,33 @@ export default function DashboardPage() {
   const isStudent = String(profile?.role ?? "").toUpperCase() === "STUDENT";
 
   if (dashboardLoading) {
-    // Mirrors the real full-screen layout so nothing jumps when content arrives.
     return (
-      <main className="relative h-[100dvh] overflow-hidden bg-neutral-900 md:pl-72" aria-busy="true">
+      <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] mx-auto flex max-w-2xl items-center gap-3">
-            <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10" />
-            <div className="h-10 w-10 animate-pulse rounded-full border-2 border-white/70 bg-white/10" />
+          <div className="absolute left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3">
+            <div className="h-12 flex-1 animate-pulse rounded-2xl bg-white/10 backdrop-blur-md" />
+            <div className="h-11 w-11 animate-pulse rounded-2xl bg-white/10 backdrop-blur-md" />
           </div>
-          <div className="absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end gap-3 md:inset-x-8 md:bottom-6">
-            <div className="min-w-0 max-w-xl flex-1">
-              <div className="mb-2 h-1 animate-pulse rounded-full bg-white/25" />
-              <div className="space-y-2 rounded-2xl border border-white/15 bg-black/45 p-4 backdrop-blur-xl">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
-                  <div className="h-3 w-24 animate-pulse rounded bg-white/15" />
-                  <div className="h-5 w-5 animate-pulse rounded-full bg-safecrib-green/70" />
-                  <div className="h-3 min-w-0 flex-1 animate-pulse rounded bg-white/10" />
+          <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-4xl items-end gap-4 md:bottom-8">
+            <div className="min-w-0 max-w-xl flex-1 space-y-3">
+              <div className="rounded-3xl border border-white/10 bg-black/40 p-5 backdrop-blur-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-white/15" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3.5 w-28 animate-pulse rounded-md bg-white/15" />
+                    <div className="h-2.5 w-16 animate-pulse rounded-md bg-white/10" />
+                  </div>
                 </div>
-                <div className="h-5 w-2/3 animate-pulse rounded bg-white/15" />
-                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
-                <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
-                <div className="flex items-center justify-between gap-3 pt-2">
-                  <div className="h-6 w-28 animate-pulse rounded bg-white/15" />
-                  <div className="h-10 w-28 animate-pulse rounded-full bg-safecrib-green/60" />
+                <div className="mt-4 h-6 w-3/4 animate-pulse rounded-md bg-white/15" />
+                <div className="mt-2 h-3.5 w-full animate-pulse rounded-md bg-white/10" />
+                <div className="mt-5 flex items-center justify-between gap-3 pt-2">
+                  <div className="h-7 w-32 animate-pulse rounded-md bg-white/20" />
+                  <div className="h-10 w-28 animate-pulse rounded-2xl bg-safecrib-green/60" />
                 </div>
               </div>
             </div>
-            <div className="h-12 w-12 animate-pulse rounded-full border border-white/50 bg-safecrib-green/60 shadow-xl" />
+            <div className="h-12 w-12 animate-pulse rounded-full border border-white/20 bg-safecrib-green/60 shadow-2xl" />
           </div>
         </section>
       </main>
@@ -1292,59 +1274,60 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
+    <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72 selection:bg-safecrib-green selection:text-white">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-      <section className="relative h-full w-full overflow-hidden bg-black">
-        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
+      <section className="relative h-full w-full overflow-hidden bg-neutral-950">
+        <div className="absolute left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-xl items-center gap-3">
           <form
             role="search"
             onSubmit={(event) => {
               event.preventDefault();
               submitSearch();
             }}
-            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-black/10 bg-white/95 pl-4 pr-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-md focus-within:ring-2 focus-within:ring-safecrib-green"
+            className="group flex h-12 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/15 bg-black/40 px-4 text-white shadow-2xl backdrop-blur-xl transition-all focus-within:border-safecrib-green focus-within:ring-2 focus-within:ring-safecrib-green/20"
           >
-            <Icon name="search" className="h-5 w-5 shrink-0 text-black/45" />
+            <Icon name="search" className="h-4 w-4 shrink-0 text-white/50 transition-colors group-focus-within:text-safecrib-green" />
             <input
               type="search"
               enterKeyHint="search"
               aria-label="Search homes, people, and pages"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search homes, people, and pages"
-              className="min-w-0 flex-1 bg-transparent text-sm text-safecrib-black placeholder:text-black/45 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+              placeholder="Search homes, locations, or providers..."
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-white placeholder:text-white/40 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
             {searchQuery.length > 0 && (
-              <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+              <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
               </button>
             )}
           </form>
-          <Link href="/profile" aria-label="View your profile" title={accountName || "View your profile"} className="shrink-0 rounded-full border-2 border-white/80 shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-            <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="small" />
+          <Link href="/profile" aria-label="View your profile" title={accountName || "View your profile"} className="shrink-0 rounded-2xl border border-white/20 p-0.5 shadow-xl transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="small" className="rounded-xl" />
           </Link>
         </div>
 
         {listings.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-100 px-5 pb-10 pt-28 text-center" aria-label="No listings are available yet">
-            <EmptyListingsIllustration />
-            <h2 className="mt-4 font-display text-lg font-bold text-safecrib-black">No homes listed yet</h2>
-            <p className="mt-1 max-w-xs text-sm text-black/55">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-900 px-6 text-center" aria-label="No listings are available yet">
+            <div className="rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-2xl max-w-sm flex flex-col items-center">
+              <EmptyListingsIllustration />
+              <h2 className="mt-6 font-display text-xl font-bold text-white tracking-tight">No homes listed yet</h2>
+              <p className="mt-2 text-sm text-neutral-400 leading-relaxed">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
+            </div>
           </div>
         )}
 
         <div ref={feedRef} onScroll={() => { if (openActionTrayId) setOpenActionTrayId(null); }} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {/* New posts pill — appears when background polling detects newer listings */}
           {newPostsAvailable && (
-            <div className="pointer-events-none sticky top-[4.5rem] z-30 flex h-0 justify-center">
+            <div className="pointer-events-none sticky top-20 z-30 flex h-0 justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-safecrib-green/90 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-2xl backdrop-blur-md transition-all hover:bg-safecrib-green hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white animate-bounce"
                 aria-live="polite"
               >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
-                New posts
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
+                New posts available
               </button>
             </div>
           )}
@@ -1364,7 +1347,7 @@ export default function DashboardPage() {
             return (
               <article
                 key={listing.id}
-                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${hasMedia ? "bg-black" : "bg-gradient-to-br from-safecrib-green to-black"}`}
+                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${hasMedia ? "bg-neutral-950" : "bg-gradient-to-br from-safecrib-green/80 via-neutral-900 to-black"}`}
               >
                 {hasMedia && (
                   <div className="absolute inset-0">
@@ -1383,36 +1366,54 @@ export default function DashboardPage() {
                     ) : null}
                   </div>
                 )}
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/50" />
+                
+                {/* Visual Gradients */}
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
+                <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
-                <div className="absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end gap-3 md:inset-x-8 md:bottom-6">
+                <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-4xl items-end gap-3 md:bottom-8">
                   <div className="min-w-0 max-w-xl flex-1">
                     {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
-                      <div aria-label="Video progress" className="mb-2 h-1 overflow-hidden rounded-full bg-white/35">
-                        <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, videoProgress.currentTime / videoProgress.duration * 100)}%` }} />
+                      <div aria-label="Video progress" className="mb-3 h-1 overflow-hidden rounded-full bg-white/20 backdrop-blur-md">
+                        <div className="h-full rounded-full bg-safecrib-green transition-all duration-100 ease-linear" style={{ width: `${Math.min(100, videoProgress.currentTime / videoProgress.duration * 100)}%` }} />
                       </div>
                     )}
-                    <div className="rounded-2xl border border-white/15 bg-black/45 p-4 text-white shadow-xl backdrop-blur-xl">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" className="h-9 w-9 shrink-0" />
-                        <p className="truncate text-sm font-semibold">{providerName}</p>
-                        <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white">
-                          <Icon name="check-circle" className="h-4 w-4" />
-                        </span>
-                        {location && <p className="min-w-0 truncate text-sm text-white/65">{location}</p>}
+                    <div className="rounded-3xl border border-white/15 bg-black/40 p-5 text-white shadow-2xl backdrop-blur-2xl">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" className="h-8 w-8 shrink-0 rounded-full border border-white/20" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-xs font-bold tracking-tight text-white/90">{providerName}</p>
+                              <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white">
+                                <Icon name="check-circle" className="h-3 w-3" />
+                              </span>
+                            </div>
+                            {location && (
+                              <p className="truncate text-[11px] font-medium text-white/60 flex items-center gap-1 mt-0.5">
+                                <Icon name="map-pin" className="h-3 w-3 shrink-0 text-white/40" />
+                                <span className="truncate">{location}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-2 block focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                        <h2 className="line-clamp-2 text-lg font-bold leading-snug">{listing.title ?? "Verified home"}</h2>
+
+                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-3 block group focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <h2 className="line-clamp-2 text-lg font-bold leading-snug tracking-tight text-white group-hover:text-white/80 transition-colors">{listing.title ?? "Verified home"}</h2>
                       </Link>
+
                       {listing.description && (
-                        <div className="mt-2">
-                          <p className="line-clamp-2 text-sm leading-5 text-white/80">{listing.description}</p>
-                          <Link href={`/dashboard/listings/${listing.id}`} className="mt-1 inline-block text-sm font-semibold text-white/90 underline decoration-white/50 underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">more</Link>
+                        <div className="mt-1.5">
+                          <p className="line-clamp-2 text-xs leading-relaxed text-white/70 font-normal">{listing.description}</p>
                         </div>
                       )}
-                      <div className="mt-4 flex items-center justify-between gap-3">
+
+                      <div className="mt-4 flex items-center justify-between gap-3 pt-3 border-t border-white/10">
                         <ListingPriceTag listing={listing} />
-                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-safecrib-green px-4 text-sm font-semibold text-white transition hover:bg-safecrib-green/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">View home</Link>
+                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-safecrib-green px-5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all hover:bg-safecrib-green/90 hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                          View details
+                        </Link>
                       </div>
                     </div>
                   </div>
