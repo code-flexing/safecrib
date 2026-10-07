@@ -176,6 +176,11 @@ export default function ConnectPage() {
   }, []);
 
   useEffect(() => {
+    const initialQuery = new URLSearchParams(window.location.search).get("q");
+    if (initialQuery) setQuery(initialQuery);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     const searchTerm = query.trim();
     if (!searchTerm) {

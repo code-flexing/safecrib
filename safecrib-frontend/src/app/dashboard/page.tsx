@@ -528,6 +528,7 @@ export default function DashboardPage() {
   const [recommendedProviderIds, setRecommendedProviderIds] = useState<string[]>([]);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState(false);
   const [pendingEngagement, setPendingEngagement] = useState<Set<string>>(() => new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [resolvedProviderAvatars, setResolvedProviderAvatars] = useState<Record<string, string | null>>({});
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -1108,9 +1109,9 @@ export default function DashboardPage() {
       <main className="relative h-[100dvh] overflow-hidden bg-neutral-900 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          <div className="absolute left-4 right-4 top-12 mx-auto flex max-w-2xl items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-            <div className="h-12 w-12 animate-pulse rounded-full bg-white/10" />
-            <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
+          <div className="absolute left-4 right-4 top-12 mx-auto flex max-w-2xl items-center gap-3">
+            <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10" />
+            <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
           </div>
           <div className="absolute bottom-24 left-4 right-20 max-w-xl space-y-3 md:bottom-8 md:left-8 md:right-24">
             <div className="flex items-center gap-3">
@@ -1134,23 +1135,32 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-xl border border-white/20 bg-black/55 p-3 text-white shadow-lg backdrop-blur-md">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link href="/profile" aria-label="View your profile" title="View your profile" className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
-              <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="medium" />
-            </Link>
-            {accountName && (
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h1 className="min-w-0 truncate font-display text-base font-bold text-white"><NameHandle displayName={accountName} username={profile?.username} /></h1>
-                {verification && <VerificationBadge verification={verification} compact iconOnly />}
-              </div>
-            )}
-          </div>
-          {canCreateProviderPage && (
-            <Link href={pageStatus === "none" ? "/page/new" : "/page"} className="shrink-0 rounded-full border border-white/40 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {pageStatus === "none" ? "Create a provider Page" : "View my Page"}
-            </Link>
-          )}
+        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center gap-3">
+          <form
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const query = searchQuery.trim();
+              router.push(query ? `/connect?q=${encodeURIComponent(query)}` : "/connect");
+            }}
+            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-white/25 bg-white/95 px-4 text-black shadow-lg backdrop-blur-md"
+          >
+            <Icon name="search" className="h-5 w-5 shrink-0 text-black/45" />
+            <input
+              type="search"
+              aria-label="Search homes, people, and pages"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search homes, people, and pages"
+              className="min-w-0 flex-1 bg-transparent text-sm text-safecrib-black placeholder:text-black/45 focus:outline-none"
+            />
+            <button type="submit" aria-label="Search" title="Search" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white transition hover:bg-[#0a5f47] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
+              <Icon name="chevron-right" className="h-5 w-5" />
+            </button>
+          </form>
+          <Link href="/profile" aria-label="View your profile" title={accountName || "View your profile"} className="shrink-0 rounded-full border-2 border-white/80 shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="small" />
+          </Link>
         </div>
 
         {listings.length === 0 && (
