@@ -116,23 +116,31 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
 
 function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc: string | null; alt: string }) {
   const [useFallback, setUseFallback] = useState(false);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
 
-  useEffect(() => setUseFallback(false), [src]);
+  useEffect(() => {
+    setUseFallback(false);
+    setLoadedSrc(null);
+  }, [src]);
 
   const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
 
   return (
-    <Image
-      src={imageSrc}
-      alt={alt}
-      width={1200}
-      height={800}
-      quality={90}
-      className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]"
-      onError={() => {
-        if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
-      }}
-    />
+    <div className="absolute inset-0 bg-black/[0.04]">
+      {loadedSrc !== imageSrc && <Skeleton className="absolute inset-0" />}
+      <Image
+        src={imageSrc}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) calc(100vw - 56px), 672px"
+        quality={90}
+        onLoad={() => setLoadedSrc(imageSrc)}
+        className={`object-cover transition-opacity duration-200 ${loadedSrc === imageSrc ? "opacity-100" : "opacity-0"}`}
+        onError={() => {
+          if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
+        }}
+      />
+    </div>
   );
 }
 
@@ -772,60 +780,61 @@ export default function DashboardPage() {
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 leading-none">
-                          <span className="truncate text-sm font-bold text-safecrib-black sm:text-[15px]">
-                            {listing.title ?? "Verified home"}
-                          </span>
-                          <span className="hidden text-xs text-black/45 sm:inline">·</span>
-                          <span className="text-[11px] text-black/45 sm:text-xs">{ownerLabel}</span>
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-black/60 sm:text-sm">
-                          {listing.address ?? listing.campus ?? "Location details available"}
-                        </p>
+                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 leading-none">
+                        <span className="truncate text-sm font-bold text-safecrib-black sm:text-[15px]">
+                          {listing.title ?? "Verified home"}
+                        </span>
+                        <span className="hidden text-xs text-black/45 sm:inline">·</span>
+                        <span className="text-[11px] text-black/45 sm:text-xs">{ownerLabel}</span>
                       </div>
-
-                      <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
-                        <button
-                          type="button"
-                          aria-label="More options"
-                          aria-haspopup="menu"
-                          aria-expanded={openMenuId === listing.id}
-                          onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04]"
-                        >
-                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
-                        </button>
-                        {openMenuId === listing.id && (
-                          <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-                            <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
-                            {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
-                          </div>
-                        )}
-                      </div>
+                      <p className="mt-1 text-xs leading-5 text-black/60 sm:text-sm">
+                        {listing.address ?? listing.campus ?? "Location details available"}
+                      </p>
                     </div>
 
-                    <p className="mt-2 text-sm leading-6 text-black/75 sm:text-[15px]">
-                      {listing.description ?? "View this home for more details."}
-                    </p>
-
-                    {image ? (
-                      <div className="relative mt-3 pb-5">
-                        <Link href={`/dashboard/listings/${listing.id}`} className="block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                          <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
-                        </Link>
-                        <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
-                          <ListingPriceTag listing={listing} />
+                    <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === listing.id}
+                        onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04]"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+                      </button>
+                      {openMenuId === listing.id && (
+                        <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+                          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
+                          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mt-3"><ListingPriceTag listing={listing} /></div>
-                    )}
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="mt-3 border-t border-black/10 pt-3">
-                      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 text-sm text-black/60">
+                <div className="mx-auto mt-4 w-full max-w-[42rem]">
+                  <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-black/75 sm:text-[15px]">
+                    {listing.description ?? "View this home for more details."}
+                  </p>
+
+                  {image ? (
+                    <div className="relative mt-4 pb-5">
+                      <Link href={`/dashboard/listings/${listing.id}`} className="relative block aspect-[3/2] overflow-hidden rounded-2xl border border-black/10 bg-black/5">
+                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                      </Link>
+                      <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
+                        <ListingPriceTag listing={listing} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex justify-center"><ListingPriceTag listing={listing} /></div>
+                  )}
+
+                  <div className="mt-4 border-t border-black/10 pt-3">
+                    <div className="flex w-full flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-black/60">
                         <LikeButton
                           listingId={listing.id}
                           initialLikeCount={listing.likeCount ?? 0}
@@ -855,10 +864,7 @@ export default function DashboardPage() {
                             size="lg"
                           />
                         )}
-                      </div>
-
                     </div>
-
                   </div>
                 </div>
               </article>
