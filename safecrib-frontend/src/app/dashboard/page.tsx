@@ -14,6 +14,7 @@ import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -174,6 +175,13 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
   );
 }
 
+function formatVideoTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
+
 function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -182,6 +190,10 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
   const [isNear, setIsNear] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(directVideoUrl);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -245,11 +257,14 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
           poster={poster ?? fallbackSrc ?? undefined}
           aria-label={`${alt} video`}
           autoPlay={isActive}
-          muted
+          muted={isMuted}
           loop
           playsInline
-          controls
           preload={isActive ? "auto" : isNear ? "metadata" : "none"}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
           onError={() => setVideoFailed(true)}
           className="h-full w-full object-cover"
         />
@@ -257,6 +272,51 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
         <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
       ) : (
         <Skeleton className="absolute inset-0" />
+      )}
+      {videoUrl && !videoFailed && (
+        <div className="absolute bottom-20 left-4 right-20 z-20 flex max-w-xl items-center gap-2 text-white md:bottom-4 md:left-8 md:right-24">
+          <button
+            type="button"
+            onClick={() => {
+              const element = videoRef.current;
+              if (!element) return;
+              if (element.paused) void element.play().catch(() => undefined);
+              else element.pause();
+            }}
+            aria-label={isPlaying ? "Pause video" : "Play video"}
+            title={isPlaying ? "Pause" : "Play"}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <Icon name={isPlaying ? "pause" : "play"} className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-black/50 px-3 py-2 backdrop-blur-sm">
+            <input
+              type="range"
+              min={0}
+              max={duration || 1}
+              step={0.1}
+              value={Math.min(currentTime, duration || 1)}
+              onChange={(event) => {
+                const nextTime = Number(event.currentTarget.value);
+                if (videoRef.current) videoRef.current.currentTime = nextTime;
+                setCurrentTime(nextTime);
+              }}
+              aria-label="Seek video"
+              disabled={!duration}
+              className="h-1 min-w-0 flex-1 cursor-pointer accent-white disabled:cursor-default"
+            />
+            <span className="shrink-0 text-[11px] tabular-nums" aria-live="off">{formatVideoTime(currentTime)} / {formatVideoTime(duration)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsMuted((muted) => !muted)}
+            aria-label={isMuted ? "Unmute video" : "Mute video"}
+            title={isMuted ? "Unmute" : "Mute"}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -409,7 +469,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOv
       ref={sectionRef}
       id={`comments-${listingId}`}
       className={compactOverlay
-        ? "absolute bottom-36 left-3 right-20 z-30 max-h-[32dvh] overflow-y-auto rounded-xl border border-black/10 bg-white/95 px-3 pb-3 pt-2 shadow-xl backdrop-blur-sm md:left-auto md:right-24 md:w-96"
+        ? "absolute left-3 right-20 top-32 z-30 max-h-[32dvh] overflow-y-auto rounded-xl border border-black/10 bg-white/95 px-3 pb-3 pt-2 shadow-xl backdrop-blur-sm md:left-auto md:right-24 md:w-96"
         : "border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4"}
       aria-label="Home comments"
     >
@@ -1179,7 +1239,7 @@ export default function DashboardPage() {
                 )}
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/45" />
 
-                <div className="absolute right-4 top-24 z-20" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
+                <div className="absolute right-4 top-32 z-20" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
                     <button
                       type="button"
                       aria-label="More options"
@@ -1198,7 +1258,7 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                <div className="absolute bottom-28 left-4 right-20 z-20 max-w-xl text-white md:bottom-8 md:left-8 md:right-24">
+                <div className="absolute bottom-44 left-4 right-20 z-20 max-w-xl text-white md:bottom-20 md:left-8 md:right-24">
                   <div className="mb-3 flex items-center gap-3">
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                     <div className="min-w-0">
