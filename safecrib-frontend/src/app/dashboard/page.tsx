@@ -317,7 +317,7 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
       )}
       {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
       <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="text-xs text-black/45">{commentBody.length}/1000</span>
+        {commentBody.length > 0 && <span className="text-xs text-black/45">{commentBody.length}/1000</span>}
         <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
       </div>
       {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
