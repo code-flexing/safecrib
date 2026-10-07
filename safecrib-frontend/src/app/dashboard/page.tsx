@@ -145,7 +145,7 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
   );
 }
 
-function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc: string | null; alt: string }) {
+function ListingCardImage({ src, fallbackSrc, alt, priority = false }: { src: string; fallbackSrc: string | null; alt: string; priority?: boolean }) {
   const [useFallback, setUseFallback] = useState(false);
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
 
@@ -157,13 +157,14 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
   const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
 
   return (
-    <div className="absolute inset-0 bg-black/[0.04]">
-      {loadedSrc !== imageSrc && <Skeleton className="absolute inset-0" />}
+    <div className="absolute inset-0 bg-neutral-900">
+      {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />}
       <Image
         src={imageSrc}
         alt={alt}
         fill
-        sizes="(max-width: 640px) calc(100vw - 32px), 672px"
+        priority={priority}
+        sizes="100vw"
         quality={90}
         onLoad={() => setLoadedSrc(imageSrc)}
         className={`object-cover transition-opacity duration-200 ${loadedSrc === imageSrc ? "opacity-100" : "opacity-0"}`}
@@ -249,7 +250,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
   }, [isActive, videoFailed, videoUrl]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-black/[0.04]">
+    <div ref={containerRef} className="absolute inset-0 bg-neutral-900">
       {videoUrl && !videoFailed ? (
         <video
           ref={videoRef}
@@ -271,7 +272,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
       ) : poster || fallbackSrc ? (
         <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
       ) : (
-        <Skeleton className="absolute inset-0" />
+        <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />
       )}
       {videoUrl && !videoFailed && (
         <div className="absolute bottom-20 left-4 right-20 z-20 flex max-w-xl items-center gap-2 text-white md:bottom-4 md:left-8 md:right-24">
@@ -322,7 +323,11 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
   );
 }
 
-function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOverlay = false }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void; compactOverlay?: boolean }) {
+/**
+ * Comments open straight into the discussion sheet (one tap from the feed icon).
+ * Closing the sheet calls onClose so the feed can reset the icon state.
+ */
+function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void }) {
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentBody, setCommentBody] = useState("");
@@ -332,22 +337,9 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOv
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
-  const [fullDiscussionOpen, setFullDiscussionOpen] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
   const inputId = `home-comment-${listingId}`;
   const titleId = useId();
-  const closeFullDiscussion = useCallback(() => setFullDiscussionOpen(false), []);
-
-  useEffect(() => {
-    const article = sectionRef.current?.closest("article");
-    if (!article || typeof IntersectionObserver === "undefined") return;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry && !entry.isIntersecting) onClose(listingId);
-    });
-    observer.observe(article);
-    return () => observer.disconnect();
-  }, [listingId, onClose]);
+  const closeDiscussion = useCallback(() => onClose(listingId), [listingId, onClose]);
 
   useEffect(() => {
     let active = true;
@@ -432,7 +424,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOv
     setMentionCandidates([]);
   };
 
-  const renderComment = (item: ListingComment, depth = 0, preview = false): ReactNode => {
+  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
     const replies = comments.filter((candidate) => candidate.parentId === item.id);
     const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
     const createdAt = new Date(item.createdAt);
@@ -448,104 +440,80 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose, compactOv
           {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
           <time dateTime={item.createdAt} className="ml-2 text-xs font-normal text-black/45">{commentTime}</time>
         </p>
-        {item.body && <p className={`mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70 ${preview ? "line-clamp-2" : ""}`}>{item.body}</p>}
-        {!preview && item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
-        {!preview && <button
+        {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70">{item.body}</p>}
+        {item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
+        <button
           type="button"
           onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById(inputId)?.focus(); }}
           className="mt-1.5 text-xs font-semibold text-safecrib-green hover:underline"
         >
           Reply
-        </button>}
-        {!preview && replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+        </button>
+        {replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
       </li>
     );
   };
 
   const topLevel = comments.filter((comment) => !comment.parentId);
 
-  return (
-    <section
-      ref={sectionRef}
-      id={`comments-${listingId}`}
-      className={compactOverlay
-        ? "absolute left-3 right-20 top-32 z-30 max-h-[32dvh] overflow-y-auto rounded-xl border border-black/10 bg-white/95 px-3 pb-3 pt-2 shadow-xl backdrop-blur-sm md:left-auto md:right-24 md:w-96"
-        : "border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4"}
-      aria-label="Home comments"
-    >
-      {loading ? (
-        <div className="space-y-2 py-2" aria-hidden="true">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
-      ) : (
-        <ul className="divide-y divide-black/10">
-          {topLevel.slice(0, 2).map((comment) => renderComment(comment, 0, true))}
-          {!comments.length && !commentError && <li className="py-2 text-sm text-black/50">No comments yet. Start the conversation.</li>}
-        </ul>
-      )}
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <button type="button" onClick={() => setFullDiscussionOpen(true)} className="text-xs font-semibold text-safecrib-green hover:underline">
-          {comments.length > 0 ? `View all ${comments.length} comments` : "View discussion"}
-        </button>
-        <Button type="button" onClick={() => setFullDiscussionOpen(true)}>Add a comment</Button>
-      </div>
-      {fullDiscussionOpen && createPortal(
-      <Modal open={fullDiscussionOpen} onClose={closeFullDiscussion} titleId={titleId}>
-        <div className="flex max-h-[85dvh] min-h-0 flex-col">
-          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/10 px-4 py-3 sm:px-6">
-            <h2 id={titleId} className="text-base font-bold text-safecrib-black">Comments on this home</h2>
-            <button type="button" onClick={closeFullDiscussion} aria-label="Close comments" className="flex h-9 w-9 items-center justify-center rounded-full text-black/55 hover:bg-black/[0.05]">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
-            </button>
-          </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
-            {loading ? (
-              <div className="space-y-3 py-4" aria-hidden="true">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ) : (
-              <ul className="divide-y divide-black/10">
-                {topLevel.map((comment) => renderComment(comment))}
-                {!comments.length && !commentError && <li className="py-3 text-sm text-black/50">No comments yet. Start the conversation.</li>}
-              </ul>
-            )}
-            <Link href={`/dashboard/listings/${listingId}#comments`} className="mb-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
-          </div>
-          <div className="shrink-0 border-t border-black/10 px-4 py-3 sm:px-6">
-            <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
-            <textarea
-              id={inputId}
-              value={commentBody}
-              onChange={(event) => updateCommentBody(event.target.value)}
-              maxLength={1000}
-              rows={2}
-              placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
-              className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
-            />
-            {mentionCandidates.length > 0 && (
-              <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
-                {mentionCandidates.map((person) => (
-                  <li key={person.id}>
-                    <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
-                      <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
-            <div className="mt-2 flex items-center justify-between gap-3">
-              {commentBody.length > 0 && <span className="text-xs text-black/45">{commentBody.length}/1000</span>}
-              <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
+  return createPortal(
+    <Modal open onClose={closeDiscussion} titleId={titleId}>
+      <div className="flex max-h-[85dvh] min-h-0 flex-col">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/10 px-4 py-3 sm:px-6">
+          <h2 id={titleId} className="text-base font-bold text-safecrib-black">
+            Comments{comments.length > 0 ? ` (${comments.length})` : ""}
+          </h2>
+          <button type="button" onClick={closeDiscussion} aria-label="Close comments" className="flex h-9 w-9 items-center justify-center rounded-full text-black/55 hover:bg-black/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+          {loading ? (
+            <div className="space-y-3 py-4" aria-hidden="true">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
-            {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
-          </div>
+          ) : (
+            <ul className="divide-y divide-black/10">
+              {topLevel.map((comment) => renderComment(comment))}
+              {!comments.length && !commentError && <li className="py-6 text-center text-sm text-black/50">No comments yet. Start the conversation.</li>}
+            </ul>
+          )}
+          <Link href={`/dashboard/listings/${listingId}#comments`} className="my-4 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
         </div>
-      </Modal>, document.body)}
-    </section>
+        <div className="shrink-0 border-t border-black/10 px-4 py-3 sm:px-6">
+          <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
+          <textarea
+            id={inputId}
+            value={commentBody}
+            onChange={(event) => updateCommentBody(event.target.value)}
+            maxLength={1000}
+            rows={2}
+            placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
+            className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
+          />
+          {mentionCandidates.length > 0 && (
+            <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
+              {mentionCandidates.map((person) => (
+                <li key={person.id}>
+                  <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
+                    <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="text-xs text-black/45">{commentBody.length > 0 ? `${commentBody.length}/1000` : ""}</span>
+            <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
+          </div>
+          {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
+        </div>
+      </div>
+    </Modal>,
+    document.body,
   );
 }
 
@@ -578,6 +546,7 @@ export default function DashboardPage() {
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
+  const scrollRestoredRef = useRef(false);
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
@@ -985,22 +954,35 @@ export default function DashboardPage() {
   };
   void toggleLike;
 
-  // Scroll-position save/restore: saves on route-change/unload, restores after feed renders.
+  // Scroll-position restore/save for the snap feed (the feed container scrolls, not the window).
+  // Restore waits until listings exist, otherwise the saved offset would be clamped to 0.
+  useEffect(() => {
+    if (dashboardLoading || listings.length === 0 || scrollRestoredRef.current) return;
+    const feed = feedRef.current;
+    if (!feed) return;
+    scrollRestoredRef.current = true;
+    const savedY = Number(sessionStorage.getItem("safecrib_dashboard_scroll") ?? "0");
+    if (savedY > 0 && feed.clientHeight > 0) {
+      const snapped = Math.round(savedY / feed.clientHeight) * feed.clientHeight;
+      const id = requestAnimationFrame(() => feed.scrollTo({ top: snapped, behavior: "instant" }));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [dashboardLoading, listings.length]);
+
   useEffect(() => {
     if (dashboardLoading) return;
     const feed = feedRef.current;
     if (!feed) return;
-    const SCROLL_KEY = "safecrib_dashboard_scroll";
-    const savedY = Number(sessionStorage.getItem(SCROLL_KEY) ?? "0");
-    if (savedY > 0) {
-      // Restore after a brief tick so layout has settled.
-      const id = requestAnimationFrame(() => feed.scrollTo({ top: savedY, behavior: "instant" }));
-      return () => {
-        cancelAnimationFrame(id);
-        sessionStorage.setItem(SCROLL_KEY, String(Math.round(feed.scrollTop)));
-      };
-    }
-    return () => sessionStorage.setItem(SCROLL_KEY, String(Math.round(feed.scrollTop)));
+    let frame = 0;
+    const save = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => sessionStorage.setItem("safecrib_dashboard_scroll", String(Math.round(feed.scrollTop))));
+    };
+    feed.addEventListener("scroll", save, { passive: true });
+    return () => {
+      feed.removeEventListener("scroll", save);
+      cancelAnimationFrame(frame);
+    };
   }, [dashboardLoading]);
 
   // Background "new posts" polling: every 60s while tab is visible, check if there are
@@ -1036,6 +1018,7 @@ export default function DashboardPage() {
     setNewPostsAvailable(false);
     clearClientCache("/api/v1/listings");
     sessionStorage.removeItem("safecrib_dashboard_scroll");
+    feedRef.current?.scrollTo({ top: 0 });
     try {
       const result = await apiFetch<unknown>("/api/v1/listings");
       const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
@@ -1120,44 +1103,28 @@ export default function DashboardPage() {
   const isStudent = String(profile?.role ?? "").toUpperCase() === "STUDENT";
 
   if (dashboardLoading) {
+    // Mirrors the real full-screen layout so nothing jumps when content arrives.
     return (
-      <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
+      <main className="relative h-[100dvh] overflow-hidden bg-neutral-900 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
-        <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
-          <div className="mx-auto flex max-w-2xl items-center gap-3">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-3 w-24" />
-            </div>
+        <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
+          <div className="absolute left-4 right-4 top-12 mx-auto flex max-w-2xl items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="h-12 w-12 animate-pulse rounded-full bg-white/10" />
+            <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
           </div>
-          <div className="mx-auto mt-6 max-w-2xl space-y-5">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                <div className="flex items-center gap-3 p-4">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                </div>
-                <Skeleton className="aspect-[3/2] w-full rounded-none" />
-                <div className="space-y-3 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-6 w-24" />
-                  </div>
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-4/5" />
-                </div>
-                <div className="flex items-center gap-6 border-t border-black/5 px-4 py-3">
-                  <Skeleton className="h-5 w-14" />
-                  <Skeleton className="h-5 w-14" />
-                  <Skeleton className="h-5 w-14" />
-                </div>
+          <div className="absolute bottom-24 left-4 right-20 max-w-xl space-y-3 md:bottom-8 md:left-8 md:right-24">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
+              <div className="space-y-2">
+                <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-40 animate-pulse rounded bg-white/10" />
               </div>
-            ))}
+            </div>
+            <div className="h-6 w-2/3 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-full animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-4/5 animate-pulse rounded bg-white/10" />
           </div>
+          <div className="absolute bottom-24 right-3 h-52 w-12 animate-pulse rounded-full bg-white/10 md:bottom-8 md:right-6" />
         </section>
       </main>
     );
@@ -1167,7 +1134,7 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-xl border border-white/20 bg-black/45 p-3 text-white shadow-lg backdrop-blur-md">
+        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center justify-between gap-3 rounded-xl border border-white/20 bg-black/55 p-3 text-white shadow-lg backdrop-blur-md">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/profile" aria-label="View your profile" title="View your profile" className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
               <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="medium" />
@@ -1194,10 +1161,10 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div ref={feedRef} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none]">
+        <div ref={feedRef} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* New posts pill — appears when background polling detects newer listings */}
           {newPostsAvailable && (
-            <div className="pointer-events-none sticky top-3 z-30 flex h-0 justify-center">
+            <div className="pointer-events-none sticky top-[7.5rem] z-30 flex h-0 justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
@@ -1209,7 +1176,7 @@ export default function DashboardPage() {
               </button>
             </div>
           )}
-          {listings.map((listing) => {
+          {listings.map((listing, index) => {
             const imageReference = getListingImageReference(listing);
             const fallbackImage = getListingImageUrl(listing) ?? (isUsableImageSource(imageReference) ? imageReference : null);
             const image = isUsableImageSource(resolvedListingImages[listing.id])
@@ -1221,6 +1188,8 @@ export default function DashboardPage() {
             const isSaved = bookmarkedIds.includes(listing.id);
             const commentsOpen = openCommentIds.has(listing.id);
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
+            // Videos have a control bar near the bottom, so the text block sits higher only for them.
+            const infoPosition = listing.video ? "bottom-44 md:bottom-20" : "bottom-24 md:bottom-8";
             return (
               <article
                 key={listing.id}
@@ -1232,38 +1201,37 @@ export default function DashboardPage() {
                       <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
                     ) : image ? (
                       <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
-                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                        <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} priority={index === 0} />
                       </Link>
                     ) : null}
                   </div>
                 )}
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/45" />
 
-                <div className="absolute right-4 top-32 z-20" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
-                    <button
-                      type="button"
-                      aria-label="More options"
-                      aria-haspopup="menu"
-                      aria-expanded={openMenuId === listing.id}
-                      onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
-                    </button>
-                    {openMenuId === listing.id && (
-                      <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-                        <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
-                        {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
-                      </div>
-                    )}
-                </div>
-
-                <div className="absolute bottom-44 left-4 right-20 z-20 max-w-xl text-white md:bottom-20 md:left-8 md:right-24">
+                <div className={`absolute left-4 right-20 z-20 max-w-xl text-white md:left-8 md:right-24 ${infoPosition}`}>
                   <div className="mb-3 flex items-center gap-3">
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">{providerName}</p>
-                      <p className="text-xs text-white/75">{ownerLabel}{location ? ` · ${location}` : ""}</p>
+                      <p className="truncate text-xs text-white/75">{ownerLabel}{location ? ` · ${location}` : ""}</p>
+                    </div>
+                    <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuId === listing.id}
+                        onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
+                      </button>
+                      {openMenuId === listing.id && (
+                        <div role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white text-black shadow-[0_18px_45px_rgba(15,23,42,0.25)]">
+                          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
+                          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-end justify-between gap-3">
@@ -1275,44 +1243,44 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="absolute bottom-20 right-3 z-20 flex flex-col items-center gap-2 rounded-full bg-white/90 p-1.5 text-black shadow-lg backdrop-blur-sm md:bottom-8 md:right-6">
-                    <LikeButton
-                      listingId={listing.id}
-                      initialLikeCount={listing.likeCount ?? 0}
-                      initialIsLiked={listing.likedByCurrentUser ?? false}
-                      onLike={async (id, liked) => {
-                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
-                        setListings((current) => current.map((item) => item.id === id
-                          ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
-                          : item));
-                      }}
+                <div className="absolute bottom-24 right-3 z-20 flex flex-col items-center gap-2 rounded-full bg-white/90 p-1.5 text-black shadow-lg backdrop-blur-sm md:bottom-8 md:right-6">
+                  <LikeButton
+                    listingId={listing.id}
+                    initialLikeCount={listing.likeCount ?? 0}
+                    initialIsLiked={listing.likedByCurrentUser ?? false}
+                    onLike={async (id, liked) => {
+                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
+                      setListings((current) => current.map((item) => item.id === id
+                        ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
+                        : item));
+                    }}
+                    size="lg"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => toggleComments(listing.id)}
+                    aria-haspopup="dialog"
+                    aria-expanded={commentsOpen}
+                    aria-label={`Comments, ${commentCount}`}
+                    title="Comments"
+                    className={`inline-flex flex-col items-center gap-0.5 rounded-full px-2 py-2 text-xs text-black transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-black/10 font-semibold" : ""}`}
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                    <span>{commentCount}</span>
+                  </button>
+
+                  {listing.ownerId && listing.ownerId !== profile?.id && (
+                    <RecommendButton
+                      providerId={listing.ownerId}
+                      initialRecommendationCount={listing.providerRecommendationCount ?? 0}
+                      initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
+                      onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
+                      disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                      role={String(profile?.role ?? "").toUpperCase()}
                       size="lg"
                     />
-
-                    <button
-                      type="button"
-                      onClick={() => toggleComments(listing.id)}
-                      aria-expanded={commentsOpen}
-                      aria-controls={`comments-${listing.id}`}
-                      aria-label={`${commentCount} comments`}
-                      title="Comments"
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm text-black transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-black/10 font-semibold" : ""}`}
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-                      <span>{commentCount}</span>
-                    </button>
-
-                    {listing.ownerId && listing.ownerId !== profile?.id && (
-                      <RecommendButton
-                        providerId={listing.ownerId}
-                        initialRecommendationCount={listing.providerRecommendationCount ?? 0}
-                        initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
-                        onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
-                        disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                        role={String(profile?.role ?? "").toUpperCase()}
-                        size="lg"
-                      />
-                    )}
+                  )}
 
                   {isStudent && (
                     <button
@@ -1330,7 +1298,6 @@ export default function DashboardPage() {
 
                 {commentsOpen && (
                   <ListingComments
-                    compactOverlay
                     listingId={listing.id}
                     ownerId={listing.ownerId}
                     onClose={closeComments}
