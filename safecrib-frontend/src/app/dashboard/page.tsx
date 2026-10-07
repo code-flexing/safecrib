@@ -1219,7 +1219,7 @@ export default function DashboardPage() {
         return;
       }
       setProfile(null);
-      setVerification(null);
+      
       setAccountStatus("not_submitted");
       setPageStatus("none");
       setListings([]);
