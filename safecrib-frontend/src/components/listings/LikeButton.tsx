@@ -66,7 +66,7 @@ export function LikeButton({
     } finally {
       setIsLiking(false);
     }
-  }, [listingId, isLiked, likeCount, onLike, reducedMotion]);
+  }, [listingId, isLiking, isLiked, likeCount, onLike, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",

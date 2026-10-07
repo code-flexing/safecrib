@@ -81,7 +81,7 @@ export function RecommendButton({
     } finally {
       setIsRecommending(false);
     }
-  }, [providerId, isRecommended, recommendationCount, onRecommend, disabled, reducedMotion]);
+  }, [providerId, isRecommending, isRecommended, recommendationCount, onRecommend, disabled, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",

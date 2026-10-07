@@ -679,7 +679,7 @@ function ListingComments({
   );
 }
 
-export type ListingActionTrayProps = {
+type ListingActionTrayProps = {
   listing: Listing;
   isOpen: boolean;
   isSaved: boolean;
@@ -700,7 +700,7 @@ export type ListingActionTrayProps = {
   onCloseMenu: () => void;
 };
 
-export function ListingActionTray({
+function ListingActionTray({
   listing,
   isOpen,
   isSaved,
@@ -908,7 +908,6 @@ export function ListingActionTray({
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [verification, setVerification] = useState<VerificationStageResult | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("not_submitted");
   const [pageStatus, setPageStatus] = useState<PageStatus>("none");
   const [listings, setListings] = useState<Listing[]>([]);
@@ -1123,10 +1122,9 @@ export default function DashboardPage() {
       const role = String(user.role ?? "").toUpperCase();
       const immediateVerification = user.verification ?? getPersistedVerification(user.id);
       if (immediateVerification) {
-        const normalized = normalizeVerificationStage(immediateVerification);
-        if (normalized) setVerification((current) => current ?? normalized);
+        normalizeVerificationStage(immediateVerification);
       } else {
-        setVerification((current) => current ?? normalizeVerificationStage(getPersistedVerification(user.id)));
+        normalizeVerificationStage(getPersistedVerification(user.id));
       }
       if (["AGENT", "LANDLORD"].includes(role) && user.id) {
         const today = new Date().toISOString().slice(0, 10);
@@ -1156,9 +1154,7 @@ export default function DashboardPage() {
             })
             .catch(() => null)
         : Promise.resolve(null);
-      void verificationRequest.then((stage) => {
-        if (stage) setVerification(stage);
-      });
+      void verificationRequest.then(() => undefined);
       const [studentProfile, providerPage, homes, bookmarks, conversations, recommendations] = await Promise.all([
         studentMode ? cachedApiFetch<StudentProfile>("/api/v1/student-profiles/me").catch(() => null) : Promise.resolve(null),
         cachedApiFetch<ProviderPage>("/api/v1/provider-pages/me").catch(() => null),
