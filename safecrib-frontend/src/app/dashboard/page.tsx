@@ -373,7 +373,7 @@ export default function DashboardPage() {
         }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));
-      setListings(Array.isArray(homes) ? homes : []);
+      if (Array.isArray(homes)) setListings(homes);
       setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
       setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
       const conversationList = Array.isArray(conversations) ? conversations : [];
@@ -466,16 +466,18 @@ export default function DashboardPage() {
     if (accountStatus !== "pending" || !["STUDENT", "UNVERIFIED"].includes(String(profile?.role ?? "").toUpperCase())) return;
 
     let checkingStatus = false;
+    let active = true;
     const refreshStatus = async () => {
-      if (checkingStatus || document.visibilityState === "hidden") return;
+      if (!active || checkingStatus || document.visibilityState === "hidden") return;
       checkingStatus = true;
       try {
         const response = unwrapData<unknown>(
           await apiFetch<unknown>("/api/v1/student-profiles/status"),
         );
-        if (normalizeAccountStatus(response) !== "pending") {
-          clearClientCache();
-          window.location.reload();
+        const latestStatus = normalizeAccountStatus(response);
+        if (active && latestStatus !== "pending") {
+          clearClientCache("/api/v1/users/me", "/api/v1/auth/me");
+          setAccountStatus(latestStatus);
         }
       } catch {
         // Keep the current dashboard state if a temporary status check fails.
@@ -488,6 +490,7 @@ export default function DashboardPage() {
     document.addEventListener("visibilitychange", refreshStatus);
     const interval = window.setInterval(refreshStatus, 30_000);
     return () => {
+      active = false;
       window.removeEventListener("focus", refreshStatus);
       document.removeEventListener("visibilitychange", refreshStatus);
       window.clearInterval(interval);
@@ -549,8 +552,14 @@ export default function DashboardPage() {
     };
     const schedule = () => { timer = setTimeout(() => { void check(); schedule(); }, 60_000); };
     schedule();
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void check(); });
-    return () => { if (timer) clearTimeout(timer); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [listings]);
 
   const refreshFeed = async () => {
