@@ -65,6 +65,10 @@ function clearUserSessionStorage() {
     )) {
       keysToRemove.push(key);
     }
+    // Also clear avatar accent cache
+    if (key && key.startsWith("sc:avatar-accent:")) {
+      keysToRemove.push(key);
+    }
   }
   keysToRemove.forEach(key => localStorage.removeItem(key));
 

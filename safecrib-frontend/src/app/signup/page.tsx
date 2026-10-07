@@ -233,6 +233,9 @@ export default function SignUpPage() {
           <p className="mt-4 max-w-md text-sm leading-6 text-black/65 sm:text-base">
             You’re all set. Log in to continue and choose how you want to use SafeCrib.
           </p>
+          <p className="mt-3 max-w-md text-xs leading-5 text-black/50">
+            Your username is created automatically at signup and can’t be changed. You’ll see it on your profile and in search results.
+          </p>
 
           <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             <Link href="/login" className="flex-1">

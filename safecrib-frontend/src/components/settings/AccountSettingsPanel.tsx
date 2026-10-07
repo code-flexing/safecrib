@@ -6,7 +6,7 @@ import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, getCachedMediaUr
 import { Button } from "@/components/ui/Button";
 import { useTheme, type ThemeMode } from "@/components/theme/ThemeProvider";
 
-type Account = { id?: string; email?: string; role?: string; displayName?: unknown; profilePicture?: string };
+type Account = { id?: string; email?: string; role?: string; displayName?: unknown; username?: string | null; profilePicture?: string };
 
 function nameFrom(value: unknown) {
   if (typeof value === "string") return value;
@@ -16,6 +16,28 @@ function nameFrom(value: unknown) {
     if (typeof record.name === "string") return record.name;
   }
   return "";
+}
+
+function UsernameCopyButton({ username }: { username: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          void navigator.clipboard.writeText(`@${username}`).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          });
+        }
+      }}
+      className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-black/15 px-2.5 py-1 text-xs font-medium text-black/75 transition-colors hover:bg-black/[0.03]"
+      aria-label={`Copy username @${username}`}
+    >
+      <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="7" width="10" height="10" rx="2" /><path d="M5 13V5a2 2 0 0 1 2-2h8" /></svg>
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
 }
 
 export function AccountSettingsPanel({ heading = "Account details" }: { heading?: string }) {
@@ -210,6 +232,18 @@ export function AccountSettingsPanel({ heading = "Account details" }: { heading?
               </label>
             </div>
             <label className="block text-sm font-medium">Display name<input required maxLength={120} value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="mt-2 w-full border border-black/15 px-4 py-3 font-normal focus:border-safecrib-green focus:outline-none" /></label>
+            {account?.username ? (
+              <div className="rounded-lg border border-black/10 bg-[#f7f8f5] px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-black/45">Username</p>
+                    <p className="mt-1 font-mono text-sm font-medium text-safecrib-black">@{account.username}</p>
+                  </div>
+                  <UsernameCopyButton username={account.username} />
+                </div>
+                <p className="mt-2 text-xs leading-5 text-black/50">Your username is created automatically and can&#39;t be changed. It&#39;s how people find and mention you.</p>
+              </div>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2"><p className="break-all text-sm"><span className="block text-xs uppercase tracking-[0.1em] text-black/45">Email</span><span className="mt-1 block text-black/75">{account?.email ?? "Loading..."}</span></p><p className="text-sm"><span className="block text-xs uppercase tracking-[0.1em] text-black/45">Account mode</span><span className="mt-1 block text-black/75">{account?.role?.replaceAll("_", " ") ?? "Loading..."}</span></p></div>
             <Button type="submit" loading={nameSaving} className="w-fit">Save name</Button>
           </form>

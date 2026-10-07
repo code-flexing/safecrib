@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { NameHandle } from "@/components/common/NameHandle";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { VerificationBadge } from "@/components/verification/VerificationBadge";
@@ -12,6 +13,7 @@ import { apiFetch, cachedApiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapDat
 type UserResult = {
   id: string;
   displayName?: string | null;
+  username?: string | null;
   profilePicture?: string | null;
   isVerified?: boolean;
   role: string;
@@ -69,7 +71,7 @@ function DiscoveryAvatar({ reference, seed, label, onReady }: { reference?: stri
     return <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-black/10" role="status" aria-label={`Loading ${label} profile picture`} />;
   }
 
-  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" loading={resolving} onReady={onReady} /></div>;
+  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size={48} className="h-12 w-12" loading={resolving} onReady={onReady} /></div>;
 }
 
 function SearchResultsSkeleton() {
@@ -109,7 +111,7 @@ function UserResultCard({ person, pending, onFollow }: { person: UserResult; pen
       ) : (
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <Link href={`/profile/${encodeURIComponent(person.id)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{person.displayName || "SafeCrib member"}</Link>
+            <Link href={`/profile/${encodeURIComponent(person.id)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green"><NameHandle displayName={person.displayName} username={person.username} /></Link>
             {person.isVerified && <VerificationBadge verified compact iconOnly />}
           </div>
           <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>

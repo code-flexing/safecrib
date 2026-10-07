@@ -19,16 +19,28 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { Public } from '../../common/public.decorator.js';
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { UserService } from './users.service.js';
 import { UpdateUserDto, ChangePasswordDto, UserResponseDto } from './dto/user.dto.js';
 
 @ApiTags('Users')
-@ApiBearerAuth('access-token')
 @Controller('users')
 export class UsersController {
   constructor(private readonly userService: UserService) {}
+
+  @Get('by-username')
+  @Public()
+  @ApiOperation({ summary: 'Resolve a user by their @username handle (case-insensitive)' })
+  @ApiResponse({ status: 200, description: 'Public-safe user record, or null when not found' })
+  @ApiResponse({ status: 400, description: 'Username is required' })
+  byUsername(@Query('username') username: string) {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+      return null;
+    }
+    return this.userService.getUserByUsername(username);
+  }
 
   @Get('me')
   @Roles('UNVERIFIED', 'STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')

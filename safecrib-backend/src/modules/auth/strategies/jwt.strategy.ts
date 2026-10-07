@@ -16,6 +16,7 @@ export type AuthenticatedUser = {
   email: string;
   role: Role;
   displayName: string | null;
+  username: string | null;
   profilePicture: string | null;
   verification: {
     stage: string;
@@ -51,6 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         email: true,
         role: true,
         displayName: true,
+        username: true,
         profilePicture: true,
         emailVerified: true,
         verification: {
@@ -69,6 +71,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       email: user.email,
       role: user.role as Role,
       displayName: user.displayName ?? null,
+      username: user.username ?? null,
       profilePicture: user.profilePicture ?? null,
       verification: user.verification
         ? {

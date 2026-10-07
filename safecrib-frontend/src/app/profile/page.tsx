@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { NameHandle } from "@/components/common/NameHandle";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -14,6 +15,7 @@ type User = {
   id?: string;
   email?: string;
   displayName?: unknown;
+  username?: string | null;
   role?: string;
   profilePicture?: string;
   createdAt?: string;
@@ -338,7 +340,7 @@ export default function ProfilePage() {
               <ProfileAvatar src={avatarUrl} seed={user?.id ?? user?.email ?? "safecrib-member-avatar"} alt={`${name} profile`} size="large" className="border-8 border-[#123b2f] ring-1 ring-[#a8e7cb]/40" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 id="profile-heading" className="break-words font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">{name}</h1>
+                  <h1 id="profile-heading" className="break-words font-display text-3xl font-bold tracking-tight text-white sm:text-5xl"><NameHandle displayName={name} username={user?.username} /></h1>
                   {verification && <VerificationBadge verification={verification} compact iconOnly />}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/60"><span className="text-[#a8e7cb]">{accountLabel}</span><span aria-hidden="true">/</span>{dateLabel(user?.createdAt) && <span>Member since {dateLabel(user?.createdAt)}</span>}</div>

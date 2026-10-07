@@ -326,6 +326,7 @@ export class ListingsService {
         where: { id: userId },
         select: {
           displayName: true,
+          username: true,
           profilePicture: true,
           studentProfile: { select: { profilePicture: true } },
           providerPage: { select: { profilePicture: true } },
@@ -339,6 +340,7 @@ export class ListingsService {
         data: {
           listingId,
           actorName: actor?.displayName,
+          actorUsername: actor?.username,
           actorProfilePicture: actor?.profilePicture
             ?? actor?.studentProfile?.profilePicture
             ?? actor?.providerPage?.profilePicture,
@@ -369,8 +371,8 @@ export class ListingsService {
         body: true,
         parentId: true,
         createdAt: true,
-        user: { select: { id: true, displayName: true, role: true } },
-        mentions: { select: { user: { select: { id: true, displayName: true } } } },
+        user: { select: { id: true, displayName: true, username: true, role: true } },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true } } } },
       },
     });
   }
@@ -732,6 +734,7 @@ export class ListingsService {
         select: {
           id: true,
           displayName: true,
+          username: true,
           profilePicture: true,
           email: true,
           studentProfile: { select: { displayName: true, profilePicture: true } },

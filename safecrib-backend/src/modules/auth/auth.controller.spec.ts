@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AuthController } from './auth.controller.js';
 
 describe('AuthController', () => {
-  it('includes profile picture and display name in the current user payload', () => {
+  it('includes profile picture, display name and username in the current user payload', () => {
     const controller = new AuthController({} as never);
 
     const result = controller.me({
@@ -10,6 +10,7 @@ describe('AuthController', () => {
       email: 'student@example.com',
       role: 'STUDENT',
       displayName: 'Amina Okafor',
+      username: 'amina_12345',
       profilePicture: 'avatar-media-id',
       emailVerified: true,
     });
@@ -19,6 +20,7 @@ describe('AuthController', () => {
       email: 'student@example.com',
       role: 'STUDENT',
       displayName: 'Amina Okafor',
+      username: 'amina_12345',
       profilePicture: 'avatar-media-id',
     });
   });

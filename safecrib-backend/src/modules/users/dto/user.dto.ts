@@ -15,6 +15,16 @@ export class UpdateUserDto {
   @MaxLength(100)
   displayName?: string;
 
+  /**
+   * The username is system-generated and immutable. It is accepted on the
+   * payload only so old clients do not 400, but the service ignores/rejects it.
+   */
+  @ApiPropertyOptional({ example: 'jane_12345', description: 'System-generated handle. Ignored.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  username?: string;
+
   @ApiPropertyOptional({ example: 'avatar-media-id' })
   @IsOptional()
   @IsString()

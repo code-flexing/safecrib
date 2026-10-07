@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { NameHandle } from "@/components/common/NameHandle";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
@@ -16,7 +17,7 @@ import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSes
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
-type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
+type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; username?: string | null; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
 type StudentProfile = { profilePicture?: string } | null;
 type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
@@ -601,7 +602,7 @@ export default function DashboardPage() {
               <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="medium" />
             </Link>
             <div>
-              {accountName && <div className="flex flex-wrap items-center gap-3"><h1 className="font-display text-3xl font-bold text-safecrib-green sm:text-4xl">{accountName}</h1>{verification && <VerificationBadge verification={verification} compact iconOnly />}</div>}
+              {accountName && <div className="flex flex-wrap items-center gap-3"><h1 className="font-display text-3xl font-bold text-safecrib-green sm:text-4xl"><NameHandle displayName={accountName} username={profile?.username} /></h1>{verification && <VerificationBadge verification={verification} compact iconOnly />}</div>}
             </div>
           </div>
           <div className="flex items-center gap-3 text-sm font-medium">

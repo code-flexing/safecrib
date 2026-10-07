@@ -15,6 +15,7 @@ import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
 import type { Role } from '../../common/roles.decorator.js';
+import { generateUniqueUsername } from '../../common/username.utils.js';
 import type { RegisterDto } from './dto/auth.dto.js';
 import type { LoginDto } from './dto/auth.dto.js';
 import type { JwtPayload } from './strategies/jwt.strategy.js';
@@ -91,11 +92,18 @@ export class AuthService {
       parallelism: 2,
     });
 
+    const username = await generateUniqueUsername(email, (candidate) =>
+      this.prisma.user
+        .findUnique({ where: { username: candidate }, select: { username: true } })
+        .then((u) => u !== null),
+    );
+
     const user = await this.prisma.user.create({
       data: {
         email,
         passwordHash,
         displayName: dto.displayName?.trim() || null,
+        username,
         role: 'UNVERIFIED',
         emailVerified: true,
         identityVerified: false,

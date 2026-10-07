@@ -13,6 +13,7 @@ model User {
   email         String    @unique
   passwordHash  String    @map("password_hash")
   displayName   String?   @map("display_name")
+  username      String?   @unique @map("username")
   profilePicture String?  @map("profile_picture")
   role          Role      @default(UNVERIFIED)
   emailVerified Boolean   @default(false) @map("email_verified")

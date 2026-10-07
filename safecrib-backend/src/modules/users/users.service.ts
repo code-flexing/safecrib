@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
@@ -10,9 +11,11 @@ import { computeUserVerificationStage } from '../trust/trust.service.js';
 import type { UpdateUserDto } from './dto/user.dto.js';
 import type { ChangePasswordDto } from './dto/user.dto.js';
 import type { Role } from '../../common/roles.decorator.js';
+import { normaliseDisplayName, isBlockedDisplayName } from '../../common/username.utils.js';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async getProfile(userId: string) {
@@ -22,6 +25,7 @@ export class UserService {
         id: true,
         email: true,
         displayName: true,
+        username: true,
         profilePicture: true,
         role: true,
         emailVerified: true,
@@ -99,6 +103,11 @@ export class UserService {
   }
 
   async updateProfile(userId: string, dto: UpdateUserDto) {
+    // The username is system-generated and immutable. Ignore any attempt to change it.
+    if (dto.username !== undefined && dto.username !== null && String(dto.username).trim() !== '') {
+      throw new BadRequestException('Your username is created automatically and cannot be changed.');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, role: true },
@@ -112,16 +121,32 @@ export class UserService {
       throw new BadRequestException('Cannot change own role');
     }
 
-    return this.prisma.user.update({
+    let displayName: string | null | undefined = undefined;
+    if (dto.displayName !== undefined) {
+      displayName = normaliseDisplayName(dto.displayName);
+      if (displayName === null) {
+        throw new BadRequestException(
+          'Display name must be 2-50 characters, contain no control characters or HTML, and may include emojis.',
+        );
+      }
+      if (!user.role || user.role !== 'ADMIN') {
+        if (isBlockedDisplayName(displayName)) {
+          throw new ForbiddenException('That display name is not allowed.');
+        }
+      }
+    }
+
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        displayName: dto.displayName ?? undefined,
+        displayName: displayName ?? undefined,
         profilePicture: dto.profilePicture ?? undefined,
       },
       select: {
         id: true,
         email: true,
         displayName: true,
+        username: true,
         profilePicture: true,
         role: true,
         emailVerified: true,
@@ -130,6 +155,8 @@ export class UserService {
         createdAt: true,
       },
     });
+
+    return updated;
   }
 
   async getPublicProfile(userId: string, viewerId?: string) {
@@ -138,6 +165,7 @@ export class UserService {
       select: {
         id: true,
         displayName: true,
+        username: true,
         profilePicture: true,
         role: true,
         identityVerified: true,
@@ -238,6 +266,7 @@ export class UserService {
 
     return {
       id: user.id,
+      username: user.username,
       isVerified: verification.isVerified,
       verification,
       displayName: providerPage?.displayName ?? user.displayName,
@@ -294,6 +323,7 @@ export class UserService {
           AND: [{
             OR: [
               { displayName: { contains: search, mode: 'insensitive' } },
+              { username: { contains: search, mode: 'insensitive' } },
               { studentProfile: { schoolOfStudy: { contains: search, mode: 'insensitive' } } },
               { providerPage: { displayName: { contains: search, mode: 'insensitive' } } },
             ],
@@ -305,6 +335,7 @@ export class UserService {
       select: {
         id: true,
         displayName: true,
+        username: true,
         profilePicture: true,
         role: true,
         studentProfile: { select: { schoolOfStudy: true, shortBio: true } },
@@ -347,6 +378,49 @@ export class UserService {
         followerCount: _count.followers,
         isFollowing: followers.length > 0,
       })),
+    };
+  }
+
+  /**
+   * Case-insensitive lookup of a user by their username handle (with or without the leading '@').
+   * Returns the public-safe subset of fields, or null when not found.
+   */
+  async getUserByUsername(rawUsername: string | null | undefined) {
+    const username = String(rawUsername ?? '').trim().replace(/^@+/, '').toLowerCase();
+    if (!username) return null;
+    const user = await this.prisma.user.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        profilePicture: true,
+        role: true,
+        identityVerified: true,
+        createdAt: true,
+        verification: {
+          select: { stage: true, badge: true, badgeColor: true, riskBlocked: true },
+        },
+        studentProfile: { select: { status: true } },
+        providerPage: { select: { verificationState: true } },
+        _count: { select: { followers: true } },
+      },
+    });
+    if (!user) return null;
+    const providerVerified =
+      ['AGENT', 'LANDLORD'].includes(user.role) &&
+      user.providerPage?.verificationState === 'VERIFIED';
+    const studentVerified = user.role === 'STUDENT' && user.studentProfile?.status === 'APPROVED';
+    if (!providerVerified && !studentVerified) return null;
+    return {
+      id: user.id,
+      displayName: user.displayName,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      role: user.role,
+      createdAt: user.createdAt,
+      identityVerified: user.identityVerified,
+      followerCount: user._count.followers,
     };
   }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { NameHandle } from "@/components/common/NameHandle";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { apiFetch, cachedApiFetch, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 
-type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; email?: string } };
+type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; username?: string | null; email?: string } };
 type Profile = { id?: string; role?: string; studentProfileStatus?: unknown };
 type ProviderPage = { status?: string } | null;
 type ReportType = "FAKE_LISTING" | "MISREPRESENTED" | "DOUBLE_BOOKING" | "SCAM_AGENT" | "OTHER";
@@ -21,10 +22,10 @@ type ListingComment = {
   body: string;
   parentId?: string | null;
   createdAt: string;
-  user: { id: string; displayName?: string | null; role?: string };
-  mentions?: Array<{ user: { id: string; displayName?: string | null } }>;
+  user: { id: string; displayName?: string | null; username?: string | null; role?: string };
+  mentions?: Array<{ user: { id: string; displayName?: string | null; username?: string | null } }>;
 };
-type MentionCandidate = { id: string; displayName?: string | null; role?: string };
+type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string };
 
 function photoUrl(photo: string | { url?: string }) {
   return typeof photo === "string" ? photo : photo.url;
@@ -193,7 +194,8 @@ export default function ListingDetailPage() {
     setCommentBody(value);
     setCommentMentionIds((current) => current.filter((mentionId) => {
       const person = taggedUsers.find((user) => user.id === mentionId);
-      return person ? value.toLocaleLowerCase().includes(`@${person.displayName?.toLocaleLowerCase()}`) : false;
+      const handle = person?.username ?? "";
+      return person ? value.toLocaleLowerCase().includes(`@${handle.toLocaleLowerCase()}`) : false;
     }));
     const match = value.match(/(?:^|\s)@([^@\n]*)$/);
     if (!match) {
@@ -212,7 +214,8 @@ export default function ListingDetailPage() {
   const [taggedUsers, setTaggedUsers] = useState<MentionCandidate[]>([]);
   const selectMention = (person: MentionCandidate) => {
     const mentionStart = commentBody.lastIndexOf("@");
-    setCommentBody(`${commentBody.slice(0, mentionStart)}@${person.displayName ?? "member"} `);
+    const handle = person.username ?? person.displayName ?? "member";
+    setCommentBody(`${commentBody.slice(0, mentionStart)}@${handle} `);
     setCommentMentionIds((current) => current.includes(person.id) ? current : [...current, person.id]);
     setTaggedUsers((current) => current.some((item) => item.id === person.id) ? current : [...current, person]);
     setMentionCandidates([]);
@@ -275,8 +278,8 @@ export default function ListingDetailPage() {
           {listing.video?.mediaId && <section className="mt-7" aria-label="Home video"><h2 className="mb-3 text-lg font-medium">Home video</h2>{videoUrl ? <video src={videoUrl} controls preload="metadata" className="max-h-[28rem] w-full bg-black" /> : <p className="text-sm text-black/55">Video is not available yet. Refresh the listing to try again.</p>}</section>}
           <p className="mt-6 flex flex-wrap items-center gap-2 text-sm text-black/60">
             Provider: {listing.ownerId
-              ? <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="font-medium text-safecrib-green hover:underline">{listing.provider?.displayName ?? "Verified provider"}</Link>
-              : <span>{listing.provider?.displayName ?? "Verified provider"}</span>}
+              ? <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="font-medium text-safecrib-green hover:underline"><NameHandle displayName={listing.provider?.displayName} username={listing.provider?.username} /></Link>
+              : <span><NameHandle displayName={listing.provider?.displayName} username={listing.provider?.username} /></span>}
             {providerVerification && <VerificationBadge verification={providerVerification} compact iconOnly />}
           </p>
           {providerBadgeUnavailable && <p className="mt-1 text-xs text-amber-800" role="status">Provider verification badge is temporarily unavailable.</p>}
@@ -302,7 +305,7 @@ export default function ListingDetailPage() {
             <p className="mt-1 text-xs text-black/50">Comments support text and tagged members.</p>
             <label htmlFor="home-comment" className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
             <textarea id="home-comment" value={commentBody} onChange={(event) => updateCommentBody(event.target.value)} maxLength={1000} rows={3} placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."} className="mt-4 w-full rounded-lg border border-black/15 px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
-            {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-lg border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">{person.displayName || "SafeCrib member"} <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
+            {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-lg border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5"><NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
             {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-xs text-black/45">{commentBody.length}/1000</span>
@@ -314,14 +317,14 @@ export default function ListingDetailPage() {
                 const renderComment = (item: ListingComment, depth = 0): React.ReactNode => {
                   const replies = comments.filter((candidate) => candidate.parentId === item.id);
                   const isCreatorReply = Boolean(item.parentId && item.user.id === listing.ownerId);
-                  return <li key={item.id} className="py-4" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
-                    <p className="text-sm font-semibold text-safecrib-black">
-                      {item.user.displayName || "SafeCrib member"}
-                      {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
-                      <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
-                    </p>
-                    {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/65">{item.body}</p>}
-                    {item.mentions?.length ? <p className="mt-2 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
+return <li key={item.id} className="py-4" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
+                     <p className="text-sm font-semibold text-safecrib-black">
+                       <NameHandle displayName={item.user.displayName} username={item.user.username} />
+                       {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
+                       <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
+                     </p>
+                     {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/65">{item.body}</p>}
+                     {item.mentions?.length ? <p className="mt-2 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
                     <button type="button" onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById("home-comment")?.focus(); }} className="mt-2 text-xs font-semibold text-safecrib-green hover:underline">Reply</button>
                     {replies.length > 0 && <ul className="mt-2 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
                   </li>;

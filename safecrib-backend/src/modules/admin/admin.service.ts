@@ -16,6 +16,7 @@ import type { IdentityVerificationDto } from './dto/admin.dto.js';
 import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { generateUniqueUsername } from '../../common/username.utils.js';
 
 @Injectable()
 export class AdminService {
@@ -44,11 +45,17 @@ export class AdminService {
     });
 
     const user = await this.prisma.$transaction(async (tx) => {
+      const username = await generateUniqueUsername(email, (candidate) =>
+        tx.user
+          .findUnique({ where: { username: candidate }, select: { username: true } })
+          .then((u) => u !== null),
+      );
       const created = await tx.user.create({
         data: {
           email,
           passwordHash,
           displayName: dto.displayName?.trim() || null,
+          username,
           role: 'ADMIN',
           emailVerified: true,
           identityVerified: true,
@@ -57,6 +64,7 @@ export class AdminService {
           id: true,
           email: true,
           displayName: true,
+          username: true,
           role: true,
           emailVerified: true,
           identityVerified: true,
@@ -88,11 +96,18 @@ export class AdminService {
     const role: 'AGENT' | 'LANDLORD' = dto.role ?? 'AGENT';
 
     const user = await this.prisma.$transaction(async (tx) => {
+      const email = dto.email.toLowerCase().trim();
+      const username = await generateUniqueUsername(email, (candidate) =>
+        tx.user
+          .findUnique({ where: { username: candidate }, select: { username: true } })
+          .then((u) => u !== null),
+      );
       const created = await tx.user.create({
         data: {
-          email: dto.email.toLowerCase().trim(),
+          email,
           passwordHash,
           displayName: dto.displayName ?? null,
+          username,
           role,
           emailVerified: true,
           identityVerified: true,
@@ -177,6 +192,7 @@ export class AdminService {
         id: true,
         email: true,
         displayName: true,
+        username: true,
         role: true,
         emailVerified: true,
         identityVerified: true,
