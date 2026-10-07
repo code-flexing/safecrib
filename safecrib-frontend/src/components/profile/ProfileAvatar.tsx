@@ -1,100 +1,101 @@
 "use client";
-import { useState, useEffect } from "react";
+
 import Image from "next/image";
-import { resolveMediaUrl, getCachedMediaUrl, withMediaCacheBust } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { withMediaCacheBust } from "@/lib/api";
+
+type ProfileAvatarProps = {
+  src?: string | null;
+  seed?: string | null;
+  alt: string;
+  size?: "small" | "medium" | "large";
+  className?: string;
+  loading?: boolean;
+  onReady?: (ready: boolean) => void;
+};
 
 export function ProfileAvatar({
   src,
-  name,
-  seed,
   alt,
-  size = 96,
+  size = "medium",
   className = "",
-  accentColor,
   loading = false,
   onReady,
-}: {
-  src?: string | null;
-  name?: string;
-  seed?: string;
-  alt?: string;
-  size?: number | "small" | "medium" | "large";
-  className?: string;
-  accentColor?: string | null;
-  loading?: boolean;
-  onReady?: (ready: boolean) => void;
-}) {
-  const [failed, setFailed] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-
-  const displayName = name ?? seed ?? "";
-  const initials = displayName
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "?";
-
-  const sizeValue = typeof size === "number" ? size : size === "small" ? 32 : size === "large" ? 96 : 48;
-
-  const isDirectUrl = (value: string | null | undefined): value is string => {
-    return Boolean(value && /^https?:\/\//.test(value));
-  };
-
-  const directUrl = isDirectUrl(src) ? src : null;
+}: ProfileAvatarProps) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
+  const renderedSource = useMemo(() => (src ? withMediaCacheBust(src) : null), [src]);
 
   useEffect(() => {
-    if (directUrl) {
-      setImageUrl(directUrl);
+    setFailedSource(null);
+    setImageLoaded(false);
+    setShowFallback(false);
+  }, [src]);
+
+  useEffect(() => {
+    if (!src || loading || failedSource === src || imageLoaded) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setShowFallback(true);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [src, loading, failedSource, imageLoaded]);
+
+  useEffect(() => {
+    if (!src) {
       onReady?.(true);
       return;
     }
-    if (src) {
-      const cachedUrl = getCachedMediaUrl(src);
-      if (cachedUrl) {
-        setImageUrl(cachedUrl);
-        onReady?.(true);
-        return;
-      }
-      void resolveMediaUrl(src).then((resolvedUrl) => {
-        if (resolvedUrl) {
-          setImageUrl(resolvedUrl);
-        }
-        onReady?.(!!resolvedUrl);
-      });
-    } else {
+    if (failedSource === src) {
+      onReady?.(false);
+      return;
+    }
+    if (imageLoaded) {
       onReady?.(true);
     }
-  }, [src, directUrl, onReady]);
+  }, [src, failedSource, imageLoaded, onReady]);
 
-  const ringStyle = accentColor
-    ? {
-        boxShadow: `0 0 0 2px ${accentColor}, 0 0 28px ${accentColor}33`,
-        borderColor: "transparent",
-      }
-    : {};
+  const sizeClass = size === "small" ? "h-12 w-12" : size === "large" ? "h-32 w-32" : "h-16 w-16";
+  const containerClass = `${sizeClass} shrink-0 overflow-hidden rounded-full border border-black/10 ${className}`;
+  const isPending = loading || (!failedSource && !imageLoaded && (!src || !showFallback));
+
+  if (renderedSource && failedSource !== src) {
+    return (
+      <div className="relative inline-flex" aria-busy={isPending}>
+        {isPending && <Skeleton className={`${containerClass} absolute inset-0`} rounded="full" />}
+        <Image
+          key={renderedSource}
+          src={renderedSource}
+          alt={alt}
+          width={128}
+          height={128}
+          unoptimized
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
+            setFailedSource(src ?? null);
+            onReady?.(false);
+          }}
+          className={`${containerClass} object-cover ${isPending ? "opacity-0" : "opacity-100"}`}
+        />
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div role="img" aria-label="Loading profile picture" className={`${containerClass} flex items-center justify-center bg-black/[0.04]`}>
+        <Skeleton className={containerClass} rounded="full" />
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{ width: sizeValue, height: sizeValue }}
-      className={`relative shrink-0 overflow-hidden rounded-full border-4 border-white bg-black/[0.04] ${className}`}
-    >
-      {src && !failed && imageUrl ? (
-        <Image
-          src={withMediaCacheBust(imageUrl)}
-          alt={alt ?? `${displayName}'s avatar`}
-          width={sizeValue}
-          height={sizeValue}
-          unoptimized
-          className="h-full w-full object-cover"
-          onError={() => setFailed(true)}
-          style={ringStyle}
-        />
-      ) : (
-        <span className="flex h-full w-full items-center justify-center text-xl font-semibold text-black/35" style={ringStyle}>
-          {initials}
-        </span>
-      )}
+    <div role="img" aria-label={`${alt} unavailable`} className={`${containerClass} flex items-center justify-center bg-black/[0.04] text-black/35`}>
+      <Icon name="image" className={size === "small" ? "h-5 w-5" : size === "large" ? "h-9 w-9" : "h-6 w-6"} />
     </div>
   );
 }
