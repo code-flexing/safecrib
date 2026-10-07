@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { NameHandle } from "@/components/common/NameHandle";
@@ -173,7 +173,7 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
   );
 }
 
-function ListingComments({ listingId, ownerId, onCountChange }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void }) {
+function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void; onClose: (listingId: string) => void }) {
   const [comments, setComments] = useState<ListingComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [commentBody, setCommentBody] = useState("");
@@ -184,9 +184,21 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [fullDiscussionOpen, setFullDiscussionOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const inputId = `home-comment-${listingId}`;
   const titleId = useId();
   const closeFullDiscussion = useCallback(() => setFullDiscussionOpen(false), []);
+
+  useEffect(() => {
+    const article = sectionRef.current?.closest("article");
+    if (!article || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry && !entry.isIntersecting) onClose(listingId);
+    });
+    observer.observe(article);
+    return () => observer.disconnect();
+  }, [listingId, onClose]);
 
   useEffect(() => {
     let active = true;
@@ -277,7 +289,9 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
     return (
       <li key={item.id} className="py-3" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
         <p className="text-sm font-semibold text-safecrib-black">
-          <NameHandle displayName={item.user.displayName} username={item.user.username} />
+          <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+            <NameHandle displayName={item.user.displayName} username={item.user.username} />
+          </Link>
           {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
           <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
         </p>
@@ -298,7 +312,7 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
   const topLevel = comments.filter((comment) => !comment.parentId);
 
   return (
-    <section id={`comments-${listingId}`} className="border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4" aria-label="Home comments">
+    <section ref={sectionRef} id={`comments-${listingId}`} className="border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4" aria-label="Home comments">
       {loading ? (
         <div className="space-y-2 py-2" aria-hidden="true">
           <Skeleton className="h-4 w-40" />
@@ -924,6 +938,14 @@ export default function DashboardPage() {
       return next;
     });
   };
+  const closeComments = useCallback((listingId: string) => {
+    setOpenCommentIds((current) => {
+      if (!current.has(listingId)) return current;
+      const next = new Set(current);
+      next.delete(listingId);
+      return next;
+    });
+  }, []);
   const setCommentCount = (listingId: string, count: number) => {
     setCommentCounts((current) => current[listingId] === count ? current : { ...current, [listingId]: count });
   };
@@ -1153,6 +1175,7 @@ export default function DashboardPage() {
                   <ListingComments
                     listingId={listing.id}
                     ownerId={listing.ownerId}
+                    onClose={closeComments}
                     onCountChange={(count) => setCommentCount(listing.id, count)}
                   />
                 )}
