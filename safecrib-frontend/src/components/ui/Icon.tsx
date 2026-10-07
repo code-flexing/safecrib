@@ -1,12 +1,12 @@
-export type IconName = 
-  | "home" 
-  | "settings" 
-  | "page" 
-  | "support" 
-  | "logout" 
-  | "back" 
-  | "search" 
-  | "image" 
+export type IconName =
+  | "home"
+  | "settings"
+  | "page"
+  | "support"
+  | "logout"
+  | "back"
+  | "search"
+  | "image"
   | "notifications"
   | "map-pin"
   | "bed"
@@ -24,14 +24,26 @@ export type IconName =
   | "x"
   | "chevron-left"
   | "chevron-right"
+  | "chevron-down"
   | "more-horizontal"
   | "check-circle"
+  | "alert-circle"
   | "flag"
   | "download"
   | "copy"
   | "edit-2"
   | "trash-2"
-  | "film";
+  | "film"
+  | "key"
+  | "shield"
+  | "user"
+  | "moon"
+  | "bell"
+  | "help-circle"
+  | "external-link"
+  | "info"
+  | "sun"
+  | "globe";
 
 export function Icon({ name, className = "h-5 w-5" }: { name: IconName | string; className?: string }) {
   return (
@@ -70,6 +82,18 @@ export function Icon({ name, className = "h-5 w-5" }: { name: IconName | string;
       {name === "edit-2" && <><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></>}
       {name === "trash-2" && <><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></>}
       {name === "film" && <><rect x="2" y="2" width="20" height="20" rx="2.2" /><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5" /></>}
+      {name === "key" && <><path d="M15.5 10.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" /><path d="M2 16l4.5-4.5" /><path d="M2 20l4.5-4.5" /><circle cx="16.5" cy="7.5" r="2.5" /></>}
+      {name === "shield" && <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="M9 12l2 2 4-4" /></>}
+      {name === "user" && <><path d="M19 21v-2a4 4 0 -3.7-1.5-3.3-3.2 3.3" /><circle cx="12" cy="8" r="3" /><path d="M3 21v-2a4 4 0 0 1 3.3-3.9" /></>}
+      {name === "moon" && <><path d="M21 12.79A9 9 0 0 1 11.21 3 7 7 0 1 0 21 12.79z" /></>}
+      {name === "sun" && <><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /></>}
+      {name === "bell" && <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>}
+      {name === "help-circle" && <><circle cx="12" cy="12" r="10" /><line x1="9.09" y1="9" x2="15.12" y2="15" /><circle cx="15" cy="15" r="1" /></>}
+      {name === "alert-circle" && <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /></>}
+      {name === "external-link" && <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 18 3 18 6" /><line x1="10" y1="13" x2="18" y2="5" /></>}
+      {name === "info" && <><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /></>}
+      {name === "globe" && <><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2C7.5 2 4 7.2 4 12s3.5 10 8 10 8-4.2 8-10" /></>}
+      {name === "chevron-down" && <path d="m6 9 6 6 6-6" />}
     </svg>
   );
 }
