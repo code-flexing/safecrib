@@ -1057,28 +1057,22 @@ export default function DashboardPage() {
     }), []);
 
   useEffect(() => {
-    const handleSessionCleared = () => {
-      setProfile(null);
-      setVerification(null);
-      setAccountStatus("not_submitted");
-      setPageStatus("none");
-      setListings([]);
-      setBookmarkedIds([]);
-      setRecommendedProviderIds([]);
-      setRecommendationsLoaded(false);
-      setOpenSupportCount(0);
-      setProfileImage(null);
-      setResolvedListingImages({});
-    };
-    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
-    return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
-  }, []);
+  const handleSessionCleared = () => {
+    setProfile(null);
+    setAccountStatus("not_submitted");
+    setPageStatus("none");
+    setListings([]);
+    setBookmarkedIds([]);
+    setRecommendedProviderIds([]);
+    setRecommendationsLoaded(false);
+    setOpenSupportCount(0);
+    setProfileImage(null);
+    setResolvedListingImages({});
+  };
 
-  useEffect(() => {
-    if (!localStorage.getItem("safecrib_access_token")) {
-      router.replace("/login");
-      return;
-    }
+  window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+  return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
+}, []);
 
     const cachedProfile = getCachedCurrentUser<Profile>();
     const hasCachedData = cachedProfile !== null;
