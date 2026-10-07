@@ -133,6 +133,10 @@ function formatOriginalPrice(listing: Listing) {
   }).format(listing.price ?? 0);
 }
 
+function formatEngagementCount(count: number) {
+  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count);
+}
+
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
   return (
@@ -1125,7 +1129,7 @@ export default function DashboardPage() {
             <div className="h-4 w-full animate-pulse rounded bg-white/10" />
             <div className="h-4 w-4/5 animate-pulse rounded bg-white/10" />
           </div>
-          <div className="absolute bottom-24 right-3 h-52 w-12 animate-pulse rounded-full bg-white/10 md:bottom-8 md:right-6" />
+          <div className="absolute left-3 top-1/2 h-52 w-12 -translate-y-1/2 animate-pulse rounded-full border border-white/20 bg-white/15 backdrop-blur-xl md:left-6" />
         </section>
       </main>
     );
@@ -1218,7 +1222,7 @@ export default function DashboardPage() {
                 )}
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/45" />
 
-                <div className={`absolute left-4 right-20 z-20 max-w-xl text-white md:left-8 md:right-24 ${infoPosition}`}>
+                <div className={`absolute left-16 right-4 z-20 max-w-xl text-white md:left-8 md:right-24 ${infoPosition}`}>
                   <div className="mb-3 flex items-center gap-3">
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                     <div className="min-w-0 flex-1">
@@ -1253,56 +1257,69 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="absolute bottom-24 right-3 z-20 flex flex-col items-center gap-2 rounded-full bg-white/90 p-1.5 text-black shadow-lg backdrop-blur-sm md:bottom-8 md:right-6">
-                  <LikeButton
-                    listingId={listing.id}
-                    initialLikeCount={listing.likeCount ?? 0}
-                    initialIsLiked={listing.likedByCurrentUser ?? false}
-                    onLike={async (id, liked) => {
-                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
-                      setListings((current) => current.map((item) => item.id === id
-                        ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
-                        : item));
-                    }}
-                    size="lg"
-                  />
+                <div className="absolute left-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border border-white/45 bg-white/45 px-1 py-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.22)] backdrop-blur-2xl md:left-6">
+                  <div className="flex w-10 flex-col items-center">
+                    <LikeButton
+                      listingId={listing.id}
+                      initialLikeCount={listing.likeCount ?? 0}
+                      initialIsLiked={listing.likedByCurrentUser ?? false}
+                      onLike={async (id, liked) => {
+                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
+                        setListings((current) => current.map((item) => item.id === id
+                          ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
+                          : item));
+                      }}
+                      size="md"
+                      showLabel={false}
+                    />
+                    <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(listing.likeCount ?? 0)}</span>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleComments(listing.id)}
-                    aria-haspopup="dialog"
-                    aria-expanded={commentsOpen}
-                    aria-label={`Comments, ${commentCount}`}
-                    title="Comments"
-                    className={`inline-flex flex-col items-center gap-0.5 rounded-full px-2 py-2 text-xs text-black transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-black/10 font-semibold" : ""}`}
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-                    <span>{commentCount}</span>
-                  </button>
+                  <div className="flex w-10 flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={() => toggleComments(listing.id)}
+                      aria-haspopup="dialog"
+                      aria-expanded={commentsOpen}
+                      aria-label={`Comments, ${commentCount}`}
+                      title="Comments"
+                      className={`flex h-9 w-10 items-center justify-center rounded-full text-black/70 transition hover:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-white/50 text-safecrib-green" : ""}`}
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                    </button>
+                    <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(commentCount)}</span>
+                  </div>
 
                   {listing.ownerId && listing.ownerId !== profile?.id && (
-                    <RecommendButton
-                      providerId={listing.ownerId}
-                      initialRecommendationCount={listing.providerRecommendationCount ?? 0}
-                      initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
-                      onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
-                      disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                      role={String(profile?.role ?? "").toUpperCase()}
-                      size="lg"
-                    />
+                    <div className="flex w-10 flex-col items-center">
+                      <RecommendButton
+                        providerId={listing.ownerId}
+                        initialRecommendationCount={listing.providerRecommendationCount ?? 0}
+                        initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
+                        onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
+                        disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                        role={String(profile?.role ?? "").toUpperCase()}
+                        size="md"
+                        showLabel={false}
+                      />
+                      <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
+                    </div>
                   )}
 
                   {isStudent && (
-                    <button
-                      type="button"
-                      onClick={() => void toggleBookmark(listing.id)}
-                      aria-pressed={isSaved}
-                      aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
-                      title={isSaved ? "Saved" : "Save"}
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/60"}`}
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
-                    </button>
+                    <div className="flex w-10 flex-col items-center">
+                      <button
+                        type="button"
+                        onClick={() => void toggleBookmark(listing.id)}
+                        aria-pressed={isSaved}
+                        aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
+                        title={isSaved ? "Saved" : "Save"}
+                        className={`flex h-9 w-10 items-center justify-center rounded-full transition hover:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/70"}`}
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
+                      </button>
+                      <span className="text-[10px] font-semibold leading-3 text-black/70">{isSaved ? "Saved" : "Save"}</span>
+                    </div>
                   )}
                 </div>
 
