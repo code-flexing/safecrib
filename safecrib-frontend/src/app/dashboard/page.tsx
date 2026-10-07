@@ -13,10 +13,10 @@ import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, refreshCachedApi, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
-type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
+type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; username?: string | null; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
 type StudentProfile = { profilePicture?: string } | null;
 type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
@@ -72,6 +72,25 @@ function getListingImageReference(listing: Listing): string | null {
   return null;
 }
 
+function formatListingPrice(listing: Listing) {
+  if (typeof listing.price !== "number") return "Price available in details";
+  const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
+function ListingPriceTag({ listing }: { listing: Listing }) {
+  return (
+    <div className="inline-flex items-baseline gap-2 rounded-xl border border-black/10 bg-white px-3.5 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.18)]">
+      <span className="text-[10px] font-medium text-black/50">Price</span>
+      <span className="text-base font-bold leading-none text-safecrib-black">{formatListingPrice(listing)}</span>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -84,6 +103,7 @@ export default function DashboardPage() {
   const [recommendationsLoaded, setRecommendationsLoaded] = useState(false);
   const [pendingEngagement, setPendingEngagement] = useState<Set<string>>(() => new Set());
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [resolvedProviderAvatars, setResolvedProviderAvatars] = useState<Record<string, string | null>>({});
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
   const [dashboardLoading, setDashboardLoading] = useState(() => {
@@ -222,10 +242,17 @@ export default function DashboardPage() {
     if (!hasCachedData) setDashboardLoading(true);
 
     // Pre-populate listings from cache so the feed shows immediately on navigation.
-    const cachedListings = getCachedApi<Listing[]>("/api/v1/listings");
+    const cachedListings = getCachedApi<unknown>("/api/v1/listings");
+    const cachedListingItems = cachedListings === null ? null : unwrapData<Listing[]>(cachedListings);
     if (cachedListings) {
-      const items = Array.isArray(cachedListings) ? cachedListings : unwrapData<Listing[]>(cachedListings) ?? [];
-      if (items.length > 0) setListings(items);
+      const items = Array.isArray(cachedListingItems) ? cachedListingItems : [];
+      setListings(items);
+      void refreshCachedApi<unknown>("/api/v1/listings")
+        .then((response) => {
+          const refreshedListings = unwrapData<Listing[]>(response);
+          if (Array.isArray(refreshedListings)) setListings(refreshedListings);
+        })
+        .catch(() => undefined);
     }
     if (cachedProfile) {
       setProfile({ ...cachedProfile, displayName: resolveAccountName(cachedProfile) });
@@ -274,6 +301,9 @@ export default function DashboardPage() {
             .then(normalizeAccountStatus)
             .catch(() => null)
         : Promise.resolve(null);
+      const homesRequest = cachedListingItems !== null
+        ? Promise.resolve(null)
+        : cachedApiFetch<Listing[]>("/api/v1/listings").catch(() => []);
       const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !user.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
             .then((response) => {
@@ -289,7 +319,7 @@ export default function DashboardPage() {
       const [studentProfile, providerPage, homes, bookmarks, conversations, recommendations] = await Promise.all([
         studentMode ? cachedApiFetch<StudentProfile>("/api/v1/student-profiles/me").catch(() => null) : Promise.resolve(null),
         cachedApiFetch<ProviderPage>("/api/v1/provider-pages/me").catch(() => null),
-        cachedApiFetch<Listing[]>("/api/v1/listings").catch(() => []),
+        homesRequest,
         role === "STUDENT" ? cachedApiFetch<Listing[]>("/api/v1/listings/bookmarks").catch(() => []) : Promise.resolve([]),
         cachedApiFetch<unknown>("/api/v1/support/conversations").catch(() => []),
         role === "STUDENT"
@@ -391,6 +421,46 @@ export default function DashboardPage() {
       setResolvedListingImages((current) => ({ ...current, ...nextImageMap }));
     }
   }, [listings]);
+
+  useEffect(() => {
+    listings.forEach((listing) => {
+      const picture = listing.owner?.profilePicture;
+      if (!picture) return;
+      if (isUsableImageSource(picture)) {
+        setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: picture }));
+        return;
+      }
+      const cachedPicture = getCachedMediaUrl(picture);
+      if (cachedPicture) {
+        setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: cachedPicture }));
+        return;
+      }
+      void resolveMediaUrl(picture).then((url) => {
+        if (url && isUsableImageSource(url)) {
+          setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: url }));
+        }
+      }).catch(() => undefined);
+    });
+  }, [listings]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest('[data-listing-menu-open="true"]')) {
+        setOpenMenuId(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenuId(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMenuId]);
 
   useEffect(() => {
     if (accountStatus !== "pending" || !["STUDENT", "UNVERIFIED"].includes(String(profile?.role ?? "").toUpperCase())) return;
@@ -633,6 +703,7 @@ export default function DashboardPage() {
                 ? imageReference
                 : null;
             const ownerLabel = listing.ownerId ? "Verified provider" : "Verified home";
+            const providerName = listing.owner?.displayName ?? "Provider";
             return (
               <article
                 key={listing.id}
@@ -640,7 +711,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-start gap-3">
                   <div className="shrink-0 pt-0.5">
-                    <ProfileAvatar src={null} alt={listing.title ?? "Home listing"} size="small" />
+                    <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -658,19 +729,21 @@ export default function DashboardPage() {
                         </p>
                       </div>
 
-                      <div className="relative shrink-0">
+                      <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
                         <button
                           type="button"
                           aria-label="More options"
+                          aria-haspopup="menu"
+                          aria-expanded={openMenuId === listing.id}
                           onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
                           className="flex h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/[0.04]"
                         >
                           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
                         </button>
                         {openMenuId === listing.id && (
-                          <div className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-                            <Link href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
-                            {listing.ownerId && <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
+                          <div role="menu" className="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+                            <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
+                            {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
                           </div>
                         )}
                       </div>
@@ -680,14 +753,21 @@ export default function DashboardPage() {
                       {listing.description ?? "View this home for more details."}
                     </p>
 
-                    {image && (
-                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-3 block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                        <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
-                      </Link>
+                    {image ? (
+                      <div className="relative mt-3 pb-5">
+                        <Link href={`/dashboard/listings/${listing.id}`} className="block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
+                          <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
+                        </Link>
+                        <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
+                          <ListingPriceTag listing={listing} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3"><ListingPriceTag listing={listing} /></div>
                     )}
 
                     <div className="mt-3 border-t border-black/10 pt-3">
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-black/60 sm:text-sm">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] text-black/60 sm:text-sm">
                         <LikeButton
                           listingId={listing.id}
                           initialLikeCount={listing.likeCount ?? 0}
@@ -721,9 +801,6 @@ export default function DashboardPage() {
 
                     </div>
 
-                    <p className="mt-3 text-sm font-semibold text-safecrib-black sm:text-[15px]" style={{ lineHeight: '1.3' }}>
-                      {typeof listing.price === "number" ? `₦${listing.price.toLocaleString()}` : "Price available in details"}
-                    </p>
                   </div>
                 </div>
               </article>

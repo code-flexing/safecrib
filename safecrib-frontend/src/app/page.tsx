@@ -52,44 +52,6 @@ type PublicListing = {
 
 type Audience = "student" | "provider";
 
-const HOME_LISTINGS_CACHE_KEY = "safecrib_home_listings_v1";
-
-function isPublicListing(value: unknown): value is PublicListing {
-  return typeof value === "object" && value !== null &&
-    typeof (value as { id?: unknown }).id === "string";
-}
-
-function readCachedListings(): PublicListing[] | null {
-  try {
-    const raw = window.localStorage.getItem(HOME_LISTINGS_CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as { version?: number; listings?: unknown };
-    if (cached.version !== 1 || !Array.isArray(cached.listings)) return null;
-    return cached.listings.filter(isPublicListing);
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedListings(listings: PublicListing[]) {
-  try {
-    window.localStorage.setItem(HOME_LISTINGS_CACHE_KEY, JSON.stringify({
-      version: 1,
-      listings: listings.map((listing) => ({ ...listing, likedByCurrentUser: false })),
-    }));
-  } catch {
-    // Storage can be unavailable or full; the live feed still works without it.
-  }
-}
-
-function getListingsFromResponse(data: unknown): PublicListing[] {
-  if (Array.isArray(data)) return data.filter(isPublicListing);
-  if (typeof data !== "object" || data === null) return [];
-  const response = data as { data?: unknown; listings?: unknown };
-  const items = Array.isArray(response.data) ? response.data : response.listings;
-  return Array.isArray(items) ? items.filter(isPublicListing) : [];
-}
-
 function RouteLink({ href, className, children }: { href: string; className: string; children: ReactNode }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -233,26 +195,16 @@ export default function Home() {
   // Fetch public listings for the feed
   useEffect(() => {
     let active = true;
-    const cachedListings = readCachedListings();
-    if (cachedListings !== null) {
-      setListings(cachedListings);
-      setListingsLoading(false);
-    } else {
-      setListingsLoading(true);
-    }
-
+    setListingsLoading(true);
     fetchPublicListings({ limit: 10 })
       .then((data: unknown) => {
         if (active) {
-          const items = getListingsFromResponse(data);
+          const items = Array.isArray(data) ? data : (data as Record<string, unknown>)?.data as PublicListing[] ?? (data as Record<string, unknown>)?.listings as PublicListing[] ?? [];
           setListings(items);
-          writeCachedListings(items);
-          setListingsError(null);
         }
       })
       .catch((err: unknown) => {
         if (!active) return;
-        if (cachedListings !== null) return;
         // 401 means the visitor is not logged in — the backend requires auth for listing search.
         // Treat it as an empty feed, not an error, so the home page doesn't look broken.
         const status = (err as { status?: number })?.status;
