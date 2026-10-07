@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { NameHandle } from "@/components/common/NameHandle";
@@ -11,13 +11,23 @@ import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionMo
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, refreshCachedApi, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
-type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
+type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; commentCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; username?: string | null; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
+type ListingComment = {
+  id: string;
+  body: string;
+  parentId?: string | null;
+  createdAt: string;
+  user: { id: string; displayName?: string | null; username?: string | null; role?: string };
+  mentions?: Array<{ user: { id: string; displayName?: string | null; username?: string | null } }>;
+};
+type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string };
 type StudentProfile = { profilePicture?: string } | null;
 type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
@@ -161,6 +171,175 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
   );
 }
 
+function ListingComments({ listingId, ownerId, onCountChange }: { listingId: string; ownerId?: string; onCountChange: (count: number) => void }) {
+  const [comments, setComments] = useState<ListingComment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentMentionIds, setCommentMentionIds] = useState<string[]>([]);
+  const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
+  const [taggedUsers, setTaggedUsers] = useState<MentionCandidate[]>([]);
+  const [replyParentId, setReplyParentId] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const inputId = `home-comment-${listingId}`;
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    void cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`)
+      .then((response) => {
+        if (!active) return;
+        const list = unwrapData<ListingComment[]>(response);
+        const items = Array.isArray(list) ? list : [];
+        setComments(items);
+        onCountChange(items.length);
+      })
+      .catch(() => {
+        if (active) setCommentError("We could not load home comments. Please refresh to retry.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId]);
+
+  const submitComment = async () => {
+    const body = commentBody.trim();
+    if (!body || body.length > 1000) {
+      setCommentError("Write a comment up to 1,000 characters.");
+      return;
+    }
+    setCommentSubmitting(true);
+    setCommentError("");
+    try {
+      const response = await apiFetch<ListingComment>(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`, {
+        method: "POST",
+        body: JSON.stringify({
+          body,
+          parentId: replyParentId ?? undefined,
+          mentionUserIds: commentMentionIds,
+        }),
+      });
+      clearClientCache(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`);
+      const next = [unwrapData<ListingComment>(response), ...comments];
+      setComments(next);
+      onCountChange(next.length);
+      setCommentBody("");
+      setCommentMentionIds([]);
+      setReplyParentId(null);
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : "We could not post your comment.");
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
+  const updateCommentBody = (value: string) => {
+    setCommentBody(value);
+    setCommentMentionIds((current) => current.filter((mentionId) => {
+      const person = taggedUsers.find((user) => user.id === mentionId);
+      const handle = person?.username ?? "";
+      return person ? value.toLocaleLowerCase().includes(`@${handle.toLocaleLowerCase()}`) : false;
+    }));
+    const match = value.match(/(?:^|\s)@([^@\n]*)$/);
+    if (!match) {
+      setMentionCandidates([]);
+      return;
+    }
+    const query = (match[1] ?? "").trim();
+    if (!query) {
+      setMentionCandidates([]);
+      return;
+    }
+    void apiFetch<{ users: MentionCandidate[] }>(`/api/v1/users/discover?q=${encodeURIComponent(query)}`)
+      .then((response) => setMentionCandidates(unwrapData<{ users: MentionCandidate[] }>(response).users.slice(0, 5)))
+      .catch(() => setMentionCandidates([]));
+  };
+
+  const selectMention = (person: MentionCandidate) => {
+    const mentionStart = commentBody.lastIndexOf("@");
+    const handle = person.username ?? person.displayName ?? "member";
+    setCommentBody(`${commentBody.slice(0, mentionStart)}@${handle} `);
+    setCommentMentionIds((current) => current.includes(person.id) ? current : [...current, person.id]);
+    setTaggedUsers((current) => current.some((item) => item.id === person.id) ? current : [...current, person]);
+    setMentionCandidates([]);
+  };
+
+  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
+    const replies = comments.filter((candidate) => candidate.parentId === item.id);
+    const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
+    return (
+      <li key={item.id} className="py-3" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
+        <p className="text-sm font-semibold text-safecrib-black">
+          <NameHandle displayName={item.user.displayName} username={item.user.username} />
+          {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
+          <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
+        </p>
+        {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70">{item.body}</p>}
+        {item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
+        <button
+          type="button"
+          onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); document.getElementById(inputId)?.focus(); }}
+          className="mt-1.5 text-xs font-semibold text-safecrib-green hover:underline"
+        >
+          Reply
+        </button>
+        {replies.length > 0 && <ul className="mt-1 divide-y divide-black/10 border-l-2 border-black/10 pl-3">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+      </li>
+    );
+  };
+
+  const topLevel = comments.filter((comment) => !comment.parentId);
+
+  return (
+    <section id={`comments-${listingId}`} className="border-t border-black/5 bg-black/[0.015] px-3 pb-4 pt-3 sm:px-4" aria-label="Home comments">
+      <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
+      <textarea
+        id={inputId}
+        value={commentBody}
+        onChange={(event) => updateCommentBody(event.target.value)}
+        maxLength={1000}
+        rows={2}
+        placeholder={replyParentId ? "Write a reply..." : "Ask a question or share a helpful note..."}
+        className="w-full resize-none rounded-xl border border-black/15 bg-white px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none"
+      />
+      {mentionCandidates.length > 0 && (
+        <ul aria-label="Tag a user" className="mt-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">
+          {mentionCandidates.map((person) => (
+            <li key={person.id}>
+              <button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5">
+                <NameHandle displayName={person.displayName} username={person.username} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {replyParentId && <button type="button" onClick={() => setReplyParentId(null)} className="mt-2 text-xs font-medium text-safecrib-green hover:underline">Cancel reply</button>}
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-xs text-black/45">{commentBody.length}/1000</span>
+        <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Post reply" : "Post comment"}</Button>
+      </div>
+      {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
+
+      {loading ? (
+        <div className="mt-4 space-y-3" aria-hidden="true">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      ) : (
+        <ul className="mt-3 max-h-96 divide-y divide-black/10 overflow-y-auto">
+          {topLevel.map((comment) => renderComment(comment))}
+          {!comments.length && !commentError && <li className="py-3 text-sm text-black/50">No comments yet. Start the conversation.</li>}
+        </ul>
+      )}
+
+      <Link href={`/dashboard/listings/${listingId}#comments`} className="mt-3 inline-block text-xs font-semibold text-safecrib-green hover:underline">Open full post</Link>
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -191,6 +370,8 @@ export default function DashboardPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
     if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
@@ -700,6 +881,18 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleComments = (listingId: string) => {
+    setOpenCommentIds((current) => {
+      const next = new Set(current);
+      if (next.has(listingId)) next.delete(listingId);
+      else next.add(listingId);
+      return next;
+    });
+  };
+  const setCommentCount = (listingId: string, count: number) => {
+    setCommentCounts((current) => current[listingId] === count ? current : { ...current, [listingId]: count });
+  };
+
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
   const accountName = resolveAccountName(profile);
   const canCreateProviderPage = ["AGENT", "LANDLORD"].includes(String(profile?.role ?? "").toUpperCase());
@@ -805,6 +998,8 @@ export default function DashboardPage() {
             const providerName = listing.owner?.displayName ?? "Provider";
             const location = listing.address ?? listing.campus ?? null;
             const isSaved = bookmarkedIds.includes(listing.id);
+            const commentsOpen = openCommentIds.has(listing.id);
+            const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             return (
               <article
                 key={listing.id}
@@ -879,10 +1074,18 @@ export default function DashboardPage() {
                       size="lg"
                     />
 
-                    <Link href={`/dashboard/listings/${listing.id}`} aria-label={`${listing.viewCount ?? 0} views`} title="Views" className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04]">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                      <span>{listing.viewCount ?? 0}</span>
-                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleComments(listing.id)}
+                      aria-expanded={commentsOpen}
+                      aria-controls={`comments-${listing.id}`}
+                      aria-label={`${commentCount} comments`}
+                      title="Comments"
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-safecrib-green/10 font-semibold text-safecrib-green" : ""}`}
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                      <span>{commentCount}</span>
+                    </button>
 
                     {listing.ownerId && listing.ownerId !== profile?.id && (
                       <RecommendButton
@@ -910,6 +1113,14 @@ export default function DashboardPage() {
                     </button>
                   )}
                 </div>
+
+                {commentsOpen && (
+                  <ListingComments
+                    listingId={listing.id}
+                    ownerId={listing.ownerId}
+                    onCountChange={(count) => setCommentCount(listing.id, count)}
+                  />
+                )}
               </article>
             );
           })}
