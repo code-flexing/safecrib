@@ -45,6 +45,10 @@ function extractListingImageReference(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
 
   const record = value as Record<string, unknown>;
+  for (const key of ["mediaId", "media_id"]) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
   for (const key of ["url", "accessUrl", "deliveryUrl", "imageUrl", "src"]) {
     const candidate = record[key];
     if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
@@ -406,14 +410,18 @@ export default function DashboardPage() {
         return;
       }
 
-      const cachedImage = getCachedMediaUrl(imageReference);
+      const cachedImage = getCachedMediaUrl(imageReference, "listing_hero");
       if (cachedImage) {
         nextImageMap[listing.id] = cachedImage;
         return;
       }
-      void resolveMediaUrl(imageReference).then((resolvedUrl) => {
-        if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
-          setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
+      const fallbackUrl = Array.isArray(listing.photos)
+        ? listing.photos.map((photo) => typeof photo === "string" ? photo : photo.url).find(isUsableImageSource)
+        : undefined;
+      void resolveMediaUrl(imageReference, "listing_hero").then((resolvedUrl) => {
+        const imageUrl = resolvedUrl ?? fallbackUrl;
+        if (imageUrl && isUsableImageSource(imageUrl)) {
+          setResolvedListingImages((current) => ({ ...current, [listing.id]: imageUrl }));
         }
       }).catch(() => undefined);
     });
@@ -765,7 +773,7 @@ export default function DashboardPage() {
                     {image ? (
                       <div className="relative mt-3 pb-5">
                         <Link href={`/dashboard/listings/${listing.id}`} className="block overflow-hidden rounded-2xl border border-black/10 bg-black/5">
-                          <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={700} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
+                          <Image src={image} alt={listing.title ?? "Listing"} width={1200} height={800} quality={90} className="h-56 w-full object-cover transition duration-200 hover:scale-[1.01] sm:h-[360px]" />
                         </Link>
                         <div className="pointer-events-none absolute bottom-5 left-3 z-10 translate-y-1/2">
                           <ListingPriceTag listing={listing} />
