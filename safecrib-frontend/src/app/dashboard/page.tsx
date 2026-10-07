@@ -76,6 +76,25 @@ function getListingImageReference(listing: Listing): string | null {
   return null;
 }
 
+function getListingImageUrl(listing: Listing): string | null {
+  const candidates: unknown[] = [
+    ...(Array.isArray(listing.photos) ? listing.photos : []),
+    ...(Array.isArray(listing.images) ? listing.images : []),
+    listing.photo,
+    listing.image,
+  ];
+
+  for (const candidate of candidates) {
+    if (isUsableImageSource(candidate)) return candidate;
+    if (!candidate || typeof candidate !== "object") continue;
+    const record = candidate as Record<string, unknown>;
+    for (const key of ["url", "accessUrl", "deliveryUrl", "imageUrl", "src"]) {
+      if (isUsableImageSource(record[key])) return record[key];
+    }
+  }
+  return null;
+}
+
 function formatListingPrice(listing: Listing) {
   if (typeof listing.price !== "number") return "Price available in details";
   const price = listing.discountedPrice ?? Math.max(0, listing.price - (listing.discountAmount ?? 0));
@@ -405,6 +424,7 @@ export default function DashboardPage() {
     listings.forEach((listing) => {
       const imageReference = getListingImageReference(listing);
       if (!imageReference) return;
+      const fallbackUrl = getListingImageUrl(listing);
       if (isUsableImageSource(imageReference)) {
         nextImageMap[listing.id] = imageReference;
         return;
@@ -415,13 +435,10 @@ export default function DashboardPage() {
         nextImageMap[listing.id] = cachedImage;
         return;
       }
-      const fallbackUrl = Array.isArray(listing.photos)
-        ? listing.photos.map((photo) => typeof photo === "string" ? photo : photo.url).find(isUsableImageSource)
-        : undefined;
+      if (fallbackUrl) nextImageMap[listing.id] = fallbackUrl;
       void resolveMediaUrl(imageReference, "listing_hero").then((resolvedUrl) => {
-        const imageUrl = resolvedUrl ?? fallbackUrl;
-        if (imageUrl && isUsableImageSource(imageUrl)) {
-          setResolvedListingImages((current) => ({ ...current, [listing.id]: imageUrl }));
+        if (resolvedUrl && isUsableImageSource(resolvedUrl)) {
+          setResolvedListingImages((current) => ({ ...current, [listing.id]: resolvedUrl }));
         }
       }).catch(() => undefined);
     });
