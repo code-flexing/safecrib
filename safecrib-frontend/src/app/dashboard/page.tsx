@@ -1073,7 +1073,8 @@ export default function DashboardPage() {
   window.addEventListener(userSessionClearedEvent, handleSessionCleared);
   return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
 }, []);
-
+  
+    useEffect(() => {
     const cachedProfile = getCachedCurrentUser<Profile>();
     const hasCachedData = cachedProfile !== null;
     if (!hasCachedData) setDashboardLoading(true);
