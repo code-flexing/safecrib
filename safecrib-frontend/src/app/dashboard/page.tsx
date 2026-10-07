@@ -767,7 +767,7 @@ export default function DashboardPage() {
                     )}
 
                     <div className="mt-3 border-t border-black/10 pt-3">
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] text-black/60 sm:text-sm">
+                      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-3 text-sm text-black/60">
                         <LikeButton
                           listingId={listing.id}
                           initialLikeCount={listing.likeCount ?? 0}
@@ -778,11 +778,11 @@ export default function DashboardPage() {
                               ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
                               : item));
                           }}
-                          size="sm"
+                          size="lg"
                         />
 
-                        <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04]">
-                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                        <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm transition hover:bg-black/[0.04]">
+                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
                           <span>{listing.viewCount ?? 0}</span>
                         </Link>
 
@@ -794,7 +794,7 @@ export default function DashboardPage() {
                             onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
                             disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
                             role={String(profile?.role ?? "").toUpperCase()}
-                            size="sm"
+                            size="lg"
                           />
                         )}
                       </div>
