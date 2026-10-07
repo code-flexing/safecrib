@@ -1240,6 +1240,7 @@ export default function DashboardPage() {
       return next;
     });
   }, []);
+  const closeActionTray = useCallback(() => setOpenActionTrayId(null), []);
   const setCommentCount = (listingId: string, count: number) => {
     setCommentCounts((current) => current[listingId] === count ? current : { ...current, [listingId]: count });
   };
@@ -1286,7 +1287,7 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        <div className="absolute left-4 right-4 top-12 z-40 mx-auto flex max-w-2xl items-center gap-3">
+        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
           <form
             role="search"
             onSubmit={(event) => {
@@ -1317,17 +1318,17 @@ export default function DashboardPage() {
         </div>
 
         {listings.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-100 px-5 pb-10 pt-28 text-center" aria-label="No listings are available yet">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-100 px-5 pb-10 pt-28 text-center" aria-label="No listings are available yet">
             <EmptyListingsIllustration />
             <h2 className="mt-4 font-display text-lg font-bold text-safecrib-black">No homes listed yet</h2>
             <p className="mt-1 max-w-xs text-sm text-black/55">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
           </div>
         )}
 
-        <div ref={feedRef} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={feedRef} onScroll={() => { if (openActionTrayId) setOpenActionTrayId(null); }} className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* New posts pill — appears when background polling detects newer listings */}
           {newPostsAvailable && (
-            <div className="pointer-events-none sticky top-[7.5rem] z-30 flex h-0 justify-center">
+            <div className="pointer-events-none sticky top-[4.5rem] z-30 flex h-0 justify-center">
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
@@ -1352,8 +1353,6 @@ export default function DashboardPage() {
             const commentsOpen = openCommentIds.has(listing.id);
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
-            // Videos have a control bar near the bottom, so the text block sits higher only for them.
-            const infoPosition = listing.video ? "bottom-44 md:bottom-20" : "bottom-24 md:bottom-8";
             return (
               <article
                 key={listing.id}
@@ -1362,7 +1361,13 @@ export default function DashboardPage() {
                 {hasMedia && (
                   <div className="absolute inset-0">
                     {listing.video ? (
-                      <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                      <ListingCardVideo
+                        video={listing.video}
+                        poster={image ?? null}
+                        fallbackSrc={fallbackImage}
+                        alt={listing.title ?? "Listing"}
+                        onProgress={(currentTime, duration) => setVideoProgress({ listingId: listing.id, currentTime, duration })}
+                      />
                     ) : image ? (
                       <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
                         <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} priority={index === 0} />
@@ -1372,110 +1377,63 @@ export default function DashboardPage() {
                 )}
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/50" />
 
-                <div className={`absolute left-16 right-4 z-20 max-w-xl text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.45)] md:left-24 md:right-8 ${infoPosition}`}>
-                  <div className="mb-3 flex items-center gap-3">
-                    <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate text-sm font-bold">{providerName}</p>
-                        <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white shadow-sm">
-                          <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m4.5 10 3.5 3.5 7.5-7.5" /></svg>
-                        </span>
+                <div className="absolute inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end gap-3 md:inset-x-8 md:bottom-6">
+                  <div className="min-w-0 max-w-xl flex-1">
+                    {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
+                      <div aria-label="Video progress" className="mb-2 h-1 overflow-hidden rounded-full bg-white/35">
+                        <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, videoProgress.currentTime / videoProgress.duration * 100)}%` }} />
                       </div>
-                      {location && <p className="truncate text-xs text-white/80">{location}</p>}
-                    </div>
-                    <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
-                      <button
-                        type="button"
-                        aria-label="More options"
-                        aria-haspopup="menu"
-                        aria-expanded={openMenuId === listing.id}
-                        onClick={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
-                      </button>
-                      {openMenuId === listing.id && (
-                        <div role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white text-black shadow-[0_18px_45px_rgba(15,23,42,0.25)] [text-shadow:none]">
-                          <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
-                          {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
+                    )}
+                    <div className="rounded-2xl border border-white/15 bg-black/45 p-4 text-white shadow-xl backdrop-blur-xl">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" className="h-9 w-9 shrink-0" />
+                        <p className="truncate text-sm font-semibold">{providerName}</p>
+                        <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white">
+                          <Icon name="check-circle" className="h-4 w-4" />
+                        </span>
+                        {location && <p className="min-w-0 truncate text-sm text-white/65">{location}</p>}
+                      </div>
+                      <Link href={`/dashboard/listings/${listing.id}`} className="mt-2 block focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+                        <h2 className="line-clamp-2 text-lg font-bold leading-snug">{listing.title ?? "Verified home"}</h2>
+                      </Link>
+                      {listing.description && (
+                        <div className="mt-2">
+                          <p className="line-clamp-2 text-sm leading-5 text-white/80">{listing.description}</p>
+                          <Link href={`/dashboard/listings/${listing.id}`} className="mt-1 inline-block text-sm font-semibold text-white/90 underline decoration-white/50 underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">more</Link>
                         </div>
                       )}
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <ListingPriceTag listing={listing} />
+                        <Link href={`/dashboard/listings/${listing.id}`} className="inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-safecrib-green px-4 text-sm font-semibold text-white transition hover:bg-safecrib-green/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">View home</Link>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-end justify-between gap-3">
-                    <Link href={`/dashboard/listings/${listing.id}`} className="min-w-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-                      <h2 className="line-clamp-2 text-lg font-bold leading-snug text-white hover:underline sm:text-xl">{listing.title ?? "Verified home"}</h2>
-                      {listing.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/90">{listing.description}</p>}
-                    </Link>
-                    <div className="shrink-0 rounded-lg bg-white px-2.5 py-1.5 text-safecrib-black shadow-lg [text-shadow:none]"><ListingPriceTag listing={listing} /></div>
-                  </div>
-                </div>
 
-                <div role="group" aria-label="Listing actions" className="absolute left-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border border-white/60 bg-white/60 px-1 py-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-2xl md:left-6">
-                  <div className="flex w-10 flex-col items-center">
-                    <LikeButton
-                      listingId={listing.id}
-                      initialLikeCount={listing.likeCount ?? 0}
-                      initialIsLiked={listing.likedByCurrentUser ?? false}
-                      onLike={async (id, liked) => {
-                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
-                        setListings((current) => current.map((item) => item.id === id
-                          ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
-                          : item));
-                      }}
-                      size="md"
-                      showLabel={false}
-                    />
-                    <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(listing.likeCount ?? 0)}</span>
-                  </div>
-
-                  <div className="flex w-10 flex-col items-center">
-                    <button
-                      type="button"
-                      onClick={() => toggleComments(listing.id)}
-                      aria-haspopup="dialog"
-                      aria-expanded={commentsOpen}
-                      aria-label={`Comments, ${commentCount}`}
-                      title="Comments"
-                      className={`flex h-9 w-10 items-center justify-center rounded-full text-black/75 transition hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-white/70 text-safecrib-green" : ""}`}
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
-                    </button>
-                    <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(commentCount)}</span>
-                  </div>
-
-                  {listing.ownerId && listing.ownerId !== profile?.id && (
-                    <div className="flex w-10 flex-col items-center">
-                      <RecommendButton
-                        providerId={listing.ownerId}
-                        initialRecommendationCount={listing.providerRecommendationCount ?? 0}
-                        initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
-                        onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
-                        disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                        role={String(profile?.role ?? "").toUpperCase()}
-                        size="md"
-                        showLabel={false}
-                      />
-                      <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
-                    </div>
-                  )}
-
-                  {isStudent && (
-                    <div className="flex w-10 flex-col items-center">
-                      <button
-                        type="button"
-                        onClick={() => void toggleBookmark(listing.id)}
-                        aria-pressed={isSaved}
-                        aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
-                        title={isSaved ? "Saved" : "Save"}
-                        className={`flex h-9 w-10 items-center justify-center rounded-full transition hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/75"}`}
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
-                      </button>
-                      <span className="text-[11px] font-semibold leading-3 text-black/75">{isSaved ? "Saved" : "Save"}</span>
-                    </div>
-                  )}
+                  <ListingActionTray
+                    listing={listing}
+                    isOpen={openActionTrayId === listing.id}
+                    isSaved={isSaved}
+                    isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
+                    canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
+                    menuOpen={openMenuId === listing.id}
+                    isStudent={isStudent}
+                    commentCount={commentCount}
+                    recommendationDisabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                    role={String(profile?.role ?? "").toUpperCase()}
+                    onToggle={() => setOpenActionTrayId((current) => current === listing.id ? null : listing.id)}
+                    onClose={closeActionTray}
+                    onLike={async (id, liked) => {
+                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
+                      setListings((current) => current.map((item) => item.id === id
+                        ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
+                        : item));
+                    }}
+                    onComment={() => toggleComments(listing.id)}
+                    onRecommend={async (providerId, recommended) => { await toggleRecommendation(providerId); void recommended; }}
+                    onSave={() => void toggleBookmark(listing.id)}
+                    onMore={() => setOpenMenuId((current) => current === listing.id ? null : listing.id)}
+                    onCloseMenu={() => setOpenMenuId(null)}
+                  />
                 </div>
 
                 {commentsOpen && (
