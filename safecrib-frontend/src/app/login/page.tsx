@@ -124,6 +124,7 @@ export default function LoginPage() {
         const studentStatusRequest = role === "STUDENT"
           ? refreshCachedApi<unknown>("/api/v1/student-profiles/status")
           : Promise.resolve(null);
+        if (!providerRole) void refreshCachedApi<unknown>("/api/v1/listings").catch(() => undefined);
         const [providerPage, verificationStage] = await Promise.all([
           providerPageRequest,
           verificationRequest,

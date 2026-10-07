@@ -1184,7 +1184,7 @@ export default function DashboardPage() {
                 {(image || listing.video) && (
                   listing.video ? (
                     <div className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
-                      <ListingCardVideo video={listing.video} poster={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                      <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
                     </div>
                   ) : image ? (
                     <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
