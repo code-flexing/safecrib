@@ -84,9 +84,9 @@ export function RecommendButton({
   }, [providerId, isRecommended, recommendationCount, onRecommend, disabled, reducedMotion]);
 
   const sizeClasses = {
-    sm: "h-3.5 w-3.5 text-xs gap-1 px-2 py-1",
-    md: "h-4 w-4 text-sm gap-1.5 px-3 py-1.5",
-    lg: "h-5 w-5 text-base gap-2 px-4 py-2",
+    sm: "min-h-8 text-xs gap-1 px-2 py-1",
+    md: "min-h-9 text-sm gap-1.5 px-3 py-1.5",
+    lg: "min-h-11 text-base gap-2 px-4 py-2",
   };
 
   const iconSizeClasses = {
@@ -111,7 +111,7 @@ export function RecommendButton({
       aria-pressed={isRecommended}
       aria-label={isRecommended ? "Remove recommendation" : "Recommend provider"}
       title={disabled && !isStudent ? tooltip : undefined}
-      className={`inline-flex items-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isRecommended ? "text-blue-500" : "text-black/50"}`}
+      className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isRecommended ? "text-blue-500" : "text-black/50"}`}
     >
       <span
         className={`relative inline-flex items-center justify-center ${flashAnimation ? "recommend-flash" : ""} ${shakeAnimation ? "recommend-shake" : ""}`}
@@ -159,14 +159,14 @@ export function RecommendButton({
           ))}
           <Icon
             name="zap"
-            className={`${iconSize} ${isRecommended ? "fill-current" : ""} transition-colors duration-200`}
+            className={`${iconSize} shrink-0 ${isRecommended ? "fill-current" : ""} transition-colors duration-200`}
           />
         </span>
       </span>
       {showLabel && (
         <span
           key={countKey}
-          className={`count-roll`}
+          className="count-roll min-w-0 truncate"
           style={{ animationDuration: "150ms", animationFillMode: "both", animationTimingFunction: "ease-out" }}
         >
           {recommendationCount.toLocaleString()}
