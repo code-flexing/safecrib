@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
@@ -315,6 +316,7 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
         </button>
         <Button type="button" onClick={() => setFullDiscussionOpen(true)}>Add a comment</Button>
       </div>
+      {fullDiscussionOpen && createPortal(
       <Modal open={fullDiscussionOpen} onClose={closeFullDiscussion} titleId={titleId}>
         <div className="flex max-h-[85dvh] min-h-0 flex-col">
           <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/10 px-4 py-3 sm:px-6">
@@ -368,7 +370,7 @@ function ListingComments({ listingId, ownerId, onCountChange }: { listingId: str
             {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
           </div>
         </div>
-      </Modal>
+      </Modal>, document.body)}
     </section>
   );
 }
