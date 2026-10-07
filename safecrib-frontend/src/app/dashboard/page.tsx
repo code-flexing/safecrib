@@ -20,7 +20,7 @@ import { normalizeVerificationStage, VerificationBadge, type VerificationStageRe
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, refreshCachedApi, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
-type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; commentCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
+type Listing = { id: string; ownerId?: string; owner?: { displayName?: string | null; profilePicture?: string | null }; title?: string; description?: string; price?: number; discountAmount?: number | null; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; video?: { mediaId?: string; url?: string } | null; likeCount?: number; viewCount?: number; commentCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
 type Profile = { id?: string; displayName?: unknown; email?: string; role?: string; profilePicture?: string; username?: string | null; studentProfileStatus?: unknown; studentProfile?: { profilePicture?: string }; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null; verificationStage?: unknown };
 type ListingComment = {
   id: string;
@@ -170,6 +170,84 @@ function ListingCardImage({ src, fallbackSrc, alt }: { src: string; fallbackSrc:
           if (fallbackSrc && fallbackSrc !== src) setUseFallback(true);
         }}
       />
+    </div>
+  );
+}
+
+function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing["video"]; poster: string | null; fallbackSrc: string | null; alt: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const directVideoUrl = video?.url && isUsableImageSource(video.url) ? video.url.trim() : null;
+  const [isVisible, setIsVisible] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(directVideoUrl);
+  const [videoFailed, setVideoFailed] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(Boolean(entry?.isIntersecting));
+    }, { threshold: 0.25 });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || videoUrl || videoFailed) return;
+    if (!video?.mediaId) {
+      setVideoFailed(true);
+      return;
+    }
+
+    let active = true;
+    void resolveMediaUrl(video.mediaId)
+      .then((resolvedUrl) => {
+        if (!active) return;
+        if (resolvedUrl && isUsableImageSource(resolvedUrl)) setVideoUrl(resolvedUrl);
+        else setVideoFailed(true);
+      })
+      .catch(() => {
+        if (active) setVideoFailed(true);
+      });
+    return () => { active = false; };
+  }, [isVisible, video?.mediaId, videoFailed, videoUrl]);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) return;
+    if (isVisible && videoUrl && !videoFailed) {
+      void element.play().catch(() => undefined);
+    } else {
+      element.pause();
+    }
+  }, [isVisible, videoFailed, videoUrl]);
+
+  return (
+    <div ref={containerRef} className="absolute inset-0 bg-black/[0.04]">
+      {videoUrl && !videoFailed ? (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          poster={poster ?? fallbackSrc ?? undefined}
+          aria-label={`${alt} video`}
+          autoPlay={isVisible}
+          muted
+          loop
+          playsInline
+          controls
+          preload={isVisible ? "metadata" : "none"}
+          onError={() => setVideoFailed(true)}
+          className="h-full w-full object-cover"
+        />
+      ) : poster || fallbackSrc ? (
+        <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
+      ) : (
+        <Skeleton className="absolute inset-0" />
+      )}
     </div>
   );
 }
@@ -1103,10 +1181,16 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {image && (
-                  <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
-                    <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
-                  </Link>
+                {(image || listing.video) && (
+                  listing.video ? (
+                    <div className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
+                      <ListingCardVideo video={listing.video} poster={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                    </div>
+                  ) : image ? (
+                    <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="relative block aspect-[3/2] w-full overflow-hidden bg-black/5">
+                      <ListingCardImage src={image} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
+                    </Link>
+                  ) : null
                 )}
 
                 <div className="px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
