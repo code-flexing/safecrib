@@ -71,7 +71,7 @@ function DiscoveryAvatar({ reference, seed, label, onReady }: { reference?: stri
     return <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-black/10" role="status" aria-label={`Loading ${label} profile picture`} />;
   }
 
-  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size={48} className="h-12 w-12" loading={resolving} onReady={onReady} /></div>;
+  return <div className="shrink-0"><ProfileAvatar src={imageUrl} seed={seed} alt={`${label} profile`} size="medium" className="h-12 w-12" loading={resolving} onReady={onReady} /></div>;
 }
 
 function SearchResultsSkeleton() {
