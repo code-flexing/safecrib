@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
@@ -286,6 +287,10 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
   const renderComment = (item: ListingComment, depth = 0, preview = false): ReactNode => {
     const replies = comments.filter((candidate) => candidate.parentId === item.id);
     const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
+    const createdAt = new Date(item.createdAt);
+    const commentTime = Number.isNaN(createdAt.getTime())
+      ? "Unknown time"
+      : formatDistanceToNow(createdAt, { addSuffix: true, includeSeconds: true });
     return (
       <li key={item.id} className="py-3" style={{ marginLeft: `${Math.min(depth, 5) * 16}px` }}>
         <p className="text-sm font-semibold text-safecrib-black">
@@ -293,7 +298,7 @@ function ListingComments({ listingId, ownerId, onCountChange, onClose }: { listi
             <NameHandle displayName={item.user.displayName} username={item.user.username} />
           </Link>
           {isCreatorReply && <span className="ml-2 font-bold text-safecrib-green">Creator</span>}
-          <time className="ml-2 text-xs font-normal text-black/45">{new Date(item.createdAt).toLocaleDateString()}</time>
+          <time dateTime={item.createdAt} className="ml-2 text-xs font-normal text-black/45">{commentTime}</time>
         </p>
         {item.body && <p className={`mt-1 whitespace-pre-wrap text-sm leading-6 text-black/70 ${preview ? "line-clamp-2" : ""}`}>{item.body}</p>}
         {!preview && item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
