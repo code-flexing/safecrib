@@ -38,6 +38,11 @@ type ListingForPost = {
   ownerPhone?: string;
   ownerWhatsApp?: string;
   createdAt: string | Date;
+  // Recommend (provider-level)
+  recommendationCount?: number;
+  isRecommended?: boolean;
+  isRecommendDisabled?: boolean;
+  userRole?: string;
 };
 
 function formatPrice(price: number, discountAmount?: number | null) {
@@ -71,6 +76,7 @@ export function ListingPost({
   onCommentPrefetch,
   onShare,
   onBookmark,
+  onRecommend,
   onCall,
   onWhatsApp,
   onBookInspection,
@@ -82,6 +88,7 @@ export function ListingPost({
   onCommentPrefetch?: (listingId: string) => void;
   onShare: (listingId: string) => Promise<void>;
   onBookmark: (listingId: string) => Promise<void>;
+  onRecommend?: (providerId: string, recommended: boolean) => Promise<void>;
   onCall?: () => void;
   onWhatsApp?: () => void;
   onBookInspection?: () => void;
@@ -225,11 +232,17 @@ export function ListingPost({
           isBookmarked={listing.isBookmarked}
           agentPhone={listing.ownerPhone}
           agentWhatsApp={listing.ownerWhatsApp}
+          providerId={listing.ownerId}
+          recommendationCount={listing.recommendationCount}
+          isRecommended={listing.isRecommended}
+          isRecommendDisabled={listing.isRecommendDisabled}
+          userRole={listing.userRole}
           onLike={onLike}
           onComment={onComment}
           onCommentPrefetch={onCommentPrefetch}
           onShare={onShare}
           onBookmark={onBookmark}
+          onRecommend={onRecommend}
           onCall={onCall}
           onWhatsApp={onWhatsApp}
           onBookInspection={onBookInspection}

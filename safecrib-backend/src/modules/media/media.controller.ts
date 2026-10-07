@@ -204,7 +204,7 @@ export class MediaController {
   // ─── GET /media/:id/access ─────────────────────────────────────────────────
 
   @Get(':id/access')
-  @Public()
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary:
       'Get a delivery URL. Returns a short-lived signed URL for private/authenticated assets. Public assets return a permanent CDN URL.',
@@ -214,7 +214,7 @@ export class MediaController {
   @ApiResponse({ status: 404, description: 'Media not found or not ready' })
   async getAccessUrl(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string; role: string } | null,
+    @CurrentUser() user: { id: string; role: string },
     @Query() query: GetSignedUrlDto,
     @Req() req: Request,
   ) {
@@ -222,8 +222,8 @@ export class MediaController {
     const ua = req.get('user-agent');
     return this.mediaService.getAccessUrl(
       id,
-      user?.id ?? '',
-      user?.role ?? 'GUEST',
+      user.id,
+      user.role,
       ip,
       ua,
       query.transformation,

@@ -29,6 +29,7 @@ export class UserService {
         trustScore: true,
         trustScoreUpdatedAt: true,
         createdAt: true,
+        updatedAt: true,
         verification: {
           select: {
             stage: true,

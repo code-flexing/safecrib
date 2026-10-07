@@ -7,10 +7,12 @@ import { useEffect, useState } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
+import { LikeButton } from "@/components/listings/LikeButton";
+import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, cachedCurrentUser, clearClientCache, clearSession, displayName, getAuthenticatedDisplayName, getCachedApi, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, primeCurrentUserCache, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar, type AccountStatus, type PageStatus } from "@/lib/api";
 
 type ListingPhotoValue = string | { id?: string; mediaId?: string; media_id?: string; url?: string; accessUrl?: string; deliveryUrl?: string; imageUrl?: string; src?: string };
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; address?: string; campus?: string; photos?: ListingPhotoValue[]; images?: ListingPhotoValue[]; photo?: ListingPhotoValue; image?: ListingPhotoValue; likeCount?: number; viewCount?: number; followedPage?: boolean; likedByCurrentUser?: boolean; providerRecommendationCount?: number; providerTrustScore?: number | null; providerActiveDays?: number; recommendationScore?: number };
@@ -83,9 +85,21 @@ export default function DashboardPage() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(() => {
+    // Show skeleton only on first load (no cache). On navigation returns, render instantly.
+    if (typeof window === "undefined") return true;
+    try {
+      const token = localStorage.getItem("safecrib_access_token");
+      if (!token) return false;
+      return localStorage.getItem("safecrib_cache:/api/v1/users/me") === null &&
+             localStorage.getItem("safecrib_cache:/api/v1/auth/me") === null;
+    } catch {
+      return true;
+    }
+  });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
 
   useEffect(() => subscribeClientCacheUpdates(({ path, value }) => {
     if (path === "/api/v1/users/me" || path === "/api/v1/auth/me") {
@@ -195,14 +209,23 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    setDashboardLoading(true);
     if (!localStorage.getItem("safecrib_access_token")) {
       router.replace("/login");
-      setDashboardLoading(false);
       return;
     }
 
-const cachedProfile = getCachedCurrentUser<Profile>();
+    const cachedProfile = getCachedCurrentUser<Profile>();
+    // Only show the skeleton on first load (no cached data). On subsequent navigations
+    // we have cached data so we render instantly with no flash.
+    const hasCachedData = cachedProfile !== null;
+    if (!hasCachedData) setDashboardLoading(true);
+
+    // Pre-populate listings from cache so the feed shows immediately on navigation.
+    const cachedListings = getCachedApi<Listing[]>("/api/v1/listings");
+    if (cachedListings) {
+      const items = Array.isArray(cachedListings) ? cachedListings : unwrapData<Listing[]>(cachedListings) ?? [];
+      if (items.length > 0) setListings(items);
+    }
     if (cachedProfile) {
       setProfile({ ...cachedProfile, displayName: resolveAccountName(cachedProfile) });
       setVerification(normalizeVerificationStage(getPersistedVerification(cachedProfile.id)));
@@ -421,6 +444,72 @@ const cachedProfile = getCachedCurrentUser<Profile>();
     }
   };
 
+  // Scroll-position save/restore: saves on route-change/unload, restores after feed renders.
+  useEffect(() => {
+    const SCROLL_KEY = "safecrib_dashboard_scroll";
+    const savedY = Number(sessionStorage.getItem(SCROLL_KEY) ?? "0");
+    if (savedY > 0) {
+      // Restore after a brief tick so layout has settled.
+      const id = requestAnimationFrame(() => window.scrollTo({ top: savedY, behavior: "instant" }));
+      return () => {
+        cancelAnimationFrame(id);
+        sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)));
+      };
+    }
+    return () => sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)));
+  }, []);
+
+  // Background "new posts" polling: every 60s while tab is visible, check if there are
+  // newer listings than the top of the current feed. If so, show the pill.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const check = async () => {
+      if (document.visibilityState === "hidden") return;
+      const topId = listings[0]?.id;
+      if (!topId) return;
+      try {
+        const result = await apiFetch<unknown>("/api/v1/listings?limit=1");
+        const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
+        if (items.length > 0 && items[0].id !== topId) setNewPostsAvailable(true);
+      } catch {
+        // Silent failure — don't surface polling errors to the user.
+      }
+    };
+    const schedule = () => { timer = setTimeout(() => { void check(); schedule(); }, 60_000); };
+    schedule();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void check(); });
+    return () => { if (timer) clearTimeout(timer); };
+  }, [listings]);
+
+  const refreshFeed = async () => {
+    setNewPostsAvailable(false);
+    clearClientCache("/api/v1/listings");
+    sessionStorage.removeItem("safecrib_dashboard_scroll");
+    try {
+      const result = await apiFetch<unknown>("/api/v1/listings");
+      const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
+      setListings(items);
+    } catch {
+      // Keep current feed if refresh fails.
+    }
+  };
+
+  const toggleBookmark = async (listingId: string) => {
+    const isSaved = bookmarkedIds.includes(listingId);
+    const message = accountMessage(accountStatus, isSaved ? "remove this saved listing" : "save this listing");
+    if (message) {
+      setActionMessage(message);
+      return;
+    }
+    try {
+      await apiFetch(`/api/v1/listings/${listingId}/bookmark`, { method: isSaved ? "DELETE" : "POST" });
+      setBookmarkedIds((current) => isSaved ? current.filter((id) => id !== listingId) : [...current, listingId]);
+    } catch {
+      setActionMessage("We could not update your saved listings. Please try again.");
+    }
+  };
+
   const toggleRecommendation = async (providerId: string) => {
     const actionKey = `recommend:${providerId}`;
     if (pendingEngagement.has(actionKey)) return;
@@ -521,6 +610,20 @@ const cachedProfile = getCachedCurrentUser<Profile>();
         </div>
         {listings.length === 0 && <div className="mt-8 flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8 sm:min-h-72" aria-label="No listings are available yet"><EmptyListingsIllustration /></div>}
         <div className="mx-auto mt-8 max-w-3xl space-y-4">
+          {/* New posts pill — appears when background polling detects newer listings */}
+          {newPostsAvailable && (
+            <div className="sticky top-4 z-20 flex justify-center">
+              <button
+                type="button"
+                onClick={() => void refreshFeed()}
+                className="inline-flex items-center gap-2 rounded-full bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                aria-live="polite"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7" /></svg>
+                New posts
+              </button>
+            </div>
+          )}
           {listings.map((listing) => {
             const imageReference = getListingImageReference(listing);
             const image = isUsableImageSource(resolvedListingImages[listing.id])
@@ -584,33 +687,35 @@ const cachedProfile = getCachedCurrentUser<Profile>();
 
                     <div className="mt-3 border-t border-black/10 pt-3">
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-black/60 sm:text-sm">
-                        <button
-                          type="button"
-                          onClick={() => void toggleLike(listing)}
-                          disabled={listing.ownerId === profile?.id || pendingEngagement.has(`like:${listing.id}`)}
-                          aria-pressed={listing.likedByCurrentUser === true}
-                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 11h9.2a3 3 0 0 0 2.9-2.2l2-7A3 3 0 0 0 18.2 8H14l.7-3.2A2.4 2.4 0 0 0 12.4 2L7 10v11Z" /></svg>
-                          <span>{listing.likeCount ?? 0}</span>
-                        </button>
+                        <LikeButton
+                          listingId={listing.id}
+                          initialLikeCount={listing.likeCount ?? 0}
+                          initialIsLiked={listing.likedByCurrentUser ?? false}
+                          onLike={async (id, liked) => {
+                            await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "POST" : "DELETE" });
+                            setListings((current) => current.map((item) => item.id === id
+                              ? { ...item, likedByCurrentUser: liked, likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)) }
+                              : item));
+                          }}
+                          size="sm"
+                        />
 
                         <Link href={`/dashboard/listings/${listing.id}#comments`} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04]">
                           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
                           <span>{listing.viewCount ?? 0}</span>
                         </Link>
 
-                        <button
-                          type="button"
-                          onClick={() => listing.ownerId && void toggleRecommendation(listing.ownerId)}
-                          disabled={!listing.ownerId || String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || listing.ownerId === profile?.id || pendingEngagement.has(`recommend:${listing.ownerId}`)}
-                          aria-pressed={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
-                          title={String(profile?.role ?? "").toUpperCase() === "STUDENT" ? "Recommend this provider to students" : "Student accounts can recommend providers"}
-                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-3 8h7l-6 12 2-9H6l7-11Z" /></svg>
-                          <span>{listing.providerRecommendationCount ?? 0}</span>
-                        </button>
+                        {listing.ownerId && listing.ownerId !== profile?.id && (
+                          <RecommendButton
+                            providerId={listing.ownerId}
+                            initialRecommendationCount={listing.providerRecommendationCount ?? 0}
+                            initialIsRecommended={recommendedProviderIds.includes(listing.ownerId)}
+                            onRecommend={async (pId, recommended) => { await toggleRecommendation(pId); void recommended; }}
+                            disabled={String(profile?.role ?? "").toUpperCase() !== "STUDENT" || !recommendationsLoaded || pendingEngagement.has(`recommend:${listing.ownerId}`)}
+                            role={String(profile?.role ?? "").toUpperCase()}
+                            size="sm"
+                          />
+                        )}
                       </div>
 
                     </div>

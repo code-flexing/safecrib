@@ -12,6 +12,8 @@ export type IconName =
   | "bed"
   | "droplet"
   | "heart"
+  | "thumbs-up"
+  | "zap"
   | "message-circle"
   | "share-2"
   | "eye"
@@ -48,6 +50,8 @@ export function Icon({ name, className = "h-5 w-5" }: { name: IconName | string;
       {name === "bed" && <><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v8H2" /><path d="M2 14h20M7 8v4M12 8v4" /></>}
       {name === "droplet" && <><path d="M12 2C6.5 9 4 13 4 16a8 8 0 0 0 16 0c0-3-2.5-7-8-14Z" /></>}
       {name === "heart" && <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />}
+      {name === "thumbs-up" && <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.2a3 3 0 0 0 3-3.5L21 9h-7ZM18 9a2.9 2.9 0 1 1 0 5.8 2.9 2.9 0 0 1 0-5.8Z" />}
+      {name === "zap" && <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />}
       {name === "message-circle" && <><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.4 8.4 0 0 1-5.8-2.3L3 21l3.3-3.7a8.4 8.4 0 0 1-1.3-4.8 8.4 8.4 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8.5Z" /></>}
       {name === "share-2" && <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></>}
       {name === "eye" && <><path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12Z" /><circle cx="12" cy="12" r="3" /></>}

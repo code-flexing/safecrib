@@ -168,7 +168,7 @@ export async function getCurrentUser<T>() {
 }
 
 const clientCachePrefix = "safecrib_cache:";
-const clientCacheTtlMs = 60_000;
+const clientCacheTtlMs = 600_000; // 10 minutes — prevents re-fetches on navigation
 const clientCacheUpdatedEvent = "safecrib:cache-updated";
 
 export type ClientCacheUpdate = { path: string; value: unknown };
@@ -250,6 +250,11 @@ function readClientCache<T>(path: string): T | null {
 
 export function getCachedCurrentUser<T>() {
   return readClientCache<T>("/api/v1/users/me") ?? readClientCache<T>("/api/v1/auth/me");
+}
+
+/** Synchronously read any cached API path (returns null when absent or not yet cached). */
+export function getCachedApi<T>(path: string): T | null {
+  return readClientCache<T>(path);
 }
 
 function writeClientCache(path: string, value: unknown) {

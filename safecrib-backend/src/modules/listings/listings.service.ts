@@ -247,6 +247,8 @@ export class ListingsService {
       where,
       include: this.listingInclude(viewerId),
       orderBy: { createdAt: 'desc' },
+      take: dto.limit !== undefined ? Math.min(dto.limit, 100) : 50,
+      skip: dto.offset ?? 0,
     });
 
     const responses = listings.map((l) => this.toResponse(l, l.photos));

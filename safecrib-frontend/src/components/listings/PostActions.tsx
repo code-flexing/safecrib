@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LikeButton } from "./LikeButton";
+import { RecommendButton } from "./RecommendButton";
 import { Icon } from "@/components/ui/Icon";
 
 type PostActionsProps = {
@@ -13,11 +15,18 @@ type PostActionsProps = {
   isBookmarked: boolean;
   agentPhone?: string;
   agentWhatsApp?: string;
+  // Recommend (optional — only shown for student role)
+  providerId?: string;
+  recommendationCount?: number;
+  isRecommended?: boolean;
+  isRecommendDisabled?: boolean;
+  userRole?: string;
   onLike: (listingId: string, liked: boolean) => Promise<void>;
   onComment: (listingId: string) => void;
   onCommentPrefetch?: (listingId: string) => void;
   onShare: (listingId: string) => Promise<void>;
   onBookmark: (listingId: string) => Promise<void>;
+  onRecommend?: (providerId: string, recommended: boolean) => Promise<void>;
   onCall?: () => void;
   onWhatsApp?: () => void;
   onBookInspection?: () => void;
@@ -34,39 +43,25 @@ export function PostActions({
   isBookmarked,
   agentPhone,
   agentWhatsApp,
+  providerId,
+  recommendationCount = 0,
+  isRecommended = false,
+  isRecommendDisabled = false,
+  userRole,
   onLike,
   onComment,
   onCommentPrefetch,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onShare,
   onBookmark,
+  onRecommend,
   onCall,
   onWhatsApp,
   onBookInspection,
   onMessageAgent,
 }: PostActionsProps) {
-  const [optimisticLikeCount, setOptimisticLikeCount] = useState(likeCount);
-  const [optimisticIsLiked, setOptimisticIsLiked] = useState(isLiked);
   const [optimisticIsBookmarked, setOptimisticIsBookmarked] = useState(isBookmarked);
-  const [isLiking, setIsLiking] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
-
-  const handleLike = async () => {
-    if (isLiking) return;
-    setIsLiking(true);
-    const nextLiked = !optimisticIsLiked;
-    const nextCount = optimisticIsLiked ? Math.max(0, optimisticLikeCount - 1) : optimisticLikeCount + 1;
-    setOptimisticIsLiked(nextLiked);
-    setOptimisticLikeCount(nextCount);
-    try {
-      await onLike(listingId, nextLiked);
-    } catch {
-      setOptimisticIsLiked(!nextLiked);
-      setOptimisticLikeCount(optimisticIsLiked ? optimisticLikeCount + 1 : Math.max(0, optimisticLikeCount - 1));
-    } finally {
-      setIsLiking(false);
-    }
-  };
 
   const handleBookmark = async () => {
     if (isBookmarking) return;
@@ -82,21 +77,25 @@ export function PostActions({
     }
   };
 
+  const handleLike = async (id: string, liked: boolean) => {
+    await onLike(id, liked);
+  };
+
+  const handleRecommend = async (pId: string, recommended: boolean) => {
+    if (onRecommend) await onRecommend(pId, recommended);
+  };
+
   return (
     <div className="border-t border-black/10 pt-3">
       {/* Reaction summary */}
-      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-black/60 sm:gap-4">
-        <button
-          type="button"
-          onClick={handleLike}
-          disabled={isLiking}
-          aria-pressed={optimisticIsLiked}
-          aria-label={optimisticIsLiked ? "Unlike" : "Like"}
-          className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Icon name="heart" className={`h-4 w-4 ${optimisticIsLiked ? "fill-current text-red-500" : "text-black/50"}`} />
-          <span>{optimisticLikeCount.toLocaleString()}</span>
-        </button>
+      <div className="flex items-center gap-4 mb-3 text-sm text-black/60">
+        <LikeButton
+          listingId={listingId}
+          initialLikeCount={likeCount}
+          initialIsLiked={isLiked}
+          onLike={handleLike}
+          size="md"
+        />
         <button
           type="button"
           onClick={() => onComment(listingId)}
@@ -116,6 +115,17 @@ export function PostActions({
           <Icon name="eye" className="h-4 w-4" />
           <span>{viewCount.toLocaleString()}</span>
         </span>
+        {providerId && onRecommend && (
+          <RecommendButton
+            providerId={providerId}
+            initialRecommendationCount={recommendationCount}
+            initialIsRecommended={isRecommended}
+            onRecommend={handleRecommend}
+            disabled={isRecommendDisabled}
+            role={userRole}
+            size="md"
+          />
+        )}
         <button
           type="button"
           onClick={handleBookmark}

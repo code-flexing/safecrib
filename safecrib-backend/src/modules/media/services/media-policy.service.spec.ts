@@ -118,6 +118,12 @@ describe('MediaPolicyService', () => {
       ).not.toThrow();
     });
 
+    it('allows ADMIN to read proof of studentship', () => {
+      expect(() =>
+        service.assertCanRead('admin_1', 'ADMIN', 'student_1', 'PROOF_OF_STUDENTSHIP'),
+      ).not.toThrow();
+    });
+
     it('allows owner to read their own asset', () => {
       expect(() =>
         service.assertCanRead('user_1', 'STUDENT', 'user_1', 'STUDENT_ID'),
