@@ -271,7 +271,8 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
           onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
           onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
           onError={() => setVideoFailed(true)}
-          className="h-full w-full object-cover"
+          onClick={(event) => { const element = event.currentTarget; if (element.paused) void element.play().catch(() => undefined); else element.pause(); }}
+          className="h-full w-full cursor-pointer object-cover"
         />
       ) : poster || fallbackSrc ? (
         <ListingCardImage src={poster ?? fallbackSrc!} fallbackSrc={fallbackSrc} alt={alt} />
@@ -279,7 +280,7 @@ function ListingCardVideo({ video, poster, fallbackSrc, alt }: { video: Listing[
         <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/10" />
       )}
       {videoUrl && !videoFailed && (
-        <div className="absolute bottom-20 left-4 right-20 z-20 flex max-w-xl items-center gap-2 text-white md:bottom-4 md:left-8 md:right-24">
+        <div className="absolute bottom-20 left-16 right-4 z-20 flex max-w-xl items-center gap-2 text-white md:bottom-4 md:left-24 md:right-8">
           <button
             type="button"
             onClick={() => {
@@ -1117,7 +1118,7 @@ export default function DashboardPage() {
             <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10" />
             <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
           </div>
-          <div className="absolute bottom-24 left-4 right-20 max-w-xl space-y-3 md:bottom-8 md:left-8 md:right-24">
+          <div className="absolute bottom-24 left-16 right-4 max-w-xl space-y-3 md:bottom-8 md:left-24 md:right-8">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
               <div className="space-y-2">
@@ -1129,11 +1130,16 @@ export default function DashboardPage() {
             <div className="h-4 w-full animate-pulse rounded bg-white/10" />
             <div className="h-4 w-4/5 animate-pulse rounded bg-white/10" />
           </div>
-          <div className="absolute left-3 top-1/2 h-52 w-12 -translate-y-1/2 animate-pulse rounded-full border border-white/20 bg-white/15 backdrop-blur-xl md:left-6" />
+          <div className="absolute left-3 top-1/2 h-52 w-12 -translate-y-1/2 animate-pulse rounded-full border border-white/20 bg-white/15 md:left-6" />
         </section>
       </main>
     );
   }
+
+  const submitSearch = () => {
+    const query = searchQuery.trim();
+    router.push(query ? `/connect?q=${encodeURIComponent(query)}` : "/connect");
+  };
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
@@ -1144,23 +1150,25 @@ export default function DashboardPage() {
             role="search"
             onSubmit={(event) => {
               event.preventDefault();
-              const query = searchQuery.trim();
-              router.push(query ? `/connect?q=${encodeURIComponent(query)}` : "/connect");
+              submitSearch();
             }}
-            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-white/25 bg-white/95 px-4 text-black shadow-lg backdrop-blur-md"
+            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-black/10 bg-white/95 pl-4 pr-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-md focus-within:ring-2 focus-within:ring-safecrib-green"
           >
             <Icon name="search" className="h-5 w-5 shrink-0 text-black/45" />
             <input
               type="search"
+              enterKeyHint="search"
               aria-label="Search homes, people, and pages"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search homes, people, and pages"
-              className="min-w-0 flex-1 bg-transparent text-sm text-safecrib-black placeholder:text-black/45 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm text-safecrib-black placeholder:text-black/45 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
-            <button type="submit" aria-label="Search" title="Search" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white transition hover:bg-[#0a5f47] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green">
-              <Icon name="chevron-right" className="h-5 w-5" />
-            </button>
+            {searchQuery.length > 0 && (
+              <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear search" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-black/45 transition hover:bg-black/5 hover:text-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+              </button>
+            )}
           </form>
           <Link href="/profile" aria-label="View your profile" title={accountName || "View your profile"} className="shrink-0 rounded-full border-2 border-white/80 shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             <ProfileAvatar src={profileImage} seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"} alt={`${accountName || "Your"} profile photo`} size="small" />
@@ -1168,7 +1176,7 @@ export default function DashboardPage() {
         </div>
 
         {listings.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white px-5 py-10 text-center" aria-label="No listings are available yet">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-100 px-5 pb-10 pt-28 text-center" aria-label="No listings are available yet">
             <EmptyListingsIllustration />
             <h2 className="mt-4 font-display text-lg font-bold text-safecrib-black">No homes listed yet</h2>
             <p className="mt-1 max-w-xs text-sm text-black/55">New listings from verified providers will show up here as soon as they&apos;re posted.</p>
@@ -1202,14 +1210,15 @@ export default function DashboardPage() {
             const isSaved = bookmarkedIds.includes(listing.id);
             const commentsOpen = openCommentIds.has(listing.id);
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
+            const hasMedia = Boolean(image || listing.video);
             // Videos have a control bar near the bottom, so the text block sits higher only for them.
             const infoPosition = listing.video ? "bottom-44 md:bottom-20" : "bottom-24 md:bottom-8";
             return (
               <article
                 key={listing.id}
-                className="relative h-full min-h-full w-full snap-start snap-always overflow-hidden bg-black text-white"
+                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${hasMedia ? "bg-black" : "bg-gradient-to-br from-safecrib-green to-black"}`}
               >
-                {(image || listing.video) && (
+                {hasMedia && (
                   <div className="absolute inset-0">
                     {listing.video ? (
                       <ListingCardVideo video={listing.video} poster={image ?? null} fallbackSrc={fallbackImage} alt={listing.title ?? "Listing"} />
@@ -1220,19 +1229,19 @@ export default function DashboardPage() {
                     ) : null}
                   </div>
                 )}
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/45" />
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/50" />
 
-                <div className={`absolute left-16 right-4 z-20 max-w-xl text-white md:left-8 md:right-24 ${infoPosition}`}>
+                <div className={`absolute left-16 right-4 z-20 max-w-xl text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.45)] md:left-24 md:right-8 ${infoPosition}`}>
                   <div className="mb-3 flex items-center gap-3">
                     <ProfileAvatar src={resolvedProviderAvatars[listing.id] ?? null} alt={`${providerName} profile photo`} size="small" />
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
                         <p className="truncate text-sm font-bold">{providerName}</p>
-                        <span title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white shadow-sm">
+                        <span role="img" title={ownerLabel} aria-label={ownerLabel} className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-safecrib-green text-white shadow-sm">
                           <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m4.5 10 3.5 3.5 7.5-7.5" /></svg>
                         </span>
                       </div>
-                      {location && <p className="truncate text-xs text-white/75">{location}</p>}
+                      {location && <p className="truncate text-xs text-white/80">{location}</p>}
                     </div>
                     <div className="relative shrink-0" data-listing-menu-open={openMenuId === listing.id ? "true" : undefined}>
                       <button
@@ -1246,7 +1255,7 @@ export default function DashboardPage() {
                         <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><circle cx="12" cy="5" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="12" cy="19" r="1.7" /></svg>
                       </button>
                       {openMenuId === listing.id && (
-                        <div role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white text-black shadow-[0_18px_45px_rgba(15,23,42,0.25)]">
+                        <div role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-52 overflow-hidden rounded-xl border border-black/10 bg-white text-black shadow-[0_18px_45px_rgba(15,23,42,0.25)] [text-shadow:none]">
                           <Link role="menuitem" href={`/dashboard/listings/${listing.id}`} onClick={() => setOpenMenuId(null)} className="block border-b border-black/5 px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">Open post</Link>
                           {listing.ownerId && <Link role="menuitem" href={`/profile/${encodeURIComponent(listing.ownerId)}`} onClick={() => setOpenMenuId(null)} className="block px-3 py-2.5 text-sm text-black/75 transition hover:bg-black/[0.03]">View provider</Link>}
                         </div>
@@ -1256,13 +1265,13 @@ export default function DashboardPage() {
                   <div className="flex items-end justify-between gap-3">
                     <Link href={`/dashboard/listings/${listing.id}`} className="min-w-0 flex-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
                       <h2 className="line-clamp-2 text-lg font-bold leading-snug text-white hover:underline sm:text-xl">{listing.title ?? "Verified home"}</h2>
-                      {listing.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/85">{listing.description}</p>}
+                      {listing.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/90">{listing.description}</p>}
                     </Link>
-                    <div className="shrink-0 rounded-md bg-white px-2 py-1 text-safecrib-black"><ListingPriceTag listing={listing} /></div>
+                    <div className="shrink-0 rounded-lg bg-white px-2.5 py-1.5 text-safecrib-black shadow-lg [text-shadow:none]"><ListingPriceTag listing={listing} /></div>
                   </div>
                 </div>
 
-                <div className="absolute left-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border border-white/45 bg-white/45 px-1 py-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.22)] backdrop-blur-2xl md:left-6">
+                <div role="group" aria-label="Listing actions" className="absolute left-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border border-white/60 bg-white/60 px-1 py-2 text-black shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-2xl md:left-6">
                   <div className="flex w-10 flex-col items-center">
                     <LikeButton
                       listingId={listing.id}
@@ -1277,7 +1286,7 @@ export default function DashboardPage() {
                       size="md"
                       showLabel={false}
                     />
-                    <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(listing.likeCount ?? 0)}</span>
+                    <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(listing.likeCount ?? 0)}</span>
                   </div>
 
                   <div className="flex w-10 flex-col items-center">
@@ -1288,11 +1297,11 @@ export default function DashboardPage() {
                       aria-expanded={commentsOpen}
                       aria-label={`Comments, ${commentCount}`}
                       title="Comments"
-                      className={`flex h-9 w-10 items-center justify-center rounded-full text-black/70 transition hover:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-white/50 text-safecrib-green" : ""}`}
+                      className={`flex h-9 w-10 items-center justify-center rounded-full text-black/75 transition hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${commentsOpen ? "bg-white/70 text-safecrib-green" : ""}`}
                     >
-                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg>
                     </button>
-                    <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(commentCount)}</span>
+                    <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(commentCount)}</span>
                   </div>
 
                   {listing.ownerId && listing.ownerId !== profile?.id && (
@@ -1307,7 +1316,7 @@ export default function DashboardPage() {
                         size="md"
                         showLabel={false}
                       />
-                      <span className="text-[10px] font-semibold leading-3 text-black/70">{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
+                      <span className="text-[11px] font-semibold leading-3 text-black/75">{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
                     </div>
                   )}
 
@@ -1319,11 +1328,11 @@ export default function DashboardPage() {
                         aria-pressed={isSaved}
                         aria-label={isSaved ? "Remove from saved listings" : "Save listing"}
                         title={isSaved ? "Saved" : "Save"}
-                        className={`flex h-9 w-10 items-center justify-center rounded-full transition hover:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/70"}`}
+                        className={`flex h-9 w-10 items-center justify-center rounded-full transition hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green ${isSaved ? "text-safecrib-green" : "text-black/75"}`}
                       >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
+                        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5L5 21V4.5a1 1 0 0 1 1-1Z" /></svg>
                       </button>
-                      <span className="text-[10px] font-semibold leading-3 text-black/70">{isSaved ? "Saved" : "Save"}</span>
+                      <span className="text-[11px] font-semibold leading-3 text-black/75">{isSaved ? "Saved" : "Save"}</span>
                     </div>
                   )}
                 </div>
