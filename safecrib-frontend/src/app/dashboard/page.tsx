@@ -1649,7 +1649,7 @@ export default function DashboardPage() {
 
   if (dashboardLoading) {
     return (
-      <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden md:pl-72" style={{ backgroundColor: 'var(--theme-bg)' }} aria-busy="true">
+      <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden" style={{ backgroundColor: 'var(--theme-bg)' }} aria-busy="true">
         <FeedStyles />
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
         <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden" aria-label="Loading homes">
@@ -1694,7 +1694,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden md:pl-72" style={{ backgroundColor: 'var(--theme-bg)' }}>
+    <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden" style={{ backgroundColor: 'var(--theme-bg)' }}>
       <FeedStyles />
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden">
