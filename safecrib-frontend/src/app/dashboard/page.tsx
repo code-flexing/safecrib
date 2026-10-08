@@ -103,6 +103,138 @@ export type MentionCandidate = { id: string; displayName?: string | null; userna
 export type StudentProfile = { profilePicture?: string } | null;
 export type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
+/* ---------------------------------------------------------------------------
+ * Feed colors
+ *
+ * The feed always sits on photos/video, so its UI uses ONE fixed, solid dark
+ * palette that never depends on the app theme. Everything is scoped under
+ * `.safecrib-feed` and uses !important so global theme rules (light / dark /
+ * custom) cannot recolor it.
+ *
+ * Contrast (WCAG): #f8fafc on #111318 ≈ 17:1, #cbd5e1 on #09090b ≈ 13:1,
+ * #022c22 on #10b981 ≈ 7:1.
+ * ------------------------------------------------------------------------- */
+const FEED_CSS = `
+.safecrib-feed {
+  --feed-surface: #111318;
+  --feed-surface-hover: #1b1e24;
+  --feed-card: #09090b;
+  --feed-border: #3a3f47;
+  --feed-text: #f8fafc;
+  --feed-muted: #cbd5e1;
+  --feed-accent: #10b981;
+  --feed-accent-hover: #34d399;
+  --feed-on-accent: #022c22;
+  color-scheme: dark;
+}
+
+/* Solid round buttons / pills */
+.safecrib-feed .feed-surface {
+  background: var(--feed-surface) !important;
+  color: var(--feed-text) !important;
+  border: 1px solid var(--feed-border) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.safecrib-feed button.feed-surface:hover,
+.safecrib-feed a.feed-surface:hover { background: var(--feed-surface-hover) !important; }
+.safecrib-feed .feed-surface:focus-within { border-color: #6ee7b7 !important; }
+.safecrib-feed .feed-surface[aria-pressed="true"] { color: #fbbf24 !important; border-color: #b45309 !important; }
+
+/* Small chips inside a surface (e.g. clear-search button) */
+.safecrib-feed .feed-chip {
+  background: #262a31 !important;
+  color: var(--feed-text) !important;
+}
+.safecrib-feed .feed-chip:hover { background: #343942 !important; }
+
+/* Info card */
+.safecrib-feed .feed-card {
+  background: var(--feed-card) !important;
+  color: var(--feed-text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.safecrib-feed .feed-text { color: var(--feed-text) !important; }
+.safecrib-feed .feed-muted { color: var(--feed-muted) !important; }
+.safecrib-feed a.feed-text:hover { color: #6ee7b7 !important; }
+
+/* Primary action: dark text on emerald for real contrast */
+.safecrib-feed .feed-cta {
+  background: var(--feed-accent) !important;
+  color: var(--feed-on-accent) !important;
+}
+.safecrib-feed .feed-cta:hover { background: var(--feed-accent-hover) !important; }
+.safecrib-feed .feed-badge {
+  background: var(--feed-accent) !important;
+  color: var(--feed-on-accent) !important;
+}
+
+/* Counts under the rail sit on the photo, so they get a strong shadow */
+.safecrib-feed .feed-count {
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Search input: immune to global input/theme/autofill styles */
+.safecrib-feed .feed-input {
+  background: transparent !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #6ee7b7;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.safecrib-feed .feed-input::placeholder {
+  color: var(--feed-muted) !important;
+  -webkit-text-fill-color: var(--feed-muted);
+  opacity: 1;
+}
+.safecrib-feed .feed-input:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff;
+  box-shadow: 0 0 0 1000px var(--feed-surface) inset !important;
+}
+
+/* Like / Recommend buttons come from shared components: force the same look */
+.safecrib-feed .dashboard-engagement-shell { border-radius: 9999px; }
+.safecrib-feed .dashboard-engagement-shell button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--feed-border) !important;
+  border-radius: 9999px;
+  color: var(--feed-text) !important;
+  background: var(--feed-surface) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+.safecrib-feed .dashboard-engagement-shell button svg {
+  width: 20px;
+  height: 20px;
+  color: var(--feed-text) !important;
+}
+.safecrib-feed .dashboard-engagement-shell button[aria-label="Unlike"],
+.safecrib-feed .dashboard-engagement-shell button[aria-label="Unlike"] svg { color: #fb7185 !important; }
+.safecrib-feed .dashboard-engagement-shell button[aria-label="Remove recommendation"],
+.safecrib-feed .dashboard-engagement-shell button[aria-label="Remove recommendation"] svg { color: #6ee7b7 !important; }
+.safecrib-feed .dashboard-engagement-shell button:hover { background: var(--feed-surface-hover) !important; }
+
+/* Navigation (sidebar on desktop, bar on mobile): always a solid surface */
+.safecrib-feed :is(nav, aside):not(section *) {
+  background: #0b0d10 !important;
+  border-color: #2a2f37 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+`;
+
+function FeedStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: FEED_CSS }} />;
+}
+
 function accountMessage(status: AccountStatus, action: string) {
   if (status === "pending" || status === "not_submitted")
     return `Your account is still under review. You'll be able to ${action} once it's approved.`;
@@ -183,18 +315,18 @@ function formatEngagementCount(count: number) {
   return String(count);
 }
 
-/* ---------- Price (TikTok style: big bold price, struck-through old price) ---------- */
+/* ---------- Price ---------- */
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
   const isDiscounted = priced && hasDiscount(listing);
   return (
-    <div className="flex min-w-0 items-baseline gap-1.5 [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
-      <span className={`font-display font-extrabold text-white ${priced ? "text-2xl" : "text-sm font-semibold"}`}>
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+      <span className={`feed-text font-display font-extrabold ${priced ? "text-xl" : "text-sm font-semibold"}`}>
         {formatListingPrice(listing)}
       </span>
-      {priced && <span className="text-xs font-medium text-white/80">/ yr</span>}
+      {priced && <span className="feed-muted text-xs font-medium">/ yr</span>}
       {isDiscounted && (
-        <span className="text-xs font-medium text-white/80 line-through">{formatOriginalPrice(listing)}</span>
+        <span className="feed-muted text-xs font-medium line-through">{formatOriginalPrice(listing)}</span>
       )}
     </div>
   );
@@ -366,7 +498,7 @@ function ListingCardVideo({
           />
           {showPlayIcon && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center animate-out fade-out duration-500">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-black/60 text-white shadow-2xl backdrop-blur-md">
+              <div className="feed-surface flex h-20 w-20 items-center justify-center rounded-full">
                 <Icon name={isPlaying ? "play" : "pause"} className="h-10 w-10 fill-current" />
               </div>
             </div>
@@ -378,7 +510,7 @@ function ListingCardVideo({
         <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5" />
       )}
 
-      {/* Audio toggle (quieter placement) */}
+      {/* Audio toggle */}
       {videoUrl && !videoFailed && (
         <div className="absolute right-3 top-20 z-40 transition-transform active:scale-95">
           <button
@@ -386,7 +518,7 @@ function ListingCardVideo({
             onClick={() => setIsMuted((muted) => !muted)}
             aria-label={isMuted ? "Unmute video" : "Mute video"}
             title={isMuted ? "Unmute sound" : "Mute sound"}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="feed-surface flex h-9 w-9 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
           >
             <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
           </button>
@@ -694,11 +826,12 @@ type ListingActionTrayProps = {
   onCloseMenu: () => void;
 };
 
-const railText = "text-[12px] font-semibold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]";
+/* 36px solid buttons (was 40px) */
 const railBtn =
-  "flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#111318] text-white shadow-[0_3px_12px_rgba(0,0,0,0.5)] transition-colors hover:bg-[#1B1E24] active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300";
+  "feed-surface flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300";
+const railCount = "feed-count text-[11px] font-semibold leading-none";
 
-/* ---------- Right-hand icon rail (TikTok style: bare icons + counts) ---------- */
+/* ---------- Right-hand engagement rail ---------- */
 function ListingActionTray({
   listing,
   isSaved,
@@ -752,7 +885,7 @@ function ListingActionTray({
   return (
     <div
       ref={rootRef}
-      className="relative flex select-none flex-col items-center gap-4"
+      className="relative flex select-none flex-col items-center gap-3"
       data-listing-menu-open={menuOpen ? "true" : undefined}
     >
       {/* Host avatar with "+" badge */}
@@ -760,9 +893,9 @@ function ListingActionTray({
         <Link
           href={`/profile/${encodeURIComponent(listing.ownerId)}`}
           aria-label="View provider profile"
-          className="relative mb-2 block h-10 w-10 transition-transform active:scale-90"
+          className="relative mb-1.5 block h-9 w-9 transition-transform active:scale-90"
         >
-          <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-lg">
+          <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white shadow-lg">
             <ProfileAvatar
               src={listing.owner?.profilePicture ?? null}
               seed={listing.ownerId}
@@ -773,7 +906,7 @@ function ListingActionTray({
           </span>
           <span
             aria-hidden="true"
-            className="absolute -bottom-2 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-500 text-[14px] font-bold leading-none text-white"
+            className="feed-badge absolute -bottom-2 left-1/2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full text-[12px] font-bold leading-none"
           >
             +
           </span>
@@ -781,8 +914,8 @@ function ListingActionTray({
       )}
 
       {/* Like */}
-      <div className="flex flex-col items-center gap-0.5">
-        <div className="dashboard-engagement-shell drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
+      <div className="flex flex-col items-center gap-1">
+        <div className="dashboard-engagement-shell transition-transform active:scale-90">
           <LikeButton
             listingId={listing.id}
             initialLikeCount={listing.likeCount ?? 0}
@@ -792,26 +925,26 @@ function ListingActionTray({
             showLabel={false}
           />
         </div>
-        <span className={railText}>{formatEngagementCount(listing.likeCount ?? 0)}</span>
+        <span className={railCount}>{formatEngagementCount(listing.likeCount ?? 0)}</span>
       </div>
 
       {/* Comments */}
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="flex flex-col items-center gap-1">
         <button
           type="button"
           onClick={onComment}
           aria-label={`Open comments, ${commentCount} total`}
           className={railBtn}
         >
-          <Icon name="message-circle" className="h-7 w-7 fill-white/90 stroke-none" />
+          <Icon name="message-circle" className="h-5 w-5" />
         </button>
-        <span className={railText}>{formatEngagementCount(commentCount)}</span>
+        <span className={railCount}>{formatEngagementCount(commentCount)}</span>
       </div>
 
       {/* Recommend (trust) */}
       {listing.ownerId && canRecommend && (
-        <div className="flex flex-col items-center gap-0.5">
-          <div className="dashboard-engagement-shell drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
+        <div className="flex flex-col items-center gap-1">
+          <div className="dashboard-engagement-shell transition-transform active:scale-90">
             <RecommendButton
               providerId={listing.ownerId}
               initialRecommendationCount={listing.providerRecommendationCount ?? 0}
@@ -823,13 +956,13 @@ function ListingActionTray({
               showLabel={false}
             />
           </div>
-          <span className={railText}>{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
+          <span className={railCount}>{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
         </div>
       )}
 
       {/* Save */}
       {isStudent && (
-        <div className="flex flex-col items-center gap-0.5">
+        <div className="flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={onSave}
@@ -837,21 +970,18 @@ function ListingActionTray({
             aria-label={isSaved ? "Remove from bookmarks" : "Save to bookmarks"}
             className={railBtn}
           >
-            <Icon
-              name="bookmark"
-              className={`h-7 w-7 ${isSaved ? "fill-amber-400 text-amber-400" : "fill-white/90 stroke-none"}`}
-            />
+            <Icon name="bookmark" className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`} />
           </button>
-          <span className={railText}>{isSaved ? "Saved" : "Save"}</span>
+          <span className={railCount}>{isSaved ? "Saved" : "Save"}</span>
         </div>
       )}
 
       {/* Share = copy link */}
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="flex flex-col items-center gap-1">
         <button type="button" onClick={() => void copyListingLink()} aria-label="Copy link" className={railBtn}>
-          <Icon name="share-2" className="h-7 w-7" />
+          <Icon name="share-2" className="h-5 w-5" />
         </button>
-        <span className={railText}>{copied ? "Copied" : "Share"}</span>
+        <span className={railCount}>{copied ? "Copied" : "Share"}</span>
       </div>
 
       {/* More */}
@@ -864,19 +994,19 @@ function ListingActionTray({
           aria-expanded={menuOpen}
           className={railBtn}
         >
-          <Icon name="more-horizontal" className="h-6 w-6" />
+          <Icon name="more-horizontal" className="h-5 w-5" />
         </button>
 
         {menuOpen && (
           <div
             role="menu"
-            className="absolute bottom-0 right-12 z-50 w-44 overflow-hidden rounded-xl bg-neutral-900/95 p-1 text-white shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+            className="feed-surface absolute bottom-0 right-11 z-50 w-44 overflow-hidden rounded-xl p-1 animate-in fade-in zoom-in-95 duration-150"
           >
             <Link
               role="menuitem"
               href={`/dashboard/listings/${listing.id}`}
               onClick={onCloseMenu}
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
+              className="feed-text flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
             >
               <Icon name="external-link" className="h-4 w-4" />
               Open post
@@ -886,7 +1016,7 @@ function ListingActionTray({
                 role="menuitem"
                 href={`/profile/${encodeURIComponent(listing.ownerId)}`}
                 onClick={onCloseMenu}
-                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
+                className="feed-text flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
               >
                 <Icon name="user" className="h-4 w-4" />
                 View provider
@@ -1484,7 +1614,8 @@ export default function DashboardPage() {
 
   if (dashboardLoading) {
     return (
-      <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" aria-busy="true">
+      <main className="safecrib-feed relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" style={{ colorScheme: "dark" }} aria-busy="true">
+        <FeedStyles />
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
           {/* Top bar skeleton */}
@@ -1494,10 +1625,13 @@ export default function DashboardPage() {
             <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
           </div>
 
-          {/* Bottom text + icon rail skeleton */}
-          <div className="absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
-            <div className="min-w-0 flex-1 space-y-2.5">
-              <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
+          {/* Bottom card + rail skeleton */}
+          <div className="absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+            <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-white/10 bg-[#09090b] p-3">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
+                <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
+              </div>
               <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/20" />
               <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
               <div className="flex items-center justify-between pt-2">
@@ -1505,11 +1639,11 @@ export default function DashboardPage() {
                 <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
               </div>
             </div>
-            <div className="flex flex-col items-center gap-5 pb-1">
-              <div className="h-12 w-12 animate-pulse rounded-full bg-white/10" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+            <div className="flex -translate-y-8 flex-col items-center gap-4">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
             </div>
           </div>
         </section>
@@ -1523,41 +1657,12 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72" style={{ colorScheme: "dark" }}>
+    <main className="safecrib-feed relative h-[100dvh] overflow-hidden bg-black md:pl-72" style={{ colorScheme: "dark" }}>
+      <FeedStyles />
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        <style jsx global>{`
-          .dashboard-engagement-shell {
-            border-radius: 9999px;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
-          }
-          .dashboard-engagement-shell button {
-            width: 40px;
-            height: 40px;
-            min-height: 40px;
-            padding: 0;
-            border: 1px solid #454951;
-            border-radius: 9999px;
-            color: #f8fafc !important;
-            background: #111318 !important;
-          }
-          .dashboard-engagement-shell button svg {
-            color: #f8fafc !important;
-          }
-          .dashboard-engagement-shell button[aria-label="Unlike"],
-          .dashboard-engagement-shell button[aria-label="Unlike"] svg {
-            color: #fb7185 !important;
-          }
-          .dashboard-engagement-shell button[aria-label="Remove recommendation"],
-          .dashboard-engagement-shell button[aria-label="Remove recommendation"] svg {
-            color: #6ee7b7 !important;
-          }
-          .dashboard-engagement-shell button:hover {
-            background: #1b1e24 !important;
-          }
-        `}</style>
         {/* Top bar: avatar | For You | search */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/60 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/70 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div className="pointer-events-auto mx-auto flex h-11 max-w-xl items-center justify-between gap-3 px-4">
             {searchOpen ? (
               <form
@@ -1566,9 +1671,9 @@ export default function DashboardPage() {
                   event.preventDefault();
                   submitSearch();
                 }}
-                className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-white/20 bg-[#111318] pl-4 pr-1.5 text-white shadow-lg focus-within:border-emerald-300"
+                className="feed-surface flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full pl-4 pr-1.5"
               >
-                <Icon name="search" className="h-4 w-4 shrink-0 text-white/85" />
+                <Icon name="search" className="h-4 w-4 shrink-0" />
                 <input
                   autoFocus
                   type="search"
@@ -1577,7 +1682,7 @@ export default function DashboardPage() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search cribs, campus, host"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/70 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  className="feed-input min-w-0 flex-1 text-sm [&::-webkit-search-cancel-button]:hidden"
                 />
                 <button
                   type="button"
@@ -1586,7 +1691,7 @@ export default function DashboardPage() {
                     setSearchOpen(false);
                   }}
                   aria-label="Close search"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#262A31] text-white hover:bg-[#343942]"
+                  className="feed-chip flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
                 >
                   <Icon name="x" className="h-4 w-4" />
                 </button>
@@ -1597,7 +1702,7 @@ export default function DashboardPage() {
                   href="/profile"
                   aria-label="View your profile"
                   title={accountName || "Your Profile"}
-                  className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white/70 shadow-lg active:scale-95"
+                  className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white/80 shadow-lg active:scale-95"
                 >
                   <ProfileAvatar
                     src={profileImage}
@@ -1608,7 +1713,7 @@ export default function DashboardPage() {
                   />
                 </Link>
 
-                <h1 className="relative text-[17px] font-bold text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
+                <h1 className="feed-count relative text-[17px] font-bold">
                   For You
                   <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-white" />
                 </h1>
@@ -1617,9 +1722,9 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => setSearchOpen(true)}
                   aria-label="Search"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#111318] text-white shadow-lg active:scale-90"
+                  className="feed-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-full active:scale-90"
                 >
-                  <Icon name="search" className="h-6 w-6" />
+                  <Icon name="search" className="h-5 w-5" />
                 </button>
               </>
             )}
@@ -1629,19 +1734,19 @@ export default function DashboardPage() {
         {/* Empty state when no listings exist */}
         {listings.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-950 px-6 pb-12 pt-28 text-center" aria-label="No listings available">
-            <div className="flex max-w-sm flex-col items-center rounded-3xl border border-white/10 bg-white/[0.03] p-8 shadow-2xl backdrop-blur-2xl">
+            <div className="feed-card flex max-w-sm flex-col items-center rounded-3xl p-8 shadow-2xl">
               <EmptyListingsIllustration />
-              <h2 className="mt-5 font-display text-xl font-bold text-white">No homes listed yet</h2>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-400">
+              <h2 className="feed-text mt-5 font-display text-xl font-bold">No homes listed yet</h2>
+              <p className="feed-muted mt-2 text-sm leading-relaxed">
                 Verified student accommodation and listings from trusted landlords will show up here as soon as they go live.
               </p>
-              <Button
+              <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="mt-6 rounded-full bg-emerald-500 px-6 font-semibold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600"
+                className="feed-cta mt-6 inline-flex h-10 items-center rounded-full px-6 text-sm font-bold transition active:scale-95"
               >
                 Refresh feed
-              </Button>
+              </button>
             </div>
           </div>
         )}
@@ -1661,7 +1766,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => void refreshFeed()}
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-[0_10px_25px_rgba(16,185,129,0.4)] backdrop-blur-md transition hover:scale-105 hover:bg-emerald-600 active:scale-95"
+                className="feed-cta pointer-events-auto inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-[0_10px_25px_rgba(16,185,129,0.4)] transition hover:scale-105 active:scale-95"
                 aria-live="polite"
               >
                 <Icon name="arrow-up" className="h-3.5 w-3.5 animate-bounce" />
@@ -1733,57 +1838,57 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Bottom UI: listing details on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
-                  {/* Left: provider and listing details */}
-                  <div className="pointer-events-auto min-w-0 flex-1 rounded-xl border border-white/10 bg-[#09090B] p-3 text-white shadow-xl">
-                    {/* Host name + verified tick */}
-                    <div className="flex min-w-0 items-center gap-2">
-                      {listing.ownerId && (
+                {/* Bottom UI: listing card on the left, engagement rail on the right */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+                  {/* Left: everything starts at the same left edge */}
+                  <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left shadow-xl">
+                    {/* Row 1: avatar + name */}
+                    <div className="flex min-w-0 items-center justify-start gap-2">
+                      {listing.ownerId ? (
                         <Link
                           href={`/profile/${encodeURIComponent(listing.ownerId)}`}
                           aria-label="View provider profile"
                           className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/30"
                         >
                           <ProfileAvatar
-                            src={listing.owner?.profilePicture ?? null}
+                            src={resolvedProviderAvatars[listing.id] ?? listing.owner?.profilePicture ?? null}
                             seed={listing.ownerId}
                             alt={`${providerName} avatar`}
                             size="small"
                             className="h-full w-full object-cover"
                           />
                         </Link>
-                      )}
+                      ) : null}
                       <div className="flex min-w-0 items-center gap-1.5">
-                      <Link
-                        href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
-                        className="truncate text-[15px] font-bold text-white hover:underline"
-                      >
-                        {providerName}
-                      </Link>
-                      <span
-                        title="Verified Host"
-                        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
-                      >
-                        <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
-                      </span>
+                        <Link
+                          href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
+                          className="feed-text truncate text-[15px] font-bold"
+                        >
+                          {providerName}
+                        </Link>
+                        <span
+                          title="Verified Host"
+                          className="feed-badge inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                        >
+                          <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                        </span>
                       </div>
                     </div>
 
-                    {/* Caption: title + short description */}
-                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1 block">
-                      <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug text-white">
+                    {/* Row 2: title + description underneath, same left edge as the avatar */}
+                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-2 block">
+                      <h2 className="feed-text line-clamp-2 text-left text-[15px] font-semibold leading-snug">
                         {listing.title ?? "Verified Campus Home"}
                       </h2>
                     </Link>
                     {listing.description && (
-                      <p className="mt-0.5 text-sm leading-snug text-white/90">
+                      <p className="feed-muted mt-0.5 text-left text-sm leading-snug">
                         <span className={isDescExpanded ? "" : "line-clamp-1"}>{listing.description}</span>
                         {listing.description.length > 60 && (
                           <button
                             type="button"
                             onClick={() => toggleDescriptionExpand(listing.id)}
-                            className="mt-0.5 text-sm font-semibold text-white/70 hover:text-white"
+                            className="feed-text mt-0.5 text-sm font-semibold underline-offset-2 hover:underline"
                           >
                             {isDescExpanded ? "less" : "more"}
                           </button>
@@ -1791,9 +1896,9 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    {/* Location, styled like TikTok's sound row */}
+                    {/* Location */}
                     {location && (
-                      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/90">
+                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-sm font-medium">
                         <Icon name="map-pin" className="h-4 w-4 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
@@ -1804,15 +1909,15 @@ export default function DashboardPage() {
                       <ListingPriceTag listing={listing} />
                       <Link
                         href={`/dashboard/listings/${listing.id}`}
-                        className="inline-flex h-9 shrink-0 items-center rounded-md bg-emerald-500 px-4 text-sm font-bold text-white transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95 [text-shadow:none]"
+                        className="feed-cta inline-flex h-9 shrink-0 items-center rounded-md px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
                       >
                         View crib
                       </Link>
                     </div>
                   </div>
 
-                  {/* Right: bare icon rail */}
-                  <div className="pointer-events-auto -translate-y-3">
+                  {/* Right: engagement rail, raised above the card's bottom edge */}
+                  <div className="pointer-events-auto -translate-y-8">
                     <ListingActionTray
                       listing={listing}
                       isOpen={openActionTrayId === listing.id}
