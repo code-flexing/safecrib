@@ -1677,7 +1677,7 @@ export default function DashboardPage() {
         </section>
       </main>
     );
-  }
+  } 
 
   const submitSearch = () => {
     const query = searchQuery.trim();
