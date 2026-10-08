@@ -760,9 +760,9 @@ function ListingActionTray({
         <Link
           href={`/profile/${encodeURIComponent(listing.ownerId)}`}
           aria-label="View provider profile"
-          className="relative mb-2 block h-12 w-12 transition-transform active:scale-90"
+          className="relative mb-2 block h-10 w-10 transition-transform active:scale-90"
         >
-          <span className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white shadow-lg">
+          <span className="block h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-lg">
             <ProfileAvatar
               src={listing.owner?.profilePicture ?? null}
               seed={listing.ownerId}
@@ -803,7 +803,7 @@ function ListingActionTray({
           aria-label={`Open comments, ${commentCount} total`}
           className={railBtn}
         >
-          <Icon name="message-circle" className="h-8 w-8 fill-white/90 stroke-none" />
+          <Icon name="message-circle" className="h-7 w-7 fill-white/90 stroke-none" />
         </button>
         <span className={railText}>{formatEngagementCount(commentCount)}</span>
       </div>
@@ -839,7 +839,7 @@ function ListingActionTray({
           >
             <Icon
               name="bookmark"
-              className={`h-8 w-8 ${isSaved ? "fill-amber-400 text-amber-400" : "fill-white/90 stroke-none"}`}
+              className={`h-7 w-7 ${isSaved ? "fill-amber-400 text-amber-400" : "fill-white/90 stroke-none"}`}
             />
           </button>
           <span className={railText}>{isSaved ? "Saved" : "Save"}</span>
@@ -1532,9 +1532,9 @@ export default function DashboardPage() {
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
           }
           .dashboard-engagement-shell button {
-            width: 44px;
-            height: 44px;
-            min-height: 44px;
+            width: 40px;
+            height: 40px;
+            min-height: 40px;
             padding: 0;
             border: 1px solid #454951;
             border-radius: 9999px;
@@ -1733,12 +1733,28 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Bottom UI: text on the left, icon rail on the right */}
+                {/* Bottom UI: listing details on the left, engagement rail on the right */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
-                  {/* Left: plain text over the media, no card */}
+                  {/* Left: provider and listing details */}
                   <div className="pointer-events-auto min-w-0 flex-1 rounded-xl border border-white/10 bg-[#09090B] p-3 text-white shadow-xl">
                     {/* Host name + verified tick */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {listing.ownerId && (
+                        <Link
+                          href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+                          aria-label="View provider profile"
+                          className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/30"
+                        >
+                          <ProfileAvatar
+                            src={listing.owner?.profilePicture ?? null}
+                            seed={listing.ownerId}
+                            alt={`${providerName} avatar`}
+                            size="small"
+                            className="h-full w-full object-cover"
+                          />
+                        </Link>
+                      )}
+                      <div className="flex min-w-0 items-center gap-1.5">
                       <Link
                         href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
                         className="truncate text-[15px] font-bold text-white hover:underline"
@@ -1751,6 +1767,7 @@ export default function DashboardPage() {
                       >
                         <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
                       </span>
+                      </div>
                     </div>
 
                     {/* Caption: title + short description */}
@@ -1795,7 +1812,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Right: bare icon rail */}
-                  <div className="pointer-events-auto">
+                  <div className="pointer-events-auto -translate-y-3">
                     <ListingActionTray
                       listing={listing}
                       isOpen={openActionTrayId === listing.id}
