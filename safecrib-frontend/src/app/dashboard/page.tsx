@@ -1010,6 +1010,26 @@ function ListingActionTray({
 
 export default function DashboardPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!themeColor) return;
+
+    const dashboardColor = "#09090B";
+    const keepDashboardColor = () => {
+      if (themeColor.content !== dashboardColor) themeColor.content = dashboardColor;
+    };
+    keepDashboardColor();
+    const observer = new MutationObserver(keepDashboardColor);
+    observer.observe(themeColor, { attributes: true, attributeFilter: ["content"] });
+
+    return () => {
+      observer.disconnect();
+      const theme = document.documentElement.dataset.theme;
+      themeColor.content = theme === "dim" ? "#0C1830" : theme === "dark" ? "#000000" : "#FFFFFF";
+    };
+  }, []);
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("not_submitted");
   const [pageStatus, setPageStatus] = useState<PageStatus>("none");
