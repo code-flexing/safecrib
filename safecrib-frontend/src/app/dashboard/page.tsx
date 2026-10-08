@@ -1649,11 +1649,11 @@ export default function DashboardPage() {
 
   if (dashboardLoading) {
     return (
-      <main className="safecrib-feed relative h-[100dvh] overflow-hidden md:pl-72" aria-busy="true">
+      <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden md:pl-72" style={{ backgroundColor: 'var(--theme-bg)' }} aria-busy="true">
         <FeedStyles />
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
-        <section className="relative h-full w-full max-w-full flex justify-center min-w-0 overflow-x-hidden" aria-label="Loading homes">
-          <div className="relative w-full max-w-[480px] h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] rounded-none overflow-hidden bg-neutral-950 md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
+        <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden" aria-label="Loading homes">
+          <div className="relative w-full max-w-[480px] h-[calc(100dvh-48px)] max-h-[calc(100dvh-48px)] rounded-none overflow-hidden bg-neutral-950 md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
             {/* Top bar skeleton */}
             <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
               <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
@@ -1694,11 +1694,11 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="safecrib-feed relative h-[100dvh] overflow-hidden md:pl-72">
+    <main className="safecrib-feed relative min-h-[100dvh] overflow-x-hidden md:pl-72" style={{ backgroundColor: 'var(--theme-bg)' }}>
       <FeedStyles />
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
-      <section className="relative h-full w-full max-w-full flex justify-center min-w-0 overflow-x-hidden">
-        <div className="relative w-full max-w-[480px] h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] rounded-none overflow-hidden bg-neutral-950 md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
+      <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden">
+        <div className="relative w-full max-w-[480px] h-[calc(100dvh-48px)] max-h-[calc(100dvh-48px)] rounded-none overflow-hidden bg-neutral-950 md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
         {/* Top bar: avatar | For You | search */}
         <div className="pointer-events-none absolute inset-x-4 top-4 z-40">
           <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
