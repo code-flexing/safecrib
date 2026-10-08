@@ -29,12 +29,12 @@ type NavUser = { id?: string; email?: string; displayName?: unknown; role?: stri
 function iconLinkClass(active: boolean, desktopVertical = false, darkMode = false) {
   if (desktopVertical) {
     if (darkMode) {
-      return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "bg-[#0C7355]/18 text-white shadow-[0_0_0_1px_rgba(12,115,85,0.22)]" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
+      return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "bg-[#12382D] text-white shadow-[0_0_0_1px_rgba(52,211,153,0.28)]" : "text-white/75 hover:bg-[#17191D] hover:text-white"}`;
     }
     return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "bg-black/[0.04] text-safecrib-black shadow-[0_0_0_1px_rgba(15,23,42,0.04)]" : "text-black/70 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
   }
   if (darkMode) {
-    return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "border-[#0C7355]/35 bg-[#0C7355]/15 text-white shadow-[0_0_0_1px_rgba(12,115,85,0.22)] scale-[1.02]" : "border-transparent text-white/70 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/5 hover:text-white"}`;
+    return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "border-emerald-400/30 bg-[#12382D] text-white shadow-[0_0_0_1px_rgba(52,211,153,0.28)] scale-[1.02]" : "border-transparent text-white/75 hover:-translate-y-0.5 hover:border-white/10 hover:bg-[#17191D] hover:text-white"}`;
   }
   return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green shadow-[0_0_0_1px_rgba(12,115,85,0.08)] scale-[1.02]" : "border-transparent text-black/60 hover:-translate-y-0.5 hover:border-black/10 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
 }
@@ -213,10 +213,10 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
 
   return (
     <>
-      <header className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)] ${darkMode ? "md:border-white/10 md:bg-[#09090B]/95 md:text-white" : "md:border-black/10 md:bg-white md:text-safecrib-black"}`}>
+      <header className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)] ${darkMode ? "md:border-white/10 md:bg-[#09090B] md:text-white" : "md:border-black/10 md:bg-white md:text-safecrib-black"}`}>
         <div className="flex h-full flex-col px-4 py-5">
           <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="mb-6 flex items-center gap-2 px-2">
-            <SafeCribLogo height={32} href={false} />
+            <SafeCribLogo height={32} href={false} inverse={darkMode} />
           </Link>
 
           <nav aria-label="Desktop dashboard navigation" className="flex flex-1 flex-col gap-1.5">
@@ -250,9 +250,9 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           </Link>
         </div>
       </header>
-      <div className={`fixed inset-x-0 top-0 z-40 border-b px-4 pb-2 pt-3 backdrop-blur-md md:hidden ${darkMode ? "border-white/10 bg-black/90" : "border-black/10 bg-white/90"}`} />
+      <div className={`fixed inset-x-0 top-0 z-40 border-b px-4 pb-2 pt-3 md:hidden ${darkMode ? "border-white/10 bg-[#09090B]" : "border-black/10 bg-white/90 backdrop-blur-md"}`} />
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
-        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.12)] backdrop-blur-2xl ${darkMode ? "border-white/10 bg-black/80" : "border-black/10 bg-white/25"}`}>
+        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.32)] ${darkMode ? "border-white/10 bg-[#09090B]" : "border-black/10 bg-white/25 backdrop-blur-2xl"}`}>
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/dashboard" ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="home" className="h-5 w-5" /></Link>
           <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/support") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
           <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/notifications") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>

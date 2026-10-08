@@ -696,7 +696,7 @@ type ListingActionTrayProps = {
 
 const railText = "text-[12px] font-semibold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]";
 const railBtn =
-  "flex h-10 w-10 items-center justify-center rounded-full text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white";
+  "flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#111318] text-white shadow-[0_3px_12px_rgba(0,0,0,0.5)] transition-colors hover:bg-[#1B1E24] active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300";
 
 /* ---------- Right-hand icon rail (TikTok style: bare icons + counts) ---------- */
 function ListingActionTray({
@@ -1526,35 +1526,34 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        <style jsx>{`
+        <style jsx global>{`
           .dashboard-engagement-shell {
-            background: rgba(12, 12, 14, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+            border-radius: 9999px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
           }
           .dashboard-engagement-shell button {
-            color: rgba(255, 255, 255, 0.9) !important;
-            background: transparent !important;
+            width: 44px;
+            height: 44px;
+            min-height: 44px;
+            padding: 0;
+            border: 1px solid #454951;
+            border-radius: 9999px;
+            color: #f8fafc !important;
+            background: #111318 !important;
           }
-          .dashboard-engagement-shell button svg,
-          .dashboard-engagement-shell button path,
-          .dashboard-engagement-shell button span {
-            color: rgba(255, 255, 255, 0.95) !important;
-            fill: rgba(255, 255, 255, 0.95) !important;
-            stroke: rgba(255, 255, 255, 0.95) !important;
+          .dashboard-engagement-shell button svg {
+            color: #f8fafc !important;
           }
-          .dashboard-engagement-shell button[aria-pressed="true"] {
-            color: #a7f3d0 !important;
+          .dashboard-engagement-shell button[aria-label="Unlike"],
+          .dashboard-engagement-shell button[aria-label="Unlike"] svg {
+            color: #fb7185 !important;
           }
-          .dashboard-engagement-shell button[aria-pressed="true"] svg,
-          .dashboard-engagement-shell button[aria-pressed="true"] path,
-          .dashboard-engagement-shell button[aria-pressed="true"] span {
-            color: #a7f3d0 !important;
-            fill: #a7f3d0 !important;
-            stroke: #a7f3d0 !important;
+          .dashboard-engagement-shell button[aria-label="Remove recommendation"],
+          .dashboard-engagement-shell button[aria-label="Remove recommendation"] svg {
+            color: #6ee7b7 !important;
           }
           .dashboard-engagement-shell button:hover {
-            background: rgba(255, 255, 255, 0.06) !important;
+            background: #1b1e24 !important;
           }
         `}</style>
         {/* Top bar: avatar | For You | search */}
@@ -1567,9 +1566,9 @@ export default function DashboardPage() {
                   event.preventDefault();
                   submitSearch();
                 }}
-                className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-white/15 pl-4 pr-1.5 text-white backdrop-blur-xl focus-within:bg-white/25"
+                className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-white/20 bg-[#111318] pl-4 pr-1.5 text-white shadow-lg focus-within:border-emerald-300"
               >
-                <Icon name="search" className="h-4 w-4 shrink-0 text-white/70" />
+                <Icon name="search" className="h-4 w-4 shrink-0 text-white/85" />
                 <input
                   autoFocus
                   type="search"
@@ -1578,7 +1577,7 @@ export default function DashboardPage() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search cribs, campus, host"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/70 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
                 />
                 <button
                   type="button"
@@ -1587,7 +1586,7 @@ export default function DashboardPage() {
                     setSearchOpen(false);
                   }}
                   aria-label="Close search"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/10"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#262A31] text-white hover:bg-[#343942]"
                 >
                   <Icon name="x" className="h-4 w-4" />
                 </button>
@@ -1618,7 +1617,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => setSearchOpen(true)}
                   aria-label="Search"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] active:scale-90"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#111318] text-white shadow-lg active:scale-90"
                 >
                   <Icon name="search" className="h-6 w-6" />
                 </button>
@@ -1737,7 +1736,7 @@ export default function DashboardPage() {
                 {/* Bottom UI: text on the left, icon rail on the right */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
                   {/* Left: plain text over the media, no card */}
-                  <div className="pointer-events-auto min-w-0 flex-1 pb-1 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">
+                  <div className="pointer-events-auto min-w-0 flex-1 rounded-xl border border-white/10 bg-[#09090B] p-3 text-white shadow-xl">
                     {/* Host name + verified tick */}
                     <div className="flex items-center gap-1.5">
                       <Link
