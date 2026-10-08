@@ -210,7 +210,7 @@ export class ListingsService {
     return response;
   }
 
-  async searchListings(dto: SearchListingsDto, viewerId?: string): Promise<ListingResponse[]> {
+  async searchListings(dto: SearchListingsDto, viewerId?: string): Promise<{ items: ListingResponse[]; nextCursor: string | null }> {
     const where: any = {
       status: 'VERIFIED',
     };
@@ -243,13 +243,38 @@ export class ListingsService {
       ];
     }
 
+    const take = dto.take !== undefined ? Math.min(dto.take, 50) : 15;
+
+    let cursorWhere: any = {};
+    if (dto.cursor) {
+      try {
+        const decoded = JSON.parse(Buffer.from(dto.cursor, 'base64').toString());
+        if (decoded.createdAt && decoded.id) {
+          cursorWhere = {
+            OR: [
+              { createdAt: { lt: new Date(decoded.createdAt) } },
+              { createdAt: new Date(decoded.createdAt), id: { lt: decoded.id } },
+            ],
+          };
+        }
+      } catch {
+        // Invalid cursor, ignore
+      }
+    }
+
     const listings = await this.prisma.listing.findMany({
-      where,
+      where: { ...where, ...cursorWhere },
       include: this.listingInclude(viewerId),
-      orderBy: { createdAt: 'desc' },
-      take: dto.limit !== undefined ? Math.min(dto.limit, 100) : 50,
-      skip: dto.offset ?? 0,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: take + 1, // Fetch one extra to detect if there's a next page
     });
+
+    let nextCursor: string | null = null;
+    if (listings.length > take) {
+      const lastItem = listings[take - 1];
+      nextCursor = Buffer.from(JSON.stringify({ createdAt: lastItem.createdAt.toISOString(), id: lastItem.id })).toString('base64');
+      listings.pop(); // Remove the extra item
+    }
 
     const responses = listings.map((l) => this.toResponse(l, l.photos));
     const signals = await this.getProviderRankingSignals([...new Set(responses.map((listing) => listing.ownerId))]);
@@ -261,11 +286,14 @@ export class ListingsService {
       listing.providerRecommendationCount = signal.recommendationCount;
       listing.recommendationScore = signal.recommendationScore;
     }
-    return responses.sort((a, b) =>
-      Number(b.followedPage) - Number(a.followedPage) ||
-      b.recommendationScore - a.recommendationScore ||
-      b.createdAt.getTime() - a.createdAt.getTime(),
-    );
+    return {
+      items: responses.sort((a, b) =>
+        Number(b.followedPage) - Number(a.followedPage) ||
+        b.recommendationScore - a.recommendationScore ||
+        b.createdAt.getTime() - a.createdAt.getTime(),
+      ),
+      nextCursor,
+    };
   }
 
   async getMyListings(userId: string): Promise<ListingResponse[]> {
@@ -727,8 +755,12 @@ export class ListingsService {
 
   private listingInclude(viewerId?: string): Prisma.ListingInclude {
     return {
-      photos: true,
-      video: { include: { media: { select: { id: true, durationSec: true } } } },
+      photos: {
+        include: {
+          media: { select: { id: true, width: true, height: true } },
+        },
+      },
+      video: { include: { media: { select: { id: true, durationSec: true, width: true, height: true } } } },
       _count: { select: { likes: true, views: true, comments: true, bookmarks: true } },
       owner: {
         select: {
@@ -829,11 +861,15 @@ export class ListingsService {
         mediaId: p.mediaId ?? null,
         url: p.url,
         phash: p.phash,
+        width: p.media?.width ?? null,
+        height: p.media?.height ?? null,
       })),
       video: listing.video
         ? {
             mediaId: listing.video.mediaId,
             durationSec: listing.video.media?.durationSec ?? null,
+            width: listing.video.media?.width ?? null,
+            height: listing.video.media?.height ?? null,
           }
         : null,
       createdAt: listing.createdAt,

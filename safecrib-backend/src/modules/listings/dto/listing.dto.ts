@@ -167,32 +167,16 @@ export class SearchListingsDto {
   @Min(0)
   minPrice?: number;
 
-  @ApiPropertyOptional({ example: 20, description: 'Max results to return (default 50, max 100)' })
+  @ApiPropertyOptional({ example: 15, description: 'Max results to return (default 15, max 50)' })
   @IsOptional()
   @IsInt()
   @Min(1)
-  limit?: number;
+  take?: number;
 
-  @ApiPropertyOptional({ example: 0, description: 'Number of results to skip (cursor-based pagination)' })
+  @ApiPropertyOptional({ example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTE1VDAwOjAwOjAwLjAwMFoiLCJpZCI6ImFiYzEyMyJ9', description: 'Base64-encoded cursor for pagination (from previous response nextCursor)' })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  offset?: number;
-}
-
-export class ListingPhotoDto {
-  id?: string;
-
-  mediaId?: string | null;
-
-  @ApiProperty({ example: 'https://res.cloudinary.com/.../photo.jpg' })
   @IsString()
-  @MinLength(1)
-  url: string;
-
-  @ApiProperty({ example: 'a1b2c3d4e5f6...' })
-  @IsString()
-  phash: string;
+  cursor?: string;
 }
 
 export class AttachListingMediaDto {
@@ -272,8 +256,15 @@ export interface ListingResponse {
   recommendationScore: number;
   viewCount: number;
   followedPage: boolean;
-  photos: ListingPhotoDto[];
-  video: { mediaId: string; durationSec: number | null } | null;
+  photos: Array<{
+    id: string;
+    mediaId: string | null;
+    url: string;
+    phash: string;
+    width: number | null;
+    height: number | null;
+  }>;
+  video: { mediaId: string; durationSec: number | null; width: number | null; height: number | null } | null;
   createdAt: Date;
   updatedAt: Date;
 }

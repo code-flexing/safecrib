@@ -18,6 +18,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
+import { useNotify } from "@/components/ui/Toast";
+import { useOptimisticToggle, createOptimisticKey } from "@/lib/optimistic";
+import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
 import {
   apiFetch,
   cachedApiFetch,
@@ -1010,26 +1013,7 @@ function ListingActionTray({
 
 export default function DashboardPage() {
   const router = useRouter();
-
-  useEffect(() => {
-    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (!themeColor) return;
-
-    const dashboardColor = "#09090B";
-    const keepDashboardColor = () => {
-      if (themeColor.content !== dashboardColor) themeColor.content = dashboardColor;
-    };
-    keepDashboardColor();
-    const observer = new MutationObserver(keepDashboardColor);
-    observer.observe(themeColor, { attributes: true, attributeFilter: ["content"] });
-
-    return () => {
-      observer.disconnect();
-      const theme = document.documentElement.dataset.theme;
-      themeColor.content = theme === "dim" ? "#0C1830" : theme === "dark" ? "#000000" : "#FFFFFF";
-    };
-  }, []);
-
+  const { notifyError, notifySuccess } = useNotify();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("not_submitted");
   const [pageStatus, setPageStatus] = useState<PageStatus>("none");
@@ -1065,7 +1049,6 @@ export default function DashboardPage() {
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
 
   useEffect(() =>
@@ -1557,8 +1540,9 @@ export default function DashboardPage() {
     try {
       await apiFetch(`/api/v1/listings/${listingId}/bookmark`, { method: isSaved ? "DELETE" : "POST" });
       setBookmarkedIds((current) => isSaved ? current.filter((id) => id !== listingId) : [...current, listingId]);
+      notifySuccess("Saved!");
     } catch {
-      setActionMessage("We could not update your saved listings. Please try again.");
+      notifyError("Couldn't save that. Try again?", { action: { label: "Try again", onClick: () => toggleBookmark(listingId) } });
     }
   };
 
@@ -1616,8 +1600,11 @@ export default function DashboardPage() {
           recommendationScore: Math.round(trust * 0.45 + activeDays / 30 * 25 + recommendationSignal * 0.3),
         };
       }).sort((a, b) => (b.recommendationScore ?? 0) - (a.recommendationScore ?? 0)));
-    } catch {
-      setActionMessage("We could not update your recommendation. Please try again.");
+      notifySuccess("Recommendation saved!");
+    } catch (error) {
+      const { key } = resolveNotificationKey(error, "recommend");
+      const { message, action } = getNotificationMessage(key);
+      notifyError(message, { action: action ? { label: action.label, onClick: () => toggleRecommendation(providerId) } : undefined });
     } finally {
       setPendingEngagement((current) => {
         const next = new Set(current);
@@ -1646,10 +1633,6 @@ export default function DashboardPage() {
   }, []);
 
   const closeActionTray = useCallback(() => setOpenActionTrayId(null), []);
-
-  const setCommentCount = (listingId: string, count: number) => {
-    setCommentCounts((current) => current[listingId] === count ? current : { ...current, [listingId]: count });
-  };
 
   const toggleDescriptionExpand = (listingId: string) => {
     setExpandedDescriptions((prev) => ({ ...prev, [listingId]: !prev[listingId] }));
@@ -1830,7 +1813,7 @@ export default function DashboardPage() {
             const location = listing.campus || listing.address;
             const isSaved = bookmarkedIds.includes(listing.id);
             const commentsOpen = openCommentIds.has(listing.id);
-            const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
+            const commentCount = listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
             const isDescExpanded = Boolean(expandedDescriptions[listing.id]);
 
@@ -1978,51 +1961,57 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Right: engagement rail, raised above the card's bottom edge */}
-                  <div className="pointer-events-auto -translate-y-10">
-                    <ListingActionTray
-                      listing={listing}
-                      isOpen={openActionTrayId === listing.id}
-                      isSaved={isSaved}
-                      isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
-                      canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
-                      menuOpen={openMenuId === listing.id}
-                      isStudent={isStudent}
-                      commentCount={commentCount}
-                      recommendationDisabled={
-                        String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
-                        !recommendationsLoaded ||
-                        pendingEngagement.has(`recommend:${listing.ownerId}`)
-                      }
-                      role={String(profile?.role ?? "").toUpperCase()}
-                      onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
-                      onClose={closeActionTray}
+                  {/* Right: Vertical Interaction Rail */}
+                  <ListingActionTray
+                    listing={listing}
+                    isOpen={openActionTrayId === listing.id}
+                    isSaved={isSaved}
+                    isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
+                    canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
+                    menuOpen={openMenuId === listing.id}
+                    isStudent={isStudent}
+                    commentCount={commentCount}
+                    recommendationDisabled={
+                      String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
+                      !recommendationsLoaded ||
+                      pendingEngagement.has(`recommend:${listing.ownerId}`)
+                    }
+                    role={String(profile?.role ?? "").toUpperCase()}
+                    onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
+                    onClose={closeActionTray}
                       onLike={async (id, liked) => {
-                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
-                          method: liked ? "POST" : "DELETE",
-                        });
-                        setListings((current) =>
-                          current.map((item) =>
-                            item.id === id
-                              ? {
-                                  ...item,
-                                  likedByCurrentUser: liked,
-                                  likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
-                                }
-                              : item,
-                          ),
-                        );
+                        try {
+                          await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
+                            method: liked ? "POST" : "DELETE",
+                          });
+                          setListings((current) =>
+                            current.map((item) =>
+                              item.id === id
+                                ? {
+                                    ...item,
+                                    likedByCurrentUser: liked,
+                                    likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
+                                  }
+                                : item,
+                            ),
+                          );
+                          if (liked) notifySuccess("Liked! 👍");
+                        } catch (error) {
+                          const { key } = resolveNotificationKey(error, "like");
+                          const { message, action } = getNotificationMessage(key);
+                          notifyError(message, { action: action ? { label: action.label, onClick: () => { /* re-trigger via LikeButton */ } } : undefined });
+                          // Rollback handled by LikeButton's optimistic toggle
+                        }
                       }}
-                      onComment={() => toggleComments(listing.id)}
-                      onRecommend={async (providerId, recommended) => {
-                        await toggleRecommendation(providerId);
-                        void recommended;
-                      }}
-                      onSave={() => void toggleBookmark(listing.id)}
-                      onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
-                      onCloseMenu={() => setOpenMenuId(null)}
-                    />
-                  </div>
+                    onComment={() => toggleComments(listing.id)}
+                    onRecommend={async (providerId, recommended) => {
+                      await toggleRecommendation(providerId);
+                      void recommended;
+                    }}
+                    onSave={() => void toggleBookmark(listing.id)}
+                    onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
+                    onCloseMenu={() => setOpenMenuId(null)}
+                  />
                 </div>
 
                 {/* Comments modal drawer */}
@@ -2031,7 +2020,7 @@ export default function DashboardPage() {
                     listingId={listing.id}
                     ownerId={listing.ownerId}
                     onClose={closeComments}
-                    onCountChange={(count) => setCommentCount(listing.id, count)}
+                    onCountChange={() => {}}
                   />
                 )}
               </article>

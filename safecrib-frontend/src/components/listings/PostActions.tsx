@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { LikeButton } from "./LikeButton";
 import { RecommendButton } from "./RecommendButton";
 import { Icon } from "@/components/ui/Icon";
+import { useOptimisticToggle } from "@/lib/optimistic";
+import { useNotify } from "@/components/ui/Toast";
+import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
 
 type PostActionsProps = {
   listingId: string;
@@ -15,7 +18,6 @@ type PostActionsProps = {
   isBookmarked: boolean;
   agentPhone?: string;
   agentWhatsApp?: string;
-  // Recommend (optional — only shown for student role)
   providerId?: string;
   recommendationCount?: number;
   isRecommended?: boolean;
@@ -51,7 +53,6 @@ export function PostActions({
   onLike,
   onComment,
   onCommentPrefetch,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onShare,
   onBookmark,
   onRecommend,
@@ -60,30 +61,30 @@ export function PostActions({
   onBookInspection,
   onMessageAgent,
 }: PostActionsProps) {
-  const [optimisticIsBookmarked, setOptimisticIsBookmarked] = useState(isBookmarked);
-  const [isBookmarking, setIsBookmarking] = useState(false);
+  const { notifyError } = useNotify();
 
-  const handleBookmark = async () => {
-    if (isBookmarking) return;
-    setIsBookmarking(true);
-    const nextBookmarked = !optimisticIsBookmarked;
-    setOptimisticIsBookmarked(nextBookmarked);
-    try {
+  const { value: bookmarkState, state: bookmarkStatus, toggle: toggleBookmark } = useOptimisticToggle({
+    key: `bookmark:${listingId}`,
+    initialValue: isBookmarked,
+    getNextValue: (current) => !current,
+    onToggle: async (next) => {
       await onBookmark(listingId);
-    } catch {
-      setOptimisticIsBookmarked(!nextBookmarked);
-    } finally {
-      setIsBookmarking(false);
-    }
-  };
+    },
+    onError: (error, rollback) => {
+      const { key } = resolveNotificationKey(error, "bookmark");
+      const { message, action } = getNotificationMessage(key);
+      notifyError(message, { action: action ? { label: action.label, onClick: () => toggleBookmark() } : undefined });
+    },
+    equals: (a, b) => a === b,
+  });
 
-  const handleLike = async (id: string, liked: boolean) => {
+  const handleLike = useCallback(async (id: string, liked: boolean) => {
     await onLike(id, liked);
-  };
+  }, [onLike]);
 
-  const handleRecommend = async (pId: string, recommended: boolean) => {
+  const handleRecommend = useCallback(async (pId: string, recommended: boolean) => {
     if (onRecommend) await onRecommend(pId, recommended);
-  };
+  }, [onRecommend]);
 
   return (
     <div className="border-t border-black/10 pt-3">
@@ -128,14 +129,14 @@ export function PostActions({
         )}
         <button
           type="button"
-          onClick={handleBookmark}
-          disabled={isBookmarking}
-          aria-pressed={optimisticIsBookmarked}
-          aria-label={optimisticIsBookmarked ? "Remove from saved" : "Save listing"}
+          onClick={toggleBookmark}
+          disabled={bookmarkStatus === "pending"}
+          aria-pressed={bookmarkState}
+          aria-label={bookmarkState ? "Remove from saved" : "Save listing"}
           className="ml-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-black/60 transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Icon name={optimisticIsBookmarked ? "bookmark" : "bookmark"} className={`h-4 w-4 ${optimisticIsBookmarked ? "fill-current text-safecrib-green" : ""}`} />
-          <span>{optimisticIsBookmarked ? "Saved" : "Save"}</span>
+          <Icon name="bookmark" className={`h-4 w-4 ${bookmarkState ? "fill-current text-safecrib-green" : ""}`} />
+          <span>{bookmarkState ? "Saved" : "Save"}</span>
         </button>
       </div>
 

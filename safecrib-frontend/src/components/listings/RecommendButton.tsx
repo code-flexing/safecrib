@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { useOptimisticToggle } from "@/lib/optimistic";
+import { useNotify } from "@/components/ui/Toast";
+import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
 
 type RecommendButtonProps = {
   providerId: string;
@@ -24,9 +27,7 @@ export function RecommendButton({
   showLabel = true,
   role,
 }: RecommendButtonProps) {
-  const [recommendationCount, setRecommendationCount] = useState(initialRecommendationCount);
-  const [isRecommended, setIsRecommended] = useState(initialIsRecommended);
-  const [isRecommending, setIsRecommending] = useState(false);
+  const { notifyError } = useNotify();
   const [flashAnimation, setFlashAnimation] = useState(false);
   const [shakeAnimation, setShakeAnimation] = useState(false);
   const [glowAnimation, setGlowAnimation] = useState(false);
@@ -42,21 +43,31 @@ export function RecommendButton({
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
+  const { value: recState, state: recStatus, toggle } = useOptimisticToggle({
+    key: `recommend:${providerId}`,
+    initialValue: { count: initialRecommendationCount, recommended: initialIsRecommended },
+    getNextValue: (current) => ({
+      count: current.recommended ? Math.max(0, current.count - 1) : current.count + 1,
+      recommended: !current.recommended,
+    }),
+    onToggle: async (next) => {
+      await onRecommend(providerId, next.recommended);
+    },
+    onError: (error, rollback) => {
+      const { key } = resolveNotificationKey(error, "recommend");
+      const { message, action } = getNotificationMessage(key);
+      notifyError(message, { action: action ? { label: action.label, onClick: () => toggle() } : undefined });
+    },
+    onSuccess: () => {
+      setCountKey((k) => k + 1);
+    },
+    equals: (a, b) => a.count === b.count && a.recommended === b.recommended,
+  });
+
+  const { count: recommendationCount, recommended: isRecommended } = recState;
+
   useEffect(() => {
-    setRecommendationCount(initialRecommendationCount);
-    setIsRecommended(initialIsRecommended);
-  }, [initialRecommendationCount, initialIsRecommended]);
-
-  const handleRecommend = useCallback(async () => {
-    if (isRecommending || disabled) return;
-    setIsRecommending(true);
-    const nextRecommended = !isRecommended;
-    const nextCount = isRecommended ? Math.max(0, recommendationCount - 1) : recommendationCount + 1;
-    setIsRecommended(nextRecommended);
-    setRecommendationCount(nextCount);
-    setCountKey((k) => k + 1);
-
-    if (!reducedMotion && nextRecommended) {
+    if (recStatus === "pending" && isRecommended && !reducedMotion) {
       setFlashAnimation(true);
       setShakeAnimation(true);
       setGlowAnimation(true);
@@ -71,17 +82,7 @@ export function RecommendButton({
       setTimeout(() => setGlowAnimation(false), 500);
       setTimeout(() => setSparkAnimations([]), 500);
     }
-
-    try {
-      await onRecommend(providerId, nextRecommended);
-    } catch {
-      setIsRecommended(!nextRecommended);
-      setRecommendationCount(isRecommended ? recommendationCount + 1 : Math.max(0, recommendationCount - 1));
-      setCountKey((k) => k + 1);
-    } finally {
-      setIsRecommending(false);
-    }
-  }, [providerId, isRecommending, isRecommended, recommendationCount, onRecommend, disabled, reducedMotion]);
+  }, [recStatus, isRecommended, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",
@@ -106,8 +107,8 @@ export function RecommendButton({
   return (
     <button
       type="button"
-      onClick={handleRecommend}
-      disabled={isRecommending || disabled}
+      onClick={toggle}
+      disabled={recStatus === "pending" || disabled}
       aria-pressed={isRecommended}
       aria-label={isRecommended ? "Remove recommendation" : "Recommend provider"}
       title={disabled && !isStudent ? tooltip : undefined}

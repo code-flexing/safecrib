@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { useOptimisticToggle } from "@/lib/optimistic";
+import { useNotify } from "@/components/ui/Toast";
+import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
 
 type LikeButtonProps = {
   listingId: string;
@@ -20,9 +23,7 @@ export function LikeButton({
   size = "md",
   showLabel = true,
 }: LikeButtonProps) {
-  const [likeCount, setLikeCount] = useState(initialLikeCount);
-  const [isLiked, setIsLiked] = useState(initialIsLiked);
-  const [isLiking, setIsLiking] = useState(false);
+  const { notifyError } = useNotify();
   const [popAnimation, setPopAnimation] = useState(false);
   const [ringAnimation, setRingAnimation] = useState(false);
   const [countKey, setCountKey] = useState(0);
@@ -36,37 +37,37 @@ export function LikeButton({
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
+  const { value: likeState, state: likeStatus, toggle } = useOptimisticToggle({
+    key: `like:${listingId}`,
+    initialValue: { count: initialLikeCount, liked: initialIsLiked },
+    getNextValue: (current) => ({
+      count: current.liked ? Math.max(0, current.count - 1) : current.count + 1,
+      liked: !current.liked,
+    }),
+    onToggle: async (next) => {
+      await onLike(listingId, next.liked);
+    },
+    onError: (error, rollback) => {
+      const { key } = resolveNotificationKey(error, "like");
+      const { message, action } = getNotificationMessage(key);
+      notifyError(message, { action: action ? { label: action.label, onClick: () => toggle() } : undefined });
+    },
+    onSuccess: () => {
+      setCountKey((k) => k + 1);
+    },
+    equals: (a, b) => a.count === b.count && a.liked === b.liked,
+  });
+
+  const { count: likeCount, liked: isLiked } = likeState;
+
   useEffect(() => {
-    setLikeCount(initialLikeCount);
-    setIsLiked(initialIsLiked);
-  }, [initialLikeCount, initialIsLiked]);
-
-  const handleLike = useCallback(async () => {
-    if (isLiking) return;
-    setIsLiking(true);
-    const nextLiked = !isLiked;
-    const nextCount = isLiked ? Math.max(0, likeCount - 1) : likeCount + 1;
-    setIsLiked(nextLiked);
-    setLikeCount(nextCount);
-    setCountKey((k) => k + 1);
-
-    if (!reducedMotion && nextLiked) {
+    if (likeStatus === "pending" && isLiked && !reducedMotion) {
       setPopAnimation(true);
       setRingAnimation(true);
       setTimeout(() => setPopAnimation(false), 300);
       setTimeout(() => setRingAnimation(false), 400);
     }
-
-    try {
-      await onLike(listingId, nextLiked);
-    } catch {
-      setIsLiked(!nextLiked);
-      setLikeCount(isLiked ? likeCount + 1 : Math.max(0, likeCount - 1));
-      setCountKey((k) => k + 1);
-    } finally {
-      setIsLiking(false);
-    }
-  }, [listingId, isLiking, isLiked, likeCount, onLike, reducedMotion]);
+  }, [likeStatus, isLiked, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",
@@ -86,8 +87,8 @@ export function LikeButton({
   return (
     <button
       type="button"
-      onClick={handleLike}
-      disabled={isLiking}
+      onClick={toggle}
+      disabled={likeStatus === "pending"}
       aria-pressed={isLiked}
       aria-label={isLiked ? "Unlike" : "Like"}
       className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isLiked ? "text-red-500" : "text-black/50"}`}
