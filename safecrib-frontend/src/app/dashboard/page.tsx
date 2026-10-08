@@ -888,31 +888,6 @@ function ListingActionTray({
       className="relative flex select-none flex-col items-center gap-3"
       data-listing-menu-open={menuOpen ? "true" : undefined}
     >
-      {/* Host avatar with "+" badge */}
-      {listing.ownerId && (
-        <Link
-          href={`/profile/${encodeURIComponent(listing.ownerId)}`}
-          aria-label="View provider profile"
-          className="relative mb-1.5 block h-9 w-9 transition-transform active:scale-90"
-        >
-          <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white shadow-lg">
-            <ProfileAvatar
-              src={listing.owner?.profilePicture ?? null}
-              seed={listing.ownerId}
-              alt={listing.owner?.displayName ?? "Host"}
-              size="small"
-              className="h-full w-full object-cover"
-            />
-          </span>
-          <span
-            aria-hidden="true"
-            className="feed-badge absolute -bottom-2 left-1/2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full text-[12px] font-bold leading-none"
-          >
-            +
-          </span>
-        </Link>
-      )}
-
       {/* Like */}
       <div className="flex flex-col items-center gap-1">
         <div className="dashboard-engagement-shell transition-transform active:scale-90">
@@ -1389,16 +1364,17 @@ export default function DashboardPage() {
     listings.forEach((listing) => {
       const picture = listing.owner?.profilePicture;
       if (!picture) return;
-      if (isUsableImageSource(picture)) {
-        setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: picture }));
+      const reference = picture.trim();
+      if (/^(https?:|data:|blob:|\/)/i.test(reference)) {
+        setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: reference }));
         return;
       }
-      const cachedPicture = getCachedMediaUrl(picture);
+      const cachedPicture = getCachedMediaUrl(reference, "avatar_sm");
       if (cachedPicture) {
         setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: cachedPicture }));
         return;
       }
-      void resolveMediaUrl(picture).then((url) => {
+      void resolveMediaUrl(reference, "avatar_sm").then((url) => {
         if (url && isUsableImageSource(url)) {
           setResolvedProviderAvatars((current) => ({ ...current, [listing.id]: url }));
         }
@@ -1851,7 +1827,7 @@ export default function DashboardPage() {
                           className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/30"
                         >
                           <ProfileAvatar
-                            src={resolvedProviderAvatars[listing.id] ?? listing.owner?.profilePicture ?? null}
+                            src={resolvedProviderAvatars[listing.id] ?? null}
                             seed={listing.ownerId}
                             alt={`${providerName} avatar`}
                             size="small"
