@@ -171,6 +171,10 @@ const FEED_CSS = `
   background: var(--feed-accent) !important;
   color: var(--feed-on-accent) !important;
 }
+.safecrib-feed .feed-badge-mark {
+  color: var(--feed-on-accent) !important;
+  stroke: var(--feed-on-accent) !important;
+}
 
 /* Counts under the rail sit on the photo, so they get a strong shadow */
 .safecrib-feed .feed-count {
@@ -1890,9 +1894,13 @@ export default function DashboardPage() {
                             aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
                             aria-pressed={Boolean(listing.followedPage)}
                             title={listing.followedPage ? "Unfollow provider" : "Follow provider"}
-                            className="feed-badge absolute -bottom-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#09090b] text-base font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="feed-badge absolute -bottom-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#09090b] text-xs font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {listing.followedPage ? <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" /> : "+"}
+                            {listing.followedPage ? (
+                              <Icon name="check" className="feed-badge-mark h-2 w-2 stroke-[3]" />
+                            ) : (
+                              <span className="feed-badge-mark">+</span>
+                            )}
                           </button>
                         </div>
                       ) : null}
@@ -1902,9 +1910,9 @@ export default function DashboardPage() {
                         </span>
                         <span
                           title="Verified Host"
-                          className="feed-badge inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                          className="feed-badge inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full"
                         >
-                          <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                          <Icon name="check" className="feed-badge-mark h-2 w-2 stroke-[3]" />
                         </span>
                       </div>
                     </div>
