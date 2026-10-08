@@ -1650,36 +1650,38 @@ export default function DashboardPage() {
 
   if (dashboardLoading) {
     return (
-      <main className="safecrib-feed relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" style={{ colorScheme: "dark" }} aria-busy="true">
+      <main className="safecrib-feed relative h-[100dvh] overflow-hidden md:pl-72" style={{ colorScheme: "dark" }} aria-busy="true">
         <FeedStyles />
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
-        <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          {/* Top bar skeleton */}
-          <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
-            <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-            <div className="h-5 w-16 animate-pulse rounded-full bg-white/15" />
-            <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-          </div>
-
-          {/* Bottom card + rail skeleton */}
-          <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
-            <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-white/10 bg-[#09090b] p-3">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
-                <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
-              </div>
-              <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/20" />
-              <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
-              <div className="flex items-center justify-between pt-2">
-                <div className="h-7 w-28 animate-pulse rounded-lg bg-white/20" />
-                <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
-              </div>
+        <section className="relative h-full flex items-center justify-center min-w-0 overflow-x-hidden md:justify-center" aria-label="Loading homes">
+          <div className="relative w-full max-w-full h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] rounded-none overflow-hidden bg-neutral-950 md:max-w-[480px] md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
+            {/* Top bar skeleton */}
+            <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+              <div className="h-5 w-16 animate-pulse rounded-full bg-white/15" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
             </div>
-            <div className="flex -translate-y-10 flex-col items-center gap-4">
-              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+
+            {/* Bottom card + rail skeleton */}
+            <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+              <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-white/10 bg-[#09090b] p-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
+                  <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
+                </div>
+                <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/20" />
+                <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
+                <div className="flex items-center justify-between pt-2">
+                  <div className="h-7 w-28 animate-pulse rounded-lg bg-white/20" />
+                  <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
+                </div>
+              </div>
+              <div className="flex -translate-y-10 flex-col items-center gap-4">
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+              </div>
             </div>
           </div>
         </section>
@@ -1693,13 +1695,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="safecrib-feed relative h-[100dvh] overflow-hidden bg-black md:pl-72" style={{ colorScheme: "dark" }}>
+    <main className="safecrib-feed relative h-[100dvh] overflow-hidden md:pl-72" style={{ colorScheme: "dark" }}>
       <FeedStyles />
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
-      <section className="relative h-full w-full overflow-hidden bg-black">
+      <section className="relative h-full flex items-center justify-center min-w-0 overflow-x-hidden md:justify-center">
+        <div className="relative w-full max-w-full h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] rounded-none overflow-hidden bg-neutral-950 md:max-w-[480px] md:rounded-2xl md:shadow-2xl md:border md:border-white/10">
         {/* Top bar: avatar | For You | search */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/70 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <div className="pointer-events-auto mx-auto flex h-11 max-w-xl items-center justify-between gap-3 px-4">
+        <div className="pointer-events-none absolute inset-x-4 top-4 z-40">
+          <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
             {searchOpen ? (
               <form
                 role="search"
@@ -1861,11 +1864,11 @@ export default function DashboardPage() {
                   className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent via-40% to-transparent"
                 />
 
-                {/* Video progress: thin line above the bottom nav */}
+                {/* Video progress: thin line at the bottom of the card */}
                 {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
                   <div
                     aria-label="Video progress"
-                    className="absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 h-[3px] bg-white/25 md:bottom-0"
+                    className="absolute inset-x-0 bottom-0 z-30 h-[3px] bg-white/25"
                   >
                     <div
                       className="h-full bg-white transition-all duration-150"
@@ -1875,7 +1878,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+                <div className="pointer-events-none absolute inset-x-4 bottom-4 top-auto z-30 flex max-w-full items-end gap-3 md:bottom-8">
                   {/* Left: everything starts at the same left edge */}
                   <div className="feed-card pointer-events-auto min-w-0 flex-1 origin-bottom-left scale-x-100 scale-y-[0.9] rounded-xl p-3 text-left shadow-xl">
                     {/* Row 1: avatar + name */}
@@ -1967,7 +1970,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Right: Vertical Interaction Rail */}
-                  <div className="pointer-events-auto -translate-y-10">
+                  <div className="pointer-events-auto flex flex-col items-center gap-3">
                     <ListingActionTray
                       listing={listing}
                       isOpen={openActionTrayId === listing.id}
@@ -2033,6 +2036,7 @@ export default function DashboardPage() {
               </article>
             );
           })}
+</div>
         </div>
       </section>
       <RestrictedActionModal message={actionMessage} onClose={() => setActionMessage(null)} />
