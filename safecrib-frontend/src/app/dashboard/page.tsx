@@ -1654,7 +1654,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom card + rail skeleton */}
-          <div className="absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+          <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
             <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-white/10 bg-[#09090b] p-3">
               <div className="flex items-center gap-2">
                 <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
@@ -1867,7 +1867,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
+                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
                   {/* Left: everything starts at the same left edge */}
                   <div className="feed-card pointer-events-auto min-w-0 flex-1 origin-bottom-left scale-[0.92] rounded-xl p-3 text-left shadow-xl">
                     {/* Row 1: avatar + name */}
