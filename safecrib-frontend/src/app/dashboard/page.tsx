@@ -782,7 +782,7 @@ function ListingActionTray({
 
       {/* Like */}
       <div className="flex flex-col items-center gap-0.5">
-        <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
+        <div className="dashboard-engagement-shell drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
           <LikeButton
             listingId={listing.id}
             initialLikeCount={listing.likeCount ?? 0}
@@ -811,7 +811,7 @@ function ListingActionTray({
       {/* Recommend (trust) */}
       {listing.ownerId && canRecommend && (
         <div className="flex flex-col items-center gap-0.5">
-          <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
+          <div className="dashboard-engagement-shell drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
             <RecommendButton
               providerId={listing.ownerId}
               initialRecommendationCount={listing.providerRecommendationCount ?? 0}
@@ -1526,6 +1526,37 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative h-full w-full overflow-hidden bg-black">
+        <style jsx>{`
+          .dashboard-engagement-shell {
+            background: rgba(12, 12, 14, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+          }
+          .dashboard-engagement-shell button {
+            color: rgba(255, 255, 255, 0.9) !important;
+            background: transparent !important;
+          }
+          .dashboard-engagement-shell button svg,
+          .dashboard-engagement-shell button path,
+          .dashboard-engagement-shell button span {
+            color: rgba(255, 255, 255, 0.95) !important;
+            fill: rgba(255, 255, 255, 0.95) !important;
+            stroke: rgba(255, 255, 255, 0.95) !important;
+          }
+          .dashboard-engagement-shell button[aria-pressed="true"] {
+            color: #a7f3d0 !important;
+          }
+          .dashboard-engagement-shell button[aria-pressed="true"] svg,
+          .dashboard-engagement-shell button[aria-pressed="true"] path,
+          .dashboard-engagement-shell button[aria-pressed="true"] span {
+            color: #a7f3d0 !important;
+            fill: #a7f3d0 !important;
+            stroke: #a7f3d0 !important;
+          }
+          .dashboard-engagement-shell button:hover {
+            background: rgba(255, 255, 255, 0.06) !important;
+          }
+        `}</style>
         {/* Top bar: avatar | For You | search */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/60 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div className="pointer-events-auto mx-auto flex h-11 max-w-xl items-center justify-between gap-3 px-4">

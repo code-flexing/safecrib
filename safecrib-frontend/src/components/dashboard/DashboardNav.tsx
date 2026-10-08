@@ -29,12 +29,12 @@ type NavUser = { id?: string; email?: string; displayName?: unknown; role?: stri
 function iconLinkClass(active: boolean, desktopVertical = false, darkMode = false) {
   if (desktopVertical) {
     if (darkMode) {
-      return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
+      return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "bg-[#0C7355]/18 text-white shadow-[0_0_0_1px_rgba(12,115,85,0.22)]" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
     }
     return `group relative flex w-full items-center gap-3 rounded-full px-4 py-3 text-left text-base font-medium transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "bg-black/[0.04] text-safecrib-black shadow-[0_0_0_1px_rgba(15,23,42,0.04)]" : "text-black/70 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
   }
   if (darkMode) {
-    return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "border-emerald-400/30 bg-white/10 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)] scale-[1.02]" : "border-transparent text-white/70 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/5 hover:text-white"}`;
+    return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${active ? "border-[#0C7355]/35 bg-[#0C7355]/15 text-white shadow-[0_0_0_1px_rgba(12,115,85,0.22)] scale-[1.02]" : "border-transparent text-white/70 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/5 hover:text-white"}`;
   }
   return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green shadow-[0_0_0_1px_rgba(12,115,85,0.08)] scale-[1.02]" : "border-transparent text-black/60 hover:-translate-y-0.5 hover:border-black/10 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
 }
@@ -213,7 +213,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
 
   return (
     <>
-      <header className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)] ${darkMode ? "md:border-white/10 md:bg-black/90 md:text-white" : "md:border-black/10 md:bg-white md:text-safecrib-black"}`}>
+      <header className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)] ${darkMode ? "md:border-white/10 md:bg-[#09090B]/95 md:text-white" : "md:border-black/10 md:bg-white md:text-safecrib-black"}`}>
         <div className="flex h-full flex-col px-4 py-5">
           <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="mb-6 flex items-center gap-2 px-2">
             <SafeCribLogo height={32} href={false} />
