@@ -1541,52 +1541,46 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        {/* Floating Search Bar & Profile Header */}
-        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
-          <form
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitSearch();
-            }}
-            className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-white/20 bg-black/45 pl-4 pr-2 text-white shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all hover:bg-black/60 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30"
-          >
-            <Icon name="search" className="h-4 w-4 shrink-0 text-white/50" />
-            <input
-              type="search"
-              enterKeyHint="search"
-              aria-label="Search verified student cribs, hostels, or providers"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search verified cribs, campus, or host..."
-              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/45 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
-            />
-            {searchQuery.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
-              >
-                <Icon name="x" className="h-3.5 w-3.5" />
+        {/* Floating Headline Tabs & Profile Header */}
+        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center justify-center rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-black tracking-[0.2em] text-white shadow-lg shadow-red-500/30">
+              LIVE
+            </span>
+            <div className="flex items-center gap-4 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[13px] font-semibold backdrop-blur-xl">
+              <button type="button" className="text-white/65 transition hover:text-white">
+                Following
               </button>
-            )}
-          </form>
+              <button type="button" className="text-white transition hover:text-white">
+                For You
+              </button>
+            </div>
+          </div>
 
-          <Link
-            href="/profile"
-            aria-label="View your profile"
-            title={accountName || "Your Profile"}
-            className="shrink-0 rounded-full border-2 border-white/40 shadow-xl transition-transform hover:border-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
-          >
-            <ProfileAvatar
-              src={profileImage}
-              seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
-              alt={`${accountName || "Your"} profile photo`}
-              size="small"
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Search listings"
+              onClick={() => submitSearch()}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white/85 shadow-lg backdrop-blur-xl transition hover:bg-black/50"
+            >
+              <Icon name="search" className="h-4 w-4" />
+            </button>
+            <Link
+              href="/profile"
+              aria-label="View your profile"
+              title={accountName || "Your Profile"}
+              className="shrink-0 rounded-full border-2 border-white/40 shadow-xl transition-transform hover:border-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
+            >
+              <ProfileAvatar
+                src={profileImage}
+                seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
+                alt={`${accountName || "Your"} profile photo`}
+                size="small"
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            </Link>
+          </div>
         </div>
 
         {/* Empty state when no listings exist */}
@@ -1697,74 +1691,69 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    <div className="rounded-3xl border border-white/15 bg-black/45 p-4 text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all sm:p-5">
-                      {/* Provider Header Pill */}
-                      <div className="flex flex-wrap items-center gap-2">
+                    <div className="rounded-3xl border border-white/15 bg-black/35 p-3.5 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all sm:p-4">
+                      <div className="flex items-center justify-between gap-2">
                         <Link
                           href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
-                          className="group flex items-center gap-2"
+                          className="group flex min-w-0 items-center gap-2"
                         >
                           <ProfileAvatar
                             src={resolvedProviderAvatars[listing.id] ?? null}
                             alt={`${providerName} avatar`}
                             size="small"
-                            className="h-8 w-8 rounded-full border border-white/30 object-cover"
+                            className="h-8 w-8 rounded-full border border-white/25 object-cover"
                           />
-                          <span className="truncate text-xs font-bold text-white transition group-hover:text-emerald-300">
-                            {providerName}
-                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate text-[11px] font-bold text-white transition group-hover:text-emerald-300">
+                              {providerName}
+                            </div>
+                            {location && (
+                              <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-white/70">
+                                <Icon name="map-pin" className="h-2.5 w-2.5 shrink-0 text-emerald-400" />
+                                <span className="truncate">{location}</span>
+                              </div>
+                            )}
+                          </div>
                         </Link>
-                        <span
-                          title="Verified Host"
-                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
-                        >
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-200">
                           <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                          Verified
                         </span>
-
-                        {location && (
-                          <span className="inline-flex max-w-[200px] items-center gap-1 truncate rounded-full border border-white/10 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-md">
-                            <Icon name="map-pin" className="h-3 w-3 shrink-0 text-emerald-400" />
-                            <span className="truncate">{location}</span>
-                          </span>
-                        )}
                       </div>
 
-                      {/* Title */}
                       <Link
                         href={`/dashboard/listings/${listing.id}`}
                         className="mt-2.5 block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                       >
-                        <h2 className="line-clamp-2 font-display text-base font-bold leading-snug tracking-tight text-white transition hover:text-emerald-300 sm:text-lg">
+                        <h2 className="line-clamp-2 text-base font-bold leading-tight tracking-tight text-white sm:text-lg">
                           {listing.title ?? "Verified Campus Home"}
                         </h2>
                       </Link>
 
-                      {/* Description with Expand toggle */}
                       {listing.description && (
-                        <div className="mt-1.5 text-xs text-neutral-300 sm:text-sm">
-                          <p className={`leading-relaxed text-white/85 ${isDescExpanded ? "" : "line-clamp-2"}`}>
+                        <div className="mt-1.5 text-[12px] text-neutral-200/90 sm:text-sm">
+                          <p className={`leading-relaxed ${isDescExpanded ? "" : "line-clamp-2"}`}>
                             {listing.description}
                           </p>
                           {listing.description.length > 80 && (
                             <button
                               type="button"
                               onClick={() => toggleDescriptionExpand(listing.id)}
-                              className="mt-1 font-semibold text-emerald-400 transition hover:text-emerald-300 focus-visible:outline-none"
+                              className="mt-1 font-semibold text-emerald-300 transition hover:text-emerald-200"
                             >
-                              {isDescExpanded ? "Show less" : "Read more"}
+                              {isDescExpanded ? "Less" : "More"}
                             </button>
                           )}
                         </div>
                       )}
 
-                      {/* Pricing & Primary Action Bar */}
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3.5">
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
                         <ListingPriceTag listing={listing} />
                         <Link
                           href={`/dashboard/listings/${listing.id}`}
-                          className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-5 text-xs font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95 sm:text-sm"
+                          className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-4 text-[11px] font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95"
                         >
-                          View Crib
+                          View
                           <Icon name="arrow-right" className="h-3.5 w-3.5" />
                         </Link>
                       </div>
