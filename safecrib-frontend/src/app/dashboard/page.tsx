@@ -1667,7 +1667,7 @@ export default function DashboardPage() {
                 <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
               </div>
             </div>
-            <div className="flex -translate-y-8 flex-col items-center gap-4">
+            <div className="flex -translate-y-10 flex-col items-center gap-4">
               <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
               <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
               <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
@@ -1869,7 +1869,7 @@ export default function DashboardPage() {
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
                   {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card pointer-events-auto min-w-0 flex-1 origin-bottom-left scale-[0.92] rounded-xl p-3 text-left shadow-xl">
+                  <div className="feed-card pointer-events-auto min-w-0 flex-1 origin-bottom-left scale-x-100 scale-y-[0.9] rounded-xl p-3 text-left shadow-xl">
                     {/* Row 1: avatar + name */}
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {listing.ownerId ? (
@@ -1959,7 +1959,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Right: engagement rail, raised above the card's bottom edge */}
-                  <div className="pointer-events-auto -translate-y-8">
+                  <div className="pointer-events-auto -translate-y-10">
                     <ListingActionTray
                       listing={listing}
                       isOpen={openActionTrayId === listing.id}
