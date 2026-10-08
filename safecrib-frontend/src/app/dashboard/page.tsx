@@ -1962,23 +1962,24 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Right: Vertical Interaction Rail */}
-                  <ListingActionTray
-                    listing={listing}
-                    isOpen={openActionTrayId === listing.id}
-                    isSaved={isSaved}
-                    isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
-                    canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
-                    menuOpen={openMenuId === listing.id}
-                    isStudent={isStudent}
-                    commentCount={commentCount}
-                    recommendationDisabled={
-                      String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
-                      !recommendationsLoaded ||
-                      pendingEngagement.has(`recommend:${listing.ownerId}`)
-                    }
-                    role={String(profile?.role ?? "").toUpperCase()}
-                    onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
-                    onClose={closeActionTray}
+                  <div className="pointer-events-auto -translate-y-10">
+                    <ListingActionTray
+                      listing={listing}
+                      isOpen={openActionTrayId === listing.id}
+                      isSaved={isSaved}
+                      isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
+                      canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
+                      menuOpen={openMenuId === listing.id}
+                      isStudent={isStudent}
+                      commentCount={commentCount}
+                      recommendationDisabled={
+                        String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
+                        !recommendationsLoaded ||
+                        pendingEngagement.has(`recommend:${listing.ownerId}`)
+                      }
+                      role={String(profile?.role ?? "").toUpperCase()}
+                      onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
+                      onClose={closeActionTray}
                       onLike={async (id, liked) => {
                         try {
                           await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
@@ -2003,15 +2004,16 @@ export default function DashboardPage() {
                           // Rollback handled by LikeButton's optimistic toggle
                         }
                       }}
-                    onComment={() => toggleComments(listing.id)}
-                    onRecommend={async (providerId, recommended) => {
-                      await toggleRecommendation(providerId);
-                      void recommended;
-                    }}
-                    onSave={() => void toggleBookmark(listing.id)}
-                    onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
-                    onCloseMenu={() => setOpenMenuId(null)}
-                  />
+                      onComment={() => toggleComments(listing.id)}
+                      onRecommend={async (providerId, recommended) => {
+                        await toggleRecommendation(providerId);
+                        void recommended;
+                      }}
+                      onSave={() => void toggleBookmark(listing.id)}
+                      onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
+                      onCloseMenu={() => setOpenMenuId(null)}
+                    />
+                  </div>
                 </div>
 
                 {/* Comments modal drawer */}
