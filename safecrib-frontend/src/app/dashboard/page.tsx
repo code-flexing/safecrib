@@ -1011,6 +1011,15 @@ function ListingActionTray({
   );
 }
 
+function extractListings(value: unknown): Listing[] {
+  const unwrapped = unwrapData<unknown>(value);
+  if (Array.isArray(unwrapped)) return unwrapped as Listing[];
+  if (typeof unwrapped === "object" && unwrapped !== null && "items" in unwrapped && Array.isArray((unwrapped as { items: unknown }).items)) {
+    return (unwrapped as { items: Listing[] }).items;
+  }
+  return [];
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { notifyError, notifySuccess } = useNotify();
@@ -1129,8 +1138,7 @@ export default function DashboardPage() {
       }
 
       if (path === "/api/v1/listings") {
-        const freshListings = unwrapData<Listing[]>(value);
-        setListings(Array.isArray(freshListings) ? freshListings : []);
+        setListings(extractListings(value));
         return;
       }
 
@@ -1187,14 +1195,11 @@ export default function DashboardPage() {
     if (!hasCachedData) setDashboardLoading(true);
 
     const cachedListings = getCachedApi<unknown>("/api/v1/listings");
-    const cachedListingItems = cachedListings === null ? null : unwrapData<Listing[]>(cachedListings);
     if (cachedListings) {
-      const items = Array.isArray(cachedListingItems) ? cachedListingItems : [];
-      setListings(items);
+      setListings(extractListings(cachedListings));
       void refreshCachedApi<unknown>("/api/v1/listings")
         .then((response) => {
-          const refreshedListings = unwrapData<Listing[]>(response);
-          if (Array.isArray(refreshedListings)) setListings(refreshedListings);
+          setListings(extractListings(response));
         })
         .catch(() => undefined);
     }
@@ -1243,9 +1248,10 @@ export default function DashboardPage() {
             .then(normalizeAccountStatus)
             .catch(() => null)
         : Promise.resolve(null);
-      const homesRequest = cachedListingItems !== null
+      const cachedListingsRaw = getCachedApi<unknown>("/api/v1/listings");
+      const homesRequest = cachedListingsRaw !== null
         ? Promise.resolve(null)
-        : cachedApiFetch<Listing[]>("/api/v1/listings").catch(() => []);
+        : cachedApiFetch<unknown>("/api/v1/listings").then(extractListings).catch(() => []);
       const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !user.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
             .then((response) => {
@@ -1313,7 +1319,7 @@ export default function DashboardPage() {
         }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));
-      if (Array.isArray(homes)) setListings(homes);
+      if (homes) setListings(extractListings(homes));
       setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
       setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
       const conversationList = Array.isArray(conversations) ? conversations : [];
@@ -1497,9 +1503,9 @@ export default function DashboardPage() {
       const topId = listings[0]?.id;
       if (!topId) return;
       try {
-        const result = await apiFetch<unknown>("/api/v1/listings?limit=1");
-        const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
-        if (items.length > 0 && items[0].id !== topId) setNewPostsAvailable(true);
+        const result = await apiFetch<unknown>("/api/v1/listings?take=1");
+        const items = extractListings(result);
+        if (items.length > 0 && items[0]?.id !== topId) setNewPostsAvailable(true);
       } catch {
         // Silent failure
       }
@@ -1523,8 +1529,7 @@ export default function DashboardPage() {
     feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     try {
       const result = await apiFetch<unknown>("/api/v1/listings");
-      const items = Array.isArray(result) ? result : (result as Record<string, unknown>)?.data as Listing[] ?? [];
-      setListings(items);
+      setListings(extractListings(result));
     } catch {
       // Keep feed
     }
