@@ -183,25 +183,19 @@ function formatEngagementCount(count: number) {
   return String(count);
 }
 
+/* ---------- Price (TikTok style: big bold price, struck-through old price) ---------- */
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
   const isDiscounted = priced && hasDiscount(listing);
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 items-baseline gap-1.5 [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
+      <span className={`font-display font-extrabold text-white ${priced ? "text-2xl" : "text-sm font-semibold"}`}>
+        {formatListingPrice(listing)}
+      </span>
+      {priced && <span className="text-xs font-medium text-white/70">/ yr</span>}
       {isDiscounted && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-            DISCOUNT
-          </span>
-        </div>
+        <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
       )}
-      <div className="flex min-w-0 items-baseline gap-1.5">
-        <span className={`font-display font-extrabold tracking-tight text-white drop-shadow-sm ${priced ? "text-xl sm:text-2xl" : "text-sm font-semibold"}`}>
-          {formatListingPrice(listing)}
-        </span>
-        {priced && <span className="text-xs font-medium text-white/60">/ yr</span>}
-      </div>
     </div>
   );
 }
@@ -384,15 +378,15 @@ function ListingCardVideo({
         <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5" />
       )}
 
-      {/* Floating Audio Controller */}
+      {/* Audio toggle (quieter placement) */}
       {videoUrl && !videoFailed && (
-        <div className="absolute right-4 top-24 z-40 transition-transform active:scale-95">
+        <div className="absolute right-3 top-20 z-40 transition-transform active:scale-95">
           <button
             type="button"
             onClick={() => setIsMuted((muted) => !muted)}
             aria-label={isMuted ? "Unmute video" : "Mute video"}
             title={isMuted ? "Unmute sound" : "Mute sound"}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-xl backdrop-blur-xl transition hover:scale-105 hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
             <Icon name={isMuted ? "volume-x" : "volume-2"} className="h-5 w-5" />
           </button>
@@ -700,9 +694,13 @@ type ListingActionTrayProps = {
   onCloseMenu: () => void;
 };
 
+const railText = "text-[12px] font-semibold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.7)]";
+const railBtn =
+  "flex h-10 w-10 items-center justify-center rounded-full text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white";
+
+/* ---------- Right-hand icon rail (TikTok style: bare icons + counts) ---------- */
 function ListingActionTray({
   listing,
-  isOpen,
   isSaved,
   isRecommended,
   canRecommend,
@@ -711,8 +709,6 @@ function ListingActionTray({
   commentCount,
   recommendationDisabled,
   role,
-  onToggle,
-  onClose,
   onLike,
   onComment,
   onRecommend,
@@ -721,7 +717,7 @@ function ListingActionTray({
   onCloseMenu,
 }: ListingActionTrayProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -745,6 +741,8 @@ function ListingActionTray({
     try {
       const url = `${window.location.origin}/dashboard/listings/${listing.id}`;
       await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
       onCloseMenu();
     } catch {
       // ignore
@@ -752,15 +750,19 @@ function ListingActionTray({
   };
 
   return (
-    <div ref={rootRef} className="relative flex select-none flex-col items-center gap-3.5" data-listing-menu-open={menuOpen ? "true" : undefined}>
-      {/* Provider avatar shortcut */}
+    <div
+      ref={rootRef}
+      className="relative flex select-none flex-col items-center gap-4"
+      data-listing-menu-open={menuOpen ? "true" : undefined}
+    >
+      {/* Host avatar with "+" badge */}
       {listing.ownerId && (
-        <div className="group flex flex-col items-center">
-          <Link
-            href={`/profile/${encodeURIComponent(listing.ownerId)}`}
-            aria-label="View provider profile"
-            className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-emerald-400/90 shadow-xl transition-transform duration-200 group-hover:border-emerald-300 active:scale-90"
-          >
+        <Link
+          href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+          aria-label="View provider profile"
+          className="relative mb-2 block h-12 w-12 transition-transform active:scale-90"
+        >
+          <span className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white shadow-lg">
             <ProfileAvatar
               src={listing.owner?.profilePicture ?? null}
               seed={listing.ownerId}
@@ -768,16 +770,19 @@ function ListingActionTray({
               size="small"
               className="h-full w-full object-cover"
             />
-          </Link>
-          <span className="-mt-2 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-extrabold text-white shadow-md">
-            ★
           </span>
-        </div>
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-2 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-500 text-[14px] font-bold leading-none text-white"
+          >
+            +
+          </span>
+        </Link>
       )}
 
-      {/* Like Button & Counter */}
-      <div className="flex flex-col items-center gap-1">
-        <div className="rounded-full border border-white/20 bg-black/40 p-1 shadow-lg backdrop-blur-xl transition-transform hover:bg-black/60 active:scale-90">
+      {/* Like */}
+      <div className="flex flex-col items-center gap-0.5">
+        <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
           <LikeButton
             listingId={listing.id}
             initialLikeCount={listing.likeCount ?? 0}
@@ -787,30 +792,26 @@ function ListingActionTray({
             showLabel={false}
           />
         </div>
-        <span className="text-[11px] font-bold text-white drop-shadow-md">
-          {formatEngagementCount(listing.likeCount ?? 0)}
-        </span>
+        <span className={railText}>{formatEngagementCount(listing.likeCount ?? 0)}</span>
       </div>
 
-      {/* Comments Button & Counter */}
-      <div className="flex flex-col items-center gap-1">
+      {/* Comments */}
+      <div className="flex flex-col items-center gap-0.5">
         <button
           type="button"
           onClick={onComment}
           aria-label={`Open comments, ${commentCount} total`}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-lg backdrop-blur-xl transition-all hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90"
+          className={railBtn}
         >
-          <Icon name="message-circle" className="h-5 w-5" />
+          <Icon name="message-circle" className="h-8 w-8 fill-white/90 stroke-none" />
         </button>
-        <span className="text-[11px] font-bold text-white drop-shadow-md">
-          {formatEngagementCount(commentCount)}
-        </span>
+        <span className={railText}>{formatEngagementCount(commentCount)}</span>
       </div>
 
-      {/* Trust / Recommend Button */}
+      {/* Recommend (trust) */}
       {listing.ownerId && canRecommend && (
-        <div className="flex flex-col items-center gap-1">
-          <div className="rounded-full border border-white/20 bg-black/40 p-1 shadow-lg backdrop-blur-xl transition-transform hover:bg-black/60 active:scale-90">
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] transition-transform active:scale-90">
             <RecommendButton
               providerId={listing.ownerId}
               initialRecommendationCount={listing.providerRecommendationCount ?? 0}
@@ -822,35 +823,38 @@ function ListingActionTray({
               showLabel={false}
             />
           </div>
-          <span className="text-[11px] font-bold text-white drop-shadow-md">
-            {formatEngagementCount(listing.providerRecommendationCount ?? 0)}
-          </span>
+          <span className={railText}>{formatEngagementCount(listing.providerRecommendationCount ?? 0)}</span>
         </div>
       )}
 
-      {/* Bookmark / Save Button */}
+      {/* Save */}
       {isStudent && (
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-0.5">
           <button
             type="button"
             onClick={onSave}
             aria-pressed={isSaved}
             aria-label={isSaved ? "Remove from bookmarks" : "Save to bookmarks"}
-            className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-xl transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90 ${
-              isSaved
-                ? "border-amber-400 bg-amber-400/20 text-amber-300 shadow-amber-500/20"
-                : "border-white/20 bg-black/40 text-white hover:bg-black/60"
-            }`}
+            className={railBtn}
           >
-            <Icon name="bookmark" className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`} />
+            <Icon
+              name="bookmark"
+              className={`h-8 w-8 ${isSaved ? "fill-amber-400 text-amber-400" : "fill-white/90 stroke-none"}`}
+            />
           </button>
-          <span className="text-[11px] font-bold text-white drop-shadow-md">
-            {isSaved ? "Saved" : "Save"}
-          </span>
+          <span className={railText}>{isSaved ? "Saved" : "Save"}</span>
         </div>
       )}
 
-      {/* More Options Popover */}
+      {/* Share = copy link */}
+      <div className="flex flex-col items-center gap-0.5">
+        <button type="button" onClick={() => void copyListingLink()} aria-label="Copy link" className={railBtn}>
+          <Icon name="share-2" className="h-7 w-7" />
+        </button>
+        <span className={railText}>{copied ? "Copied" : "Share"}</span>
+      </div>
+
+      {/* More */}
       <div className="relative">
         <button
           type="button"
@@ -858,24 +862,23 @@ function ListingActionTray({
           aria-label="More options"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white shadow-lg backdrop-blur-xl transition-all hover:bg-black/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-90"
+          className={railBtn}
         >
-          <Icon name="more-horizontal" className="h-5 w-5" />
+          <Icon name="more-horizontal" className="h-6 w-6" />
         </button>
 
         {menuOpen && (
           <div
-            ref={menuRef}
             role="menu"
-            className="absolute bottom-0 right-14 z-50 w-48 overflow-hidden rounded-2xl border border-white/15 bg-neutral-900/95 p-1 text-white shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+            className="absolute bottom-0 right-12 z-50 w-44 overflow-hidden rounded-xl bg-neutral-900/95 p-1 text-white shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
           >
             <Link
               role="menuitem"
               href={`/dashboard/listings/${listing.id}`}
               onClick={onCloseMenu}
-              className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
             >
-              <Icon name="external-link" className="h-4 w-4 text-emerald-400" />
+              <Icon name="external-link" className="h-4 w-4" />
               Open post
             </Link>
             {listing.ownerId && (
@@ -883,21 +886,12 @@ function ListingActionTray({
                 role="menuitem"
                 href={`/profile/${encodeURIComponent(listing.ownerId)}`}
                 onClick={onCloseMenu}
-                className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
               >
-                <Icon name="user" className="h-4 w-4 text-emerald-400" />
+                <Icon name="user" className="h-4 w-4" />
                 View provider
               </Link>
             )}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void copyListingLink()}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold text-neutral-200 transition hover:bg-white/10"
-            >
-              <Icon name="share-2" className="h-4 w-4 text-emerald-400" />
-              Copy link
-            </button>
           </div>
         )}
       </div>
@@ -916,6 +910,7 @@ export default function DashboardPage() {
   const [recommendationsLoaded, setRecommendationsLoaded] = useState(false);
   const [pendingEngagement, setPendingEngagement] = useState<Set<string>>(() => new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [resolvedProviderAvatars, setResolvedProviderAvatars] = useState<Record<string, string | null>>({});
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -1057,24 +1052,24 @@ export default function DashboardPage() {
     }), []);
 
   useEffect(() => {
-  const handleSessionCleared = () => {
-    setProfile(null);
-    setAccountStatus("not_submitted");
-    setPageStatus("none");
-    setListings([]);
-    setBookmarkedIds([]);
-    setRecommendedProviderIds([]);
-    setRecommendationsLoaded(false);
-    setOpenSupportCount(0);
-    setProfileImage(null);
-    setResolvedListingImages({});
-  };
+    const handleSessionCleared = () => {
+      setProfile(null);
+      setAccountStatus("not_submitted");
+      setPageStatus("none");
+      setListings([]);
+      setBookmarkedIds([]);
+      setRecommendedProviderIds([]);
+      setRecommendationsLoaded(false);
+      setOpenSupportCount(0);
+      setProfileImage(null);
+      setResolvedListingImages({});
+    };
 
-  window.addEventListener(userSessionClearedEvent, handleSessionCleared);
-  return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
-}, []);
-  
-    useEffect(() => {
+    window.addEventListener(userSessionClearedEvent, handleSessionCleared);
+    return () => window.removeEventListener(userSessionClearedEvent, handleSessionCleared);
+  }, []);
+
+  useEffect(() => {
     const cachedProfile = getCachedCurrentUser<Profile>();
     const hasCachedData = cachedProfile !== null;
     if (!hasCachedData) setDashboardLoading(true);
@@ -1219,7 +1214,7 @@ export default function DashboardPage() {
         return;
       }
       setProfile(null);
-      
+
       setAccountStatus("not_submitted");
       setPageStatus("none");
       setListings([]);
@@ -1492,39 +1487,29 @@ export default function DashboardPage() {
       <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" aria-busy="true">
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
-          {/* Top header skeleton */}
-          <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center gap-3">
-            <div className="h-12 flex-1 animate-pulse rounded-full border border-white/10 bg-white/10 backdrop-blur-md" />
-            <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
+          {/* Top bar skeleton */}
+          <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
+            <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+            <div className="h-5 w-16 animate-pulse rounded-full bg-white/15" />
+            <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
           </div>
 
-          {/* Bottom card & interaction rail skeleton */}
-          <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end justify-between gap-4 md:inset-x-8 md:bottom-8">
-            <div className="min-w-0 max-w-xl flex-1 space-y-3 rounded-3xl border border-white/15 bg-black/50 p-5 backdrop-blur-2xl">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 animate-pulse rounded-full bg-white/15" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3.5 w-28 animate-pulse rounded-full bg-white/20" />
-                  <div className="h-2.5 w-20 animate-pulse rounded-full bg-white/10" />
-                </div>
-              </div>
-              <div className="h-5 w-3/4 animate-pulse rounded-lg bg-white/20" />
-              <div className="space-y-1.5">
-                <div className="h-3 w-full animate-pulse rounded bg-white/10" />
-                <div className="h-3 w-4/5 animate-pulse rounded bg-white/10" />
-              </div>
+          {/* Bottom text + icon rail skeleton */}
+          <div className="absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
+            <div className="min-w-0 flex-1 space-y-2.5">
+              <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
+              <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/20" />
+              <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
               <div className="flex items-center justify-between pt-2">
-                <div className="h-7 w-32 animate-pulse rounded-lg bg-white/20" />
-                <div className="h-10 w-28 animate-pulse rounded-full bg-emerald-500/50" />
+                <div className="h-7 w-28 animate-pulse rounded-lg bg-white/20" />
+                <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
               </div>
             </div>
-
-            {/* Vertical action rail skeleton */}
-            <div className="flex flex-col items-center gap-3.5 pb-2">
-              <div className="h-12 w-12 animate-pulse rounded-full border border-white/20 bg-white/10" />
-              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
-              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
-              <div className="h-11 w-11 animate-pulse rounded-full border border-white/20 bg-white/10" />
+            <div className="flex flex-col items-center gap-5 pb-1">
+              <div className="h-12 w-12 animate-pulse rounded-full bg-white/10" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
             </div>
           </div>
         </section>
@@ -1541,45 +1526,73 @@ export default function DashboardPage() {
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative h-full w-full overflow-hidden bg-black">
-        {/* Floating Headline Tabs & Profile Header */}
-        <div className="absolute left-4 right-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-black tracking-[0.2em] text-white shadow-lg shadow-red-500/30">
-              LIVE
-            </span>
-            <div className="flex items-center gap-4 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[13px] font-semibold backdrop-blur-xl">
-              <button type="button" className="text-white/65 transition hover:text-white">
-                Following
-              </button>
-              <button type="button" className="text-white transition hover:text-white">
-                For You
-              </button>
-            </div>
-          </div>
+        {/* Top bar: avatar | For You | search */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/60 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <div className="pointer-events-auto mx-auto flex h-11 max-w-xl items-center justify-between gap-3 px-4">
+            {searchOpen ? (
+              <form
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitSearch();
+                }}
+                className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full bg-white/15 pl-4 pr-1.5 text-white backdrop-blur-xl focus-within:bg-white/25"
+              >
+                <Icon name="search" className="h-4 w-4 shrink-0 text-white/70" />
+                <input
+                  autoFocus
+                  type="search"
+                  enterKeyHint="search"
+                  aria-label="Search verified student cribs, hostels, or providers"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search cribs, campus, host"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/60 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchOpen(false);
+                  }}
+                  aria-label="Close search"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/10"
+                >
+                  <Icon name="x" className="h-4 w-4" />
+                </button>
+              </form>
+            ) : (
+              <>
+                <Link
+                  href="/profile"
+                  aria-label="View your profile"
+                  title={accountName || "Your Profile"}
+                  className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white/70 shadow-lg active:scale-95"
+                >
+                  <ProfileAvatar
+                    src={profileImage}
+                    seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
+                    alt={`${accountName || "Your"} profile photo`}
+                    size="small"
+                    className="h-full w-full object-cover"
+                  />
+                </Link>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Search listings"
-              onClick={() => submitSearch()}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white/85 shadow-lg backdrop-blur-xl transition hover:bg-black/50"
-            >
-              <Icon name="search" className="h-4 w-4" />
-            </button>
-            <Link
-              href="/profile"
-              aria-label="View your profile"
-              title={accountName || "Your Profile"}
-              className="shrink-0 rounded-full border-2 border-white/40 shadow-xl transition-transform hover:border-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
-            >
-              <ProfileAvatar
-                src={profileImage}
-                seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
-                alt={`${accountName || "Your"} profile photo`}
-                size="small"
-                className="h-9 w-9 rounded-full object-cover"
-              />
-            </Link>
+                <h1 className="relative text-[17px] font-bold text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
+                  For You
+                  <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-white" />
+                </h1>
+
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Search"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] active:scale-90"
+                >
+                  <Icon name="search" className="h-6 w-6" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1603,7 +1616,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Main TikTok/Reels vertical snap feed */}
+        {/* Vertical snap feed */}
         <div
           ref={feedRef}
           onScroll={() => {
@@ -1612,7 +1625,7 @@ export default function DashboardPage() {
           }}
           className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {/* Floating Pill: New Posts Available */}
+          {/* Floating pill: new posts available */}
           {newPostsAvailable && (
             <div className="pointer-events-none sticky top-20 z-40 flex h-0 justify-center">
               <button
@@ -1645,7 +1658,7 @@ export default function DashboardPage() {
                   hasMedia ? "bg-neutral-950" : "bg-gradient-to-br from-emerald-950 via-neutral-900 to-black"
                 }`}
               >
-                {/* Media Layer (Video or High-Res Image) */}
+                {/* Media layer (video or image) */}
                 {hasMedia && (
                   <div className="absolute inset-0">
                     {listing.video ? (
@@ -1671,141 +1684,134 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Cinematic Vignette Overlay for Crisp Readability */}
+                {/* Soft bottom fade only, so the media stays visible */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 via-45% to-black/40"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent via-40% to-transparent"
                 />
 
-                {/* Floating Content Area & Bottom UI */}
-                <div className="absolute inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-5xl items-end justify-between gap-3.5 md:inset-x-8 md:bottom-8">
-                  {/* Left: Listing Information Glass Card */}
-                  <div className="min-w-0 max-w-lg flex-1">
-                    {/* Video Progress Line */}
-                    {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
-                      <div aria-label="Video progress" className="mb-2.5 h-1 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
-                        <div
-                          className="h-full rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] transition-all duration-150"
-                          style={{ width: `${Math.min(100, (videoProgress.currentTime / videoProgress.duration) * 100)}%` }}
-                        />
-                      </div>
+                {/* Video progress: thin line above the bottom nav */}
+                {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
+                  <div
+                    aria-label="Video progress"
+                    className="absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 h-[3px] bg-white/25 md:bottom-0"
+                  >
+                    <div
+                      className="h-full bg-white transition-all duration-150"
+                      style={{ width: `${Math.min(100, (videoProgress.currentTime / videoProgress.duration) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Bottom UI: text on the left, icon rail on the right */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 px-3 md:bottom-8">
+                  {/* Left: plain text over the media, no card */}
+                  <div className="pointer-events-auto min-w-0 flex-1 pb-1 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">
+                    {/* Host name + verified tick */}
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
+                        className="truncate text-[15px] font-bold text-white hover:underline"
+                      >
+                        {providerName}
+                      </Link>
+                      <span
+                        title="Verified Host"
+                        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
+                      >
+                        <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                      </span>
+                    </div>
+
+                    {/* Caption: title + short description */}
+                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1 block">
+                      <h2 className="line-clamp-2 text-[15px] font-semibold leading-snug text-white">
+                        {listing.title ?? "Verified Campus Home"}
+                      </h2>
+                    </Link>
+                    {listing.description && (
+                      <p className="mt-0.5 text-sm leading-snug text-white/90">
+                        <span className={isDescExpanded ? "" : "line-clamp-1"}>{listing.description}</span>
+                        {listing.description.length > 60 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleDescriptionExpand(listing.id)}
+                            className="mt-0.5 text-sm font-semibold text-white/70 hover:text-white"
+                          >
+                            {isDescExpanded ? "less" : "more"}
+                          </button>
+                        )}
+                      </p>
                     )}
 
-                    <div className="rounded-3xl border border-white/15 bg-black/35 p-3.5 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all sm:p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <Link
-                          href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
-                          className="group flex min-w-0 items-center gap-2"
-                        >
-                          <ProfileAvatar
-                            src={resolvedProviderAvatars[listing.id] ?? null}
-                            alt={`${providerName} avatar`}
-                            size="small"
-                            className="h-8 w-8 rounded-full border border-white/25 object-cover"
-                          />
-                          <div className="min-w-0">
-                            <div className="truncate text-[11px] font-bold text-white transition group-hover:text-emerald-300">
-                              {providerName}
-                            </div>
-                            {location && (
-                              <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-white/70">
-                                <Icon name="map-pin" className="h-2.5 w-2.5 shrink-0 text-emerald-400" />
-                                <span className="truncate">{location}</span>
-                              </div>
-                            )}
-                          </div>
-                        </Link>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-200">
-                          <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
-                          Verified
-                        </span>
-                      </div>
+                    {/* Location, styled like TikTok's sound row */}
+                    {location && (
+                      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/90">
+                        <Icon name="map-pin" className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{location}</span>
+                      </p>
+                    )}
 
+                    {/* Price + one clear action */}
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <ListingPriceTag listing={listing} />
                       <Link
                         href={`/dashboard/listings/${listing.id}`}
-                        className="mt-2.5 block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+                        className="inline-flex h-9 shrink-0 items-center rounded-md bg-emerald-500 px-4 text-sm font-bold text-white transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95 [text-shadow:none]"
                       >
-                        <h2 className="line-clamp-2 text-base font-bold leading-tight tracking-tight text-white sm:text-lg">
-                          {listing.title ?? "Verified Campus Home"}
-                        </h2>
+                        View crib
                       </Link>
-
-                      {listing.description && (
-                        <div className="mt-1.5 text-[12px] text-neutral-200/90 sm:text-sm">
-                          <p className={`leading-relaxed ${isDescExpanded ? "" : "line-clamp-2"}`}>
-                            {listing.description}
-                          </p>
-                          {listing.description.length > 80 && (
-                            <button
-                              type="button"
-                              onClick={() => toggleDescriptionExpand(listing.id)}
-                              className="mt-1 font-semibold text-emerald-300 transition hover:text-emerald-200"
-                            >
-                              {isDescExpanded ? "Less" : "More"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
-                        <ListingPriceTag listing={listing} />
-                        <Link
-                          href={`/dashboard/listings/${listing.id}`}
-                          className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-emerald-500 px-4 text-[11px] font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-95"
-                        >
-                          View
-                          <Icon name="arrow-right" className="h-3.5 w-3.5" />
-                        </Link>
-                      </div>
                     </div>
                   </div>
 
-                  {/* Right: Vertical Interaction Rail */}
-                  <ListingActionTray
-                    listing={listing}
-                    isOpen={openActionTrayId === listing.id}
-                    isSaved={isSaved}
-                    isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
-                    canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
-                    menuOpen={openMenuId === listing.id}
-                    isStudent={isStudent}
-                    commentCount={commentCount}
-                    recommendationDisabled={
-                      String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
-                      !recommendationsLoaded ||
-                      pendingEngagement.has(`recommend:${listing.ownerId}`)
-                    }
-                    role={String(profile?.role ?? "").toUpperCase()}
-                    onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
-                    onClose={closeActionTray}
-                    onLike={async (id, liked) => {
-                      await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
-                        method: liked ? "POST" : "DELETE",
-                      });
-                      setListings((current) =>
-                        current.map((item) =>
-                          item.id === id
-                            ? {
-                                ...item,
-                                likedByCurrentUser: liked,
-                                likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
-                              }
-                            : item,
-                        ),
-                      );
-                    }}
-                    onComment={() => toggleComments(listing.id)}
-                    onRecommend={async (providerId, recommended) => {
-                      await toggleRecommendation(providerId);
-                      void recommended;
-                    }}
-                    onSave={() => void toggleBookmark(listing.id)}
-                    onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
-                    onCloseMenu={() => setOpenMenuId(null)}
-                  />
+                  {/* Right: bare icon rail */}
+                  <div className="pointer-events-auto">
+                    <ListingActionTray
+                      listing={listing}
+                      isOpen={openActionTrayId === listing.id}
+                      isSaved={isSaved}
+                      isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
+                      canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
+                      menuOpen={openMenuId === listing.id}
+                      isStudent={isStudent}
+                      commentCount={commentCount}
+                      recommendationDisabled={
+                        String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
+                        !recommendationsLoaded ||
+                        pendingEngagement.has(`recommend:${listing.ownerId}`)
+                      }
+                      role={String(profile?.role ?? "").toUpperCase()}
+                      onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
+                      onClose={closeActionTray}
+                      onLike={async (id, liked) => {
+                        await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
+                          method: liked ? "POST" : "DELETE",
+                        });
+                        setListings((current) =>
+                          current.map((item) =>
+                            item.id === id
+                              ? {
+                                  ...item,
+                                  likedByCurrentUser: liked,
+                                  likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
+                                }
+                              : item,
+                          ),
+                        );
+                      }}
+                      onComment={() => toggleComments(listing.id)}
+                      onRecommend={async (providerId, recommended) => {
+                        await toggleRecommendation(providerId);
+                        void recommended;
+                      }}
+                      onSave={() => void toggleBookmark(listing.id)}
+                      onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
+                      onCloseMenu={() => setOpenMenuId(null)}
+                    />
+                  </div>
                 </div>
 
-                {/* Comments Modal Drawer */}
+                {/* Comments modal drawer */}
                 {commentsOpen && (
                   <ListingComments
                     listingId={listing.id}
