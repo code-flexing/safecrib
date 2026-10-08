@@ -192,9 +192,9 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
       <span className={`font-display font-extrabold text-white ${priced ? "text-2xl" : "text-sm font-semibold"}`}>
         {formatListingPrice(listing)}
       </span>
-      {priced && <span className="text-xs font-medium text-white/70">/ yr</span>}
+      {priced && <span className="text-xs font-medium text-white/80">/ yr</span>}
       {isDiscounted && (
-        <span className="text-xs font-medium text-white/50 line-through">{formatOriginalPrice(listing)}</span>
+        <span className="text-xs font-medium text-white/80 line-through">{formatOriginalPrice(listing)}</span>
       )}
     </div>
   );
@@ -1523,7 +1523,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
+    <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72" style={{ colorScheme: "dark" }}>
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative h-full w-full overflow-hidden bg-black">
         <style jsx global>{`
