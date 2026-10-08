@@ -1485,7 +1485,7 @@ export default function DashboardPage() {
   if (dashboardLoading) {
     return (
       <main className="relative h-[100dvh] overflow-hidden bg-neutral-950 md:pl-72" aria-busy="true">
-        <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
+        <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
         <section className="relative h-full w-full overflow-hidden" aria-label="Loading homes">
           {/* Top bar skeleton */}
           <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
@@ -1524,7 +1524,7 @@ export default function DashboardPage() {
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-black md:pl-72">
-      <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
+      <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
       <section className="relative h-full w-full overflow-hidden bg-black">
         {/* Top bar: avatar | For You | search */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/60 to-transparent pb-8 pt-[calc(0.75rem+env(safe-area-inset-top))]">
