@@ -1521,6 +1521,37 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleProviderFollow = async (listing: Listing) => {
+    const ownerId = listing.ownerId;
+    if (!ownerId || ownerId === profile?.id) return;
+
+    const actionKey = `follow:${ownerId}`;
+    if (pendingEngagement.has(actionKey)) return;
+    const following = Boolean(listing.followedPage);
+    setPendingEngagement((current) => new Set(current).add(actionKey));
+    try {
+      const publicProfile = unwrapData<{ providerPageId?: string } | null>(
+        await apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`),
+      );
+      if (!publicProfile?.providerPageId) throw new Error("This provider page is unavailable.");
+
+      await apiFetch(`/api/v1/users/pages/${encodeURIComponent(publicProfile.providerPageId)}/follow`, {
+        method: following ? "DELETE" : "POST",
+      });
+      setListings((current) => current.map((item) => (
+        item.ownerId === ownerId ? { ...item, followedPage: !following } : item
+      )));
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "We could not update your follow. Please try again.");
+    } finally {
+      setPendingEngagement((current) => {
+        const next = new Set(current);
+        next.delete(actionKey);
+        return next;
+      });
+    }
+  };
+
   const toggleRecommendation = async (providerId: string) => {
     const actionKey = `recommend:${providerId}`;
     if (pendingEngagement.has(actionKey)) return;
@@ -1821,19 +1852,32 @@ export default function DashboardPage() {
                     {/* Row 1: avatar + name */}
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {listing.ownerId ? (
-                        <Link
-                          href={`/profile/${encodeURIComponent(listing.ownerId)}`}
-                          aria-label="View provider profile"
-                          className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/30"
-                        >
-                          <ProfileAvatar
-                            src={resolvedProviderAvatars[listing.id] ?? null}
-                            seed={listing.ownerId}
-                            alt={`${providerName} avatar`}
-                            size="small"
-                            className="h-full w-full object-cover"
-                          />
-                        </Link>
+                        <div className="relative h-9 w-9 shrink-0">
+                          <Link
+                            href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+                            aria-label="View provider profile"
+                            className="absolute inset-0 overflow-hidden rounded-full border border-white/30"
+                          >
+                            <ProfileAvatar
+                              src={resolvedProviderAvatars[listing.id] ?? null}
+                              seed={listing.ownerId}
+                              alt={`${providerName} avatar`}
+                              size="small"
+                              className="h-full w-full object-cover"
+                            />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => void toggleProviderFollow(listing)}
+                            disabled={listing.ownerId === profile?.id || pendingEngagement.has(`follow:${listing.ownerId}`)}
+                            aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
+                            aria-pressed={Boolean(listing.followedPage)}
+                            title={listing.followedPage ? "Unfollow provider" : "Follow provider"}
+                            className="feed-badge absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#09090b] text-sm font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {listing.followedPage ? <Icon name="check" className="h-3 w-3 stroke-[3]" /> : "+"}
+                          </button>
+                        </div>
                       ) : null}
                       <div className="flex min-w-0 items-center gap-1.5">
                         <Link
