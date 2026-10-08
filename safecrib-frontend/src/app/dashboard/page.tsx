@@ -321,7 +321,7 @@ function ListingPriceTag({ listing }: { listing: Listing }) {
   const isDiscounted = priced && hasDiscount(listing);
   return (
     <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
-      <span className={`feed-text font-display font-extrabold ${priced ? "text-xl" : "text-sm font-semibold"}`}>
+      <span className={`feed-text font-display font-extrabold ${priced ? "text-lg" : "text-sm font-semibold"}`}>
         {formatListingPrice(listing)}
       </span>
       {priced && <span className="feed-muted text-xs font-medium">/ yr</span>}
@@ -1848,11 +1848,11 @@ export default function DashboardPage() {
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
                   {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left shadow-xl">
+                  <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-2.5 text-left shadow-xl">
                     {/* Row 1: avatar + name */}
-                    <div className="flex min-w-0 items-center justify-start gap-2">
+                    <div className="flex min-w-0 items-center justify-start gap-1.5">
                       {listing.ownerId ? (
-                        <div className="relative h-9 w-9 shrink-0">
+                        <div className="relative h-8 w-8 shrink-0">
                           <Link
                             href={`/profile/${encodeURIComponent(listing.ownerId)}`}
                             aria-label="View provider profile"
@@ -1873,42 +1873,39 @@ export default function DashboardPage() {
                             aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
                             aria-pressed={Boolean(listing.followedPage)}
                             title={listing.followedPage ? "Unfollow provider" : "Follow provider"}
-                            className="feed-badge absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#09090b] text-sm font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
+                            className="feed-badge absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#09090b] text-xs font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {listing.followedPage ? <Icon name="check" className="h-3 w-3 stroke-[3]" /> : "+"}
+                            {listing.followedPage ? <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" /> : "+"}
                           </button>
                         </div>
                       ) : null}
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <Link
-                          href={listing.ownerId ? `/profile/${encodeURIComponent(listing.ownerId)}` : "#"}
-                          className="feed-text truncate text-[15px] font-bold"
-                        >
+                      <div className="flex min-w-0 items-center gap-1">
+                        <span className="feed-text truncate text-sm font-bold">
                           {providerName}
-                        </Link>
+                        </span>
                         <span
                           title="Verified Host"
-                          className="feed-badge inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                          className="feed-badge inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full"
                         >
-                          <Icon name="check" className="h-2.5 w-2.5 stroke-[3]" />
+                          <Icon name="check" className="h-2 w-2 stroke-[3]" />
                         </span>
                       </div>
                     </div>
 
                     {/* Row 2: title + description underneath, same left edge as the avatar */}
-                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-2 block">
-                      <h2 className="feed-text line-clamp-2 text-left text-[15px] font-semibold leading-snug">
+                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1 block">
+                      <h2 className="feed-text line-clamp-1 text-left text-sm font-semibold leading-tight">
                         {listing.title ?? "Verified Campus Home"}
                       </h2>
                     </Link>
                     {listing.description && (
-                      <p className="feed-muted mt-0.5 text-left text-sm leading-snug">
+                      <p className="feed-muted mt-0.5 text-left text-xs leading-snug">
                         <span className={isDescExpanded ? "" : "line-clamp-1"}>{listing.description}</span>
                         {listing.description.length > 60 && (
                           <button
                             type="button"
                             onClick={() => toggleDescriptionExpand(listing.id)}
-                            className="feed-text mt-0.5 text-sm font-semibold underline-offset-2 hover:underline"
+                            className="feed-text ml-1 text-xs font-semibold underline-offset-2 hover:underline"
                           >
                             {isDescExpanded ? "less" : "more"}
                           </button>
@@ -1918,18 +1915,18 @@ export default function DashboardPage() {
 
                     {/* Location */}
                     {location && (
-                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-sm font-medium">
-                        <Icon name="map-pin" className="h-4 w-4 shrink-0" />
+                      <p className="feed-muted mt-1 flex items-center justify-start gap-1 text-xs font-medium">
+                        <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
                     )}
 
                     {/* Price + one clear action */}
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="mt-2 flex items-center justify-between gap-2">
                       <ListingPriceTag listing={listing} />
                       <Link
                         href={`/dashboard/listings/${listing.id}`}
-                        className="feed-cta inline-flex h-9 shrink-0 items-center rounded-md px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
+                        className="feed-cta inline-flex h-8 shrink-0 items-center rounded-md px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
                       >
                         View crib
                       </Link>
