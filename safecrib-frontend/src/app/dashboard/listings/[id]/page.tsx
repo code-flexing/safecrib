@@ -201,7 +201,9 @@ export default function ListingDetailPage() {
   const [recommendationStateLoaded, setRecommendationStateLoaded] = useState(false);
   const [recommendationPending, setRecommendationPending] = useState(false);
   const [comments, setComments] = useState<ListingComment[]>([]);
+  const [commentCount, setCommentCount] = useState(0);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [modal, setModal] = useState<"contact" | "booking" | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
@@ -227,8 +229,13 @@ export default function ListingDetailPage() {
       setLiked(home.likedByCurrentUser === true);
       setLikeCount(home.likeCount ?? 0);
       setRecommendationCount(home.providerRecommendationCount ?? 0);
-      if (commentsResponse) setComments(unwrapData<ListingComment[]>(commentsResponse));
-      else setCommentError("We could not load home comments. Please refresh to retry.");
+      if (commentsResponse) {
+        const list = unwrapData<ListingComment[]>(commentsResponse);
+        setComments(list);
+        setCommentCount(list.length);
+      } else {
+        setCommentError("We could not load home comments. Please refresh to retry.");
+      }
       if (home.ownerId) {
         const verificationPath = `/api/v1/trust/users/${encodeURIComponent(home.ownerId)}/verification-stage`;
         setProviderVerification(normalizeVerificationStage(getPersistedVerification(home.ownerId)));
@@ -359,7 +366,14 @@ export default function ListingDetailPage() {
   };
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
   const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/dashboard"); };
-  const focusComposer = () => { document.getElementById("home-comment")?.focus(); };
+  useEffect(() => {
+    if (!commentsOpen) return;
+    const focusCommentField = () => {
+      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[id^="home-comment"]');
+      textarea?.focus();
+    };
+    window.requestAnimationFrame(focusCommentField);
+  }, [commentsOpen]);
 
   /* ---------- location: text + map (coordinates first, text address as fallback) ---------- */
   const addressText = listing?.address?.trim() ?? "";
@@ -467,7 +481,7 @@ export default function ListingDetailPage() {
                 <ActionButton label={liked ? "Unlike" : "Like"} onClick={() => void toggleLike()} disabled={!listing.ownerId || likePending} pressed={liked} tone="text-red-500" count={likeCount}>
                   <Icon d={ICONS.heart} className="h-[22px] w-[22px]" filled={liked} />
                 </ActionButton>
-                <ActionButton label="Comments" onClick={() => { document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" }); focusComposer(); }} tone="text-black/65" count={comments.length}>
+                <ActionButton label="Comments" onClick={() => setCommentsOpen(true)} tone="text-black/65" count={commentCount}>
                   <Icon d={ICONS.comment} className="h-[22px] w-[22px]" />
                 </ActionButton>
                 <ActionButton label={role === "STUDENT" ? (recommended ? "Remove recommendation" : "Recommend this provider") : "Student accounts can recommend providers"} onClick={() => void toggleRecommendation()} disabled={role !== "STUDENT" || !listing.ownerId || !recommendationStateLoaded || recommendationPending} pressed={recommended} tone="text-blue-600" count={recommendationCount}>
@@ -487,16 +501,17 @@ export default function ListingDetailPage() {
               </div>
             </div>
 
-            {/* comments - using shared component */}
-            <ListingComments
-              listingId={id}
-              ownerId={listing?.ownerId}
-              initialComments={comments}
-              initialError={commentError ?? undefined}
-              isModal={false}
-              onCountChange={() => { }}
-              onClose={() => { }}
-            />
+            {commentsOpen && (
+              <ListingComments
+                listingId={id}
+                ownerId={listing?.ownerId}
+                initialComments={comments}
+                initialError={commentError ?? undefined}
+                isModal
+                onCountChange={setCommentCount}
+                onClose={() => setCommentsOpen(false)}
+              />
+            )}
           </div>
         </aside>
       </article> : <p className="mt-8 text-sm text-black/60">Loading listing details...</p>}
