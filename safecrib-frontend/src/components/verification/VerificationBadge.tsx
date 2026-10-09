@@ -178,7 +178,7 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
           strokeWidth={ringStroke}
         />
       )}
-      <g transform="scale(1, -1)" fill={glyphColor}>
+      <g fill={glyphColor}>
         {badgeColor === "green" && (
           <path
             d={checkPath}
