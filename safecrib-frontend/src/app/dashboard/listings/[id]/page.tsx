@@ -11,6 +11,7 @@ import { normalizeVerificationStage, VerificationBadge, type VerificationStageRe
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { apiFetch, cachedApiFetch, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { ListingComments } from "@/components/comments";
 
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; username?: string | null; email?: string } };
 type Profile = { id?: string; role?: string; studentProfileStatus?: unknown };
@@ -77,34 +78,6 @@ function ActionButton({ label, onClick, disabled, pressed, tone, count, children
     {children}
     {count !== undefined && <span className="tabular-nums">{count}</span>}
   </button>;
-}
-
-/* ---------- comment avatar ---------- */
-const AVATAR_TONES = ["bg-safecrib-green/15 text-safecrib-green", "bg-amber-100 text-amber-800", "bg-sky-100 text-sky-800", "bg-rose-100 text-rose-800", "bg-violet-100 text-violet-800"];
-function CommentAvatar({ user, small }: { user: ListingComment["user"]; small: boolean }) {
-  let hash = 0;
-  for (let index = 0; index < user.id.length; index += 1) hash = (hash * 31 + user.id.charCodeAt(index)) >>> 0;
-  const letter = (user.displayName ?? user.username ?? "?").trim().slice(0, 1).toUpperCase() || "?";
-  return <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${small ? "h-7 w-7 text-xs" : "h-9 w-9 text-sm"} ${AVATAR_TONES[hash % AVATAR_TONES.length]}`}>{letter}</span>;
-}
-
-/** Uses the same verification source + badge the rest of the app already uses. */
-function UserVerificationBadge({ userId }: { userId: string }) {
-  const [verification, setVerification] = useState<VerificationStageResult | null>(null);
-  useEffect(() => {
-    let active = true;
-    setVerification(normalizeVerificationStage(getPersistedVerification(userId)));
-    void cachedApiFetch<unknown>(`/api/v1/trust/users/${encodeURIComponent(userId)}/verification-stage`)
-      .then((response) => {
-        const stage = normalizeVerificationStage(response);
-        if (!stage || !active) return;
-        setPersistedVerification(userId, response);
-        setVerification(stage);
-      })
-      .catch(() => undefined);
-    return () => { active = false; };
-  }, [userId]);
-  return verification ? <VerificationBadge verification={verification} compact iconOnly /> : null;
 }
 
 /* ---------- custom video player ---------- */
@@ -228,14 +201,7 @@ export default function ListingDetailPage() {
   const [recommendationStateLoaded, setRecommendationStateLoaded] = useState(false);
   const [recommendationPending, setRecommendationPending] = useState(false);
   const [comments, setComments] = useState<ListingComment[]>([]);
-  const [commentBody, setCommentBody] = useState("");
-  const [commentMentionIds, setCommentMentionIds] = useState<string[]>([]);
-  const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
-  const [taggedUsers, setTaggedUsers] = useState<MentionCandidate[]>([]);
-  const [replyParentId, setReplyParentId] = useState<string | null>(null);
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [commentError, setCommentError] = useState("");
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
   const [modal, setModal] = useState<"contact" | "booking" | null>(null);
   const [contactMessage, setContactMessage] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
@@ -359,66 +325,6 @@ export default function ListingDetailPage() {
       setRecommendationPending(false);
     }
   };
-  const submitComment = async () => {
-    if (commentSubmitting) return;
-    const body = commentBody.trim();
-    if (!body || body.length > 1000) {
-      setCommentError("Write a comment up to 1,000 characters.");
-      return;
-    }
-    setCommentSubmitting(true);
-    setCommentError("");
-    try {
-      const response = await apiFetch<ListingComment>(`/api/v1/listings/${encodeURIComponent(id)}/comments`, {
-        method: "POST",
-        body: JSON.stringify({
-          body,
-          parentId: replyParentId ?? undefined,
-          mentionUserIds: commentMentionIds,
-        }),
-      });
-      setComments((current) => [unwrapData<ListingComment>(response), ...current]);
-      if (replyParentId) setExpandedThreads((current) => new Set(current).add(replyParentId));
-      setCommentBody("");
-      setCommentMentionIds([]);
-      setReplyParentId(null);
-      const box = document.getElementById("home-comment") as HTMLTextAreaElement | null;
-      if (box) box.style.height = "auto";
-    } catch (error) {
-      setCommentError(error instanceof Error ? error.message : "We could not post your comment.");
-    } finally {
-      setCommentSubmitting(false);
-    }
-  };
-  const updateCommentBody = (value: string) => {
-    setCommentBody(value);
-    setCommentMentionIds((current) => current.filter((mentionId) => {
-      const person = taggedUsers.find((user) => user.id === mentionId);
-      const handle = person?.username ?? "";
-      return person ? value.toLocaleLowerCase().includes(`@${handle.toLocaleLowerCase()}`) : false;
-    }));
-    const match = value.match(/(?:^|\s)@([^@\n]*)$/);
-    if (!match) {
-      setMentionCandidates([]);
-      return;
-    }
-    const query = (match[1] ?? "").trim();
-    if (!query) {
-      setMentionCandidates([]);
-      return;
-    }
-    void apiFetch<{ users: MentionCandidate[] }>(`/api/v1/users/discover?q=${encodeURIComponent(query)}`)
-      .then((response) => setMentionCandidates(unwrapData<{ users: MentionCandidate[] }>(response).users.slice(0, 5)))
-      .catch(() => setMentionCandidates([]));
-  };
-  const selectMention = (person: MentionCandidate) => {
-    const mentionStart = commentBody.lastIndexOf("@");
-    const handle = person.username ?? person.displayName ?? "member";
-    setCommentBody(`${commentBody.slice(0, mentionStart)}@${handle} `);
-    setCommentMentionIds((current) => current.includes(person.id) ? current : [...current, person.id]);
-    setTaggedUsers((current) => current.some((item) => item.id === person.id) ? current : [...current, person]);
-    setMentionCandidates([]);
-  };
   const submitContact = async () => {
     const providerId = listing?.providerPageId ?? listing?.providerId ?? listing?.provider?.id;
     if (!providerId || !contactMessage.trim()) { setMessage("A provider and message are required to send an email."); return; }
@@ -464,74 +370,6 @@ export default function ListingDetailPage() {
   const mapQuery = hasCoordinates ? `${listing!.lat},${listing!.lng}` : textQuery;
   const mapUrl = mapQuery ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed` : "";
   const openMapUrl = mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : "";
-
-  /* ---------- comments ---------- */
-  const rootComments = comments.filter((comment) => !comment.parentId);
-  const repliesOf = (parentId: string) =>
-    comments.filter((candidate) => candidate.parentId === parentId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const expandThread = (threadId: string, open: boolean) =>
-    setExpandedThreads((current) => {
-      const next = new Set(current);
-      if (open) next.add(threadId); else next.delete(threadId);
-      return next;
-    });
-  const replyingTo = replyParentId ? comments.find((comment) => comment.id === replyParentId) : undefined;
-
-  const startReply = (item: ListingComment) => {
-    const handle = item.user.username;
-    setReplyParentId(item.id);
-    setCommentError("");
-    setMentionCandidates([]);
-    if (handle) {
-      setCommentBody(`@${handle} `);
-      setCommentMentionIds([item.user.id]);
-      setTaggedUsers((current) => current.some((person) => person.id === item.user.id) ? current : [...current, { id: item.user.id, displayName: item.user.displayName, username: handle, role: item.user.role }]);
-    } else {
-      setCommentBody("");
-      setCommentMentionIds([]);
-    }
-    window.setTimeout(focusComposer, 0);
-  };
-
-  const renderBody = (item: ListingComment): ReactNode =>
-    item.body.split(/(@[A-Za-z0-9_.]+)/g).map((part, index) => {
-      if (part.length > 1 && part.startsWith("@")) {
-        const handle = part.slice(1).toLowerCase();
-        const mentioned = item.mentions?.find((mention) => (mention.user.username ?? "").toLowerCase() === handle);
-        if (mentioned) return <Link key={index} href={`/profile/${encodeURIComponent(mentioned.user.id)}`} className="font-medium text-blue-600 hover:underline">{part}</Link>;
-      }
-      return part;
-    });
-
-  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
-    const replies = repliesOf(item.id);
-    const expanded = expandedThreads.has(item.id);
-    const visibleReplies = expanded ? replies : replies.slice(0, 1);
-    const hiddenCount = replies.length - visibleReplies.length;
-    const isAuthor = Boolean(listing?.ownerId && item.user.id === listing.ownerId);
-    return <li key={item.id} className="py-2.5">
-      <div className="flex gap-3">
-        <CommentAvatar user={item.user} small={depth > 0} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-sm font-semibold text-safecrib-black"><UserName user={item.user} size="sm" showHandle={true} /></span>
-            <UserVerificationBadge userId={item.user.id} />
-            {isAuthor && <span className="rounded-md bg-safecrib-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-safecrib-green">Author</span>}
-            <time dateTime={item.createdAt} className="text-xs text-black/40">{timeAgo(item.createdAt)}</time>
-          </div>
-          {item.body && <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-6 text-black/75">{renderBody(item)}</p>}
-          <button type="button" onClick={() => startReply(item)} className="mt-0.5 text-xs font-semibold text-black/45 transition hover:text-safecrib-green">Reply</button>
-          {visibleReplies.length > 0 && <ul className="mt-1">{visibleReplies.map((reply) => renderComment(reply, depth + 1))}</ul>}
-          {hiddenCount > 0 && <button type="button" onClick={() => expandThread(item.id, true)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/50 transition hover:text-safecrib-green">
-            <span aria-hidden="true" className="h-px w-6 bg-black/25" />View {hiddenCount} more {hiddenCount === 1 ? "reply" : "replies"}
-          </button>}
-          {expanded && replies.length > 1 && <button type="button" onClick={() => expandThread(item.id, false)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/40 transition hover:text-safecrib-green">
-            <span aria-hidden="true" className="h-px w-6 bg-black/25" />Hide replies
-          </button>}
-        </div>
-      </div>
-    </li>;
-  };
 
   const price = listing?.discountedPrice ?? listing?.price;
   const isProvider = ["AGENT", "LANDLORD"].includes(role);
@@ -649,43 +487,16 @@ export default function ListingDetailPage() {
               </div>
             </div>
 
-            {/* comments */}
-            <section id="comments" className="mt-4 scroll-mt-2 border-t border-black/10 pt-5" aria-labelledby="home-comments-title">
-              <h2 id="home-comments-title" className="text-lg font-semibold text-safecrib-black">Comments <span className="font-normal text-black/45">({comments.length})</span></h2>
-              {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
-              <ul className="mt-2">
-                {rootComments.map((comment) => renderComment(comment))}
-                {!comments.length && !commentError && <li className="py-4 text-sm text-black/50">No comments yet. Start the conversation.</li>}
-              </ul>
-            </section>
-          </div>
-
-          {/* composer, pinned to the bottom of the panel */}
-          <div className="border-t border-black/10 bg-white px-4 py-3">
-            {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mb-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-safecrib-green/5"><CommentAvatar user={{ id: person.id, displayName: person.displayName, username: person.username }} small /><UserName user={person} size="sm" showHandle={true} /><span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
-            {replyParentId && <div className="mb-2 flex items-center justify-between rounded-lg bg-black/[0.04] px-3 py-1.5 text-xs text-black/60">
-              <span>Replying to {replyingTo?.user.username ? `@${replyingTo.user.username}` : "a comment"}</span>
-              <button type="button" onClick={() => { setReplyParentId(null); setCommentBody(""); setCommentMentionIds([]); }} className="font-semibold text-safecrib-green hover:underline">Cancel</button>
-            </div>}
-            <label htmlFor="home-comment" className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
-            <div className="flex items-end gap-2 rounded-2xl border border-black/10 bg-black/[0.02] px-3 py-1 transition focus-within:border-safecrib-green focus-within:bg-white">
-              <textarea
-                id="home-comment"
-                value={commentBody}
-                rows={1}
-                maxLength={1000}
-                placeholder={replyParentId ? "Write a reply..." : "Add a comment, or tag someone with @..."}
-                onChange={(event) => {
-                  updateCommentBody(event.target.value);
-                  event.target.style.height = "auto";
-                  event.target.style.height = `${Math.min(event.target.scrollHeight, 112)}px`;
-                }}
-                onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitComment(); } }}
-                className="max-h-28 min-h-[2.25rem] w-full resize-none bg-transparent py-2 text-sm text-safecrib-black placeholder:text-black/40 focus:outline-none"
-              />
-              <button type="button" onClick={() => void submitComment()} disabled={commentSubmitting || !commentBody.trim()} className="mb-1 rounded-full px-3 py-1.5 text-sm font-semibold text-safecrib-green transition hover:bg-safecrib-green/10 disabled:cursor-not-allowed disabled:opacity-40">{commentSubmitting ? "Posting..." : "Post"}</button>
-            </div>
-            {commentBody.length > 800 && <p className="mt-1 text-right text-xs text-black/40">{commentBody.length}/1000</p>}
+            {/* comments - using shared component */}
+            <ListingComments
+              listingId={id}
+              ownerId={listing?.ownerId}
+              initialComments={comments}
+              initialError={commentError ?? undefined}
+              isModal={false}
+              onCountChange={() => { }}
+              onClose={() => { }}
+            />
           </div>
         </aside>
       </article> : <p className="mt-8 text-sm text-black/60">Loading listing details...</p>}

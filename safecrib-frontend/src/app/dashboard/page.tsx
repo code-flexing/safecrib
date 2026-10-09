@@ -3,9 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import type { VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -17,10 +15,10 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 import { useNotify } from "@/components/ui/Toast";
 import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
+import { ListingComments } from "@/components/comments";
 import {
   apiFetch,
   cachedApiFetch,
@@ -151,7 +149,7 @@ const FEED_CSS = `
 }
 .safecrib-feed .feed-chip:hover { background: #343942 !important; }
 
-/* Info card */
+/* Info card - Liquid Glass */
 .safecrib-feed .feed-card {
   background: var(--feed-card) !important;
   color: var(--feed-text) !important;
@@ -159,6 +157,65 @@ const FEED_CSS = `
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Liquid Glass variant for info card */
+.safecrib-feed .feed-card--glass {
+  --glass-tint: rgba(255, 255, 255, 0.12);
+  --glass-border-top: rgba(255, 255, 255, 0.35);
+  --glass-border-bottom: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-sheen: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  background: var(--glass-tint) !important;
+  backdrop-filter: blur(20px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
+  border: 1px solid transparent !important;
+  background-image: 
+    linear-gradient(var(--glass-border-top), var(--glass-border-top)),
+    linear-gradient(var(--glass-border-bottom), var(--glass-border-bottom)) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-top) !important;
+  border-radius: 20px !important;
+  position: relative;
+  isolation: isolate;
+}
+.safecrib-feed .feed-card--glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass-sheen);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Reduced transparency / no backdrop-filter fallback */
+@media (prefers-reduced-transparency: reduce) {
+  .safecrib-feed .feed-card--glass {
+    background: rgba(9, 9, 11, 0.85) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+  }
+  .safecrib-feed .feed-card--glass::before {
+    display: none;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .safecrib-feed .feed-card--glass {
+    background: rgba(9, 9, 11, 0.85) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background-image: none !important;
+  }
+  .safecrib-feed .feed-card--glass::before {
+    display: none;
+  }
+}
+
 .safecrib-feed .feed-text { color: var(--feed-text) !important; }
 .safecrib-feed .feed-muted { color: var(--feed-muted) !important; }
 .safecrib-feed a.feed-text:hover { color: #6ee7b7 !important; }
@@ -176,6 +233,52 @@ const FEED_CSS = `
 .safecrib-feed .feed-badge-mark {
   color: var(--feed-on-accent) !important;
   stroke: var(--feed-on-accent) !important;
+}
+
+/* Glass pill button (View crib) */
+.safecrib-feed .feed-btn--glass {
+  --btn-glass-tint: rgba(16, 185, 129, 0.35);
+  --btn-glass-border: rgba(255, 255, 255, 0.25);
+  --btn-glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  background: var(--btn-glass-tint) !important;
+  backdrop-filter: blur(20px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
+  border: 1px solid var(--btn-glass-border) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--btn-glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  border-radius: 9999px !important;
+  transition: transform 0.1s ease, background 0.15s ease !important;
+}
+.safecrib-feed .feed-btn--glass:hover {
+  --btn-glass-tint: rgba(16, 185, 129, 0.45);
+  background: var(--btn-glass-tint) !important;
+}
+.safecrib-feed .feed-btn--glass:active {
+  transform: scale(0.98);
+}
+.safecrib-feed .feed-btn--glass:focus-visible {
+  outline: 2px solid var(--feed-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .safecrib-feed .feed-btn--glass {
+    background: var(--feed-accent) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--feed-accent) !important;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .safecrib-feed .feed-btn--glass {
+    background: var(--feed-accent) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid var(--feed-accent) !important;
+  }
 }
 
 /* Counts under the rail sit on the photo, so they get a strong shadow */
@@ -534,283 +637,6 @@ function ListingCardVideo({
   );
 }
 
-function ListingComments({
-  listingId,
-  ownerId,
-  onCountChange,
-  onClose,
-}: {
-  listingId: string;
-  ownerId?: string;
-  onCountChange: (count: number) => void;
-  onClose: (listingId: string) => void;
-}) {
-  const [comments, setComments] = useState<ListingComment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [commentBody, setCommentBody] = useState("");
-  const [commentMentionIds, setCommentMentionIds] = useState<string[]>([]);
-  const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
-  const [taggedUsers, setTaggedUsers] = useState<MentionCandidate[]>([]);
-  const [replyParentId, setReplyParentId] = useState<string | null>(null);
-  const [commentError, setCommentError] = useState("");
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
-  const inputId = `home-comment-${listingId}`;
-  const titleId = useId();
-  const closeDiscussion = useCallback(() => onClose(listingId), [listingId, onClose]);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    void cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`)
-      .then((response) => {
-        if (!active) return;
-        const list = unwrapData<ListingComment[]>(response);
-        const items = Array.isArray(list) ? list : [];
-        setComments(items);
-        onCountChange(items.length);
-      })
-      .catch(() => {
-        if (active) setCommentError("We could not load comments. Please refresh to retry.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, [listingId, onCountChange]);
-
-  const submitComment = async () => {
-    const body = commentBody.trim();
-    if (!body || body.length > 1000) {
-      setCommentError("Write a comment up to 1,000 characters.");
-      return;
-    }
-    setCommentSubmitting(true);
-    setCommentError("");
-    try {
-      const response = await apiFetch<ListingComment>(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`, {
-        method: "POST",
-        body: JSON.stringify({
-          body,
-          parentId: replyParentId ?? undefined,
-          mentionUserIds: commentMentionIds,
-        }),
-      });
-      const newComment = unwrapData<ListingComment>(response);
-      setComments((current) => [...current, newComment]);
-      onCountChange(comments.length + 1);
-      setCommentBody("");
-      setReplyParentId(null);
-      setCommentMentionIds([]);
-      setTaggedUsers([]);
-    } catch {
-      setCommentError("Could not post comment. Please try again.");
-    } finally {
-      setCommentSubmitting(false);
-    }
-  };
-
-  const updateCommentBody = (value: string) => {
-    setCommentBody(value);
-    setCommentMentionIds((current) => current.filter((mentionId) => {
-      const person = taggedUsers.find((user) => user.id === mentionId);
-      const handle = person?.username ?? "";
-      return person ? value.toLocaleLowerCase().includes(`@${handle.toLocaleLowerCase()}`) : false;
-    }));
-    const match = value.match(/(?:^|\s)@([^@\n]*)$/);
-    if (!match) {
-      setMentionCandidates([]);
-      return;
-    }
-    const query = (match[1] ?? "").trim();
-    if (!query) {
-      setMentionCandidates([]);
-      return;
-    }
-    void apiFetch<{ users: MentionCandidate[] }>(`/api/v1/users/discover?q=${encodeURIComponent(query)}`)
-      .then((response) => setMentionCandidates(unwrapData<{ users: MentionCandidate[] }>(response).users.slice(0, 5)))
-      .catch(() => setMentionCandidates([]));
-  };
-
-  const selectMention = (person: MentionCandidate) => {
-    const mentionStart = commentBody.lastIndexOf("@");
-    const handle = person.username ?? person.displayName ?? "member";
-    setCommentBody(`${commentBody.slice(0, mentionStart)}@${handle} `);
-    setCommentMentionIds((current) => current.includes(person.id) ? current : [...current, person.id]);
-    setTaggedUsers((current) => current.some((item) => item.id === person.id) ? current : [...current, person]);
-    setMentionCandidates([]);
-  };
-
-  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
-    const replies = comments.filter((candidate) => candidate.parentId === item.id);
-    const isCreatorReply = Boolean(item.parentId && item.user.id === ownerId);
-    const createdAt = new Date(item.createdAt);
-    const commentTime = Number.isNaN(createdAt.getTime())
-      ? "Just now"
-      : formatDistanceToNow(createdAt, { addSuffix: true });
-
-    return (
-      <li key={item.id} className="py-3.5" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
-        <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700">
-            {(item.user.displayName?.[0] ?? item.user.username?.[0] ?? "?").toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="font-semibold text-neutral-900 transition hover:text-emerald-600">
-                <UserName user={item.user} size="sm" showHandle={true} />
-              </Link>
-              {isCreatorReply && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                  Host
-                </span>
-              )}
-              <time dateTime={item.createdAt} className="font-normal text-neutral-400">
-                • {commentTime}
-              </time>
-            </div>
-            {item.body && <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">{item.body}</p>}
-            {item.mentions && item.mentions.length > 0 && (
-              <p className="mt-1 text-xs text-neutral-400">
-                Tagged: {item.mentions.map((m) => `@${m.user.username ?? m.user.displayName ?? "member"}`).join(", ")}
-              </p>
-            )}
-            <div className="mt-2 flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setReplyParentId(item.id);
-                  setCommentBody("");
-                  setCommentError("");
-                  document.getElementById(inputId)?.focus();
-                }}
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-              >
-                Reply
-              </button>
-            </div>
-          </div>
-        </div>
-        {replies.length > 0 && (
-          <ul className="mt-2 space-y-2 border-l-2 border-neutral-100 pl-3">
-            {replies.map((reply) => renderComment(reply, depth + 1))}
-          </ul>
-        )}
-      </li>
-    );
-  };
-
-  const topLevel = comments.filter((comment) => !comment.parentId);
-
-  return createPortal(
-    <Modal open onClose={closeDiscussion} titleId={titleId}>
-      <div className="flex max-h-[85dvh] min-h-[50dvh] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-neutral-200 sm:hidden" />
-        <header className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <h2 id={titleId} className="text-base font-bold text-neutral-900">
-              Comments
-            </h2>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
-              {comments.length}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={closeDiscussion}
-            aria-label="Close comments"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
-          >
-            <Icon name="x" className="h-4 w-4" />
-          </button>
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3 sm:px-6">
-          {loading ? (
-            <div className="space-y-4 py-4" aria-hidden="true">
-              <Skeleton className="h-4 w-40 rounded-full" />
-              <Skeleton className="h-12 w-full rounded-2xl" />
-              <Skeleton className="h-12 w-4/5 rounded-2xl" />
-            </div>
-          ) : (
-            <ul className="divide-y divide-neutral-100">
-              {topLevel.map((comment) => renderComment(comment))}
-              {!comments.length && !commentError && (
-                <li className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
-                    <Icon name="message-circle" className="h-6 w-6" />
-                  </div>
-                  <p className="text-sm font-medium text-neutral-700">No comments yet</p>
-                  <p className="mt-0.5 text-xs text-neutral-400">Be the first to share your thoughts about this crib.</p>
-                </li>
-              )}
-            </ul>
-          )}
-          <div className="pb-2 pt-4">
-            <Link href={`/dashboard/listings/${listingId}#comments`} className="text-xs font-semibold text-emerald-600 hover:underline">
-              Open full discussion thread →
-            </Link>
-          </div>
-        </div>
-
-        <div className="shrink-0 border-t border-neutral-100 bg-neutral-50/50 p-4 sm:px-6">
-          {replyParentId && (
-            <div className="mb-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-neutral-500">
-              <span>Replying to comment...</span>
-              <button type="button" onClick={() => setReplyParentId(null)} className="font-semibold text-emerald-700 hover:underline">
-                Cancel
-              </button>
-            </div>
-          )}
-          <label htmlFor={inputId} className="sr-only">{replyParentId ? "Write a reply" : "Write a comment"}</label>
-          <div className="relative">
-            <textarea
-              id={inputId}
-              value={commentBody}
-              onChange={(event) => updateCommentBody(event.target.value)}
-              maxLength={1000}
-              rows={2}
-              placeholder={replyParentId ? "Write your reply..." : "Ask a question or leave a note..."}
-              className="w-full resize-none rounded-2xl border border-neutral-200 bg-white p-3.5 text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            />
-            {mentionCandidates.length > 0 && (
-              <ul aria-label="Tag a user" className="absolute bottom-full left-0 z-20 mb-2 max-h-44 w-full overflow-auto rounded-2xl border border-neutral-200 bg-white p-1 shadow-xl">
-                {mentionCandidates.map((person) => (
-                  <li key={person.id}>
-                    <button
-                      type="button"
-                      onClick={() => selectMention(person)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition hover:bg-emerald-50"
-                    >
-                      <UserName user={person} size="sm" showHandle={true} />
-                      <span className="text-xs font-medium text-neutral-400">{person.role?.toLowerCase()}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="mt-2.5 flex items-center justify-between gap-3">
-            <span className="text-[11px] font-medium text-neutral-400">
-              {commentBody.length > 0 ? `${commentBody.length}/1000` : ""}
-            </span>
-            <Button
-              type="button"
-              loading={commentSubmitting}
-              onClick={() => void submitComment()}
-              className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white shadow-md transition-all hover:bg-emerald-700 active:scale-95"
-            >
-              {replyParentId ? "Post Reply" : "Post Comment"}
-            </Button>
-          </div>
-          {commentError && <p role="alert" className="mt-2 text-xs font-medium text-rose-600">{commentError}</p>}
-        </div>
-      </div>
-    </Modal>,
-    document.body,
-  );
-}
-
 type ListingActionTrayProps = {
   listing: Listing;
   isOpen: boolean;
@@ -1057,7 +883,7 @@ export default function DashboardPage() {
   const [resolvedListingImages, setResolvedListingImages] = useState<Record<string, string | null>>({});
   const [newPostsAvailable, setNewPostsAvailable] = useState(false);
   const [openCommentIds, setOpenCommentIds] = useState<Set<string>>(() => new Set());
-  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   useEffect(() =>
     subscribeClientCacheUpdates(({ path, value }) => {
@@ -1638,10 +1464,6 @@ export default function DashboardPage() {
 
   const closeActionTray = useCallback(() => setOpenActionTrayId(null), []);
 
-  const toggleDescriptionExpand = (listingId: string) => {
-    setExpandedDescriptions((prev) => ({ ...prev, [listingId]: !prev[listingId] }));
-  };
-
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
   const accountName = resolveAccountName(profile);
   const canCreateProviderPage = ["AGENT", "LANDLORD"].includes(String(profile?.role ?? "").toUpperCase());
@@ -1820,9 +1642,8 @@ export default function DashboardPage() {
             const location = listing.campus || listing.address;
             const isSaved = bookmarkedIds.includes(listing.id);
             const commentsOpen = openCommentIds.has(listing.id);
-            const commentCount = listing.commentCount ?? 0;
+            const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
-            const isDescExpanded = Boolean(expandedDescriptions[listing.id]);
 
             // Seed verification cache for provider
             if (listing.ownerId && listing.owner) {
@@ -1880,10 +1701,10 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Soft bottom fade only, so the media stays visible */}
+                {/* Soft bottom fade - gradient scrim for text readability on bright videos */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent via-40% to-transparent"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/35 via-transparent to-transparent"
                 />
 
                 {/* Video progress: thin line at the bottom of the card */}
@@ -1902,11 +1723,11 @@ export default function DashboardPage() {
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
                 <div className="pointer-events-none absolute inset-x-4 bottom-4 top-auto z-30 flex max-w-full items-end gap-3 md:bottom-8">
                   {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card pointer-events-auto min-w-0 flex-1 origin-bottom-left scale-x-100 scale-y-[0.9] rounded-xl p-3 text-left shadow-xl">
+                  <div className="feed-card feed-card--glass pointer-events-auto min-w-0 flex-1 rounded-2xl p-3 text-left shadow-xl">
                     {/* Row 1: avatar + name */}
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {listing.ownerId ? (
-                        <div className="relative h-9 w-9 shrink-0">
+                        <div className="relative h-8 w-8 shrink-0">
                           <Link
                             href={`/profile/${encodeURIComponent(listing.ownerId)}`}
                             aria-label="View provider profile"
@@ -1938,45 +1759,36 @@ export default function DashboardPage() {
                         </div>
                       ) : null}
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <UserName user={{ id: listing.ownerId, displayName: listing.owner?.displayName, username: listing.owner?.username, verification: listing.owner?.verification ? { eligible: listing.owner.verification.eligible ?? true, stage: (listing.owner.verification.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED", badge: (listing.owner.verification.badge as VerificationStageResult["badge"]) || "GREEN_CHECK", badgeColor: listing.owner.verification.badgeColor || "green", riskBlocked: listing.owner.verification.riskBlocked ?? false, nextMilestone: null, criteria: [] } : null, isVerified: listing.owner?.verification?.eligible ?? false, role: "AGENT" }} size="sm" showHandle={false} nameClassName="feed-text truncate text-[15px] font-bold" />
+                        <UserName user={{ id: listing.ownerId, displayName: listing.owner?.displayName, username: listing.owner?.username, verification: listing.owner?.verification ? { eligible: listing.owner.verification.eligible ?? true, stage: (listing.owner.verification.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED", badge: (listing.owner.verification.badge as VerificationStageResult["badge"]) || "GREEN_CHECK", badgeColor: listing.owner.verification.badgeColor || "green", riskBlocked: listing.owner.verification.riskBlocked ?? false, nextMilestone: null, criteria: [] } : null, isVerified: listing.owner?.verification?.eligible ?? false, role: "AGENT" }} size="sm" showHandle={false} nameClassName="feed-text truncate text-[14px] font-bold" />
                       </div>
                     </div>
 
                     {/* Row 2: title + description underneath, same left edge as the avatar */}
-                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-2 block">
-                      <h2 className="feed-text line-clamp-2 text-left text-[15px] font-semibold leading-snug">
+                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1.5 block">
+                      <h2 className="feed-text line-clamp-1 text-left text-[14px] font-semibold leading-snug">
                         {listing.title ?? "Verified Campus Home"}
                       </h2>
                     </Link>
                     {listing.description && (
-                      <p className="feed-muted mt-0.5 text-left text-sm leading-snug">
-                        <span className={isDescExpanded ? "" : "line-clamp-1"}>{listing.description}</span>
-                        {listing.description.length > 60 && (
-                          <button
-                            type="button"
-                            onClick={() => toggleDescriptionExpand(listing.id)}
-                            className="feed-text mt-0.5 text-sm font-semibold underline-offset-2 hover:underline"
-                          >
-                            {isDescExpanded ? "less" : "more"}
-                          </button>
-                        )}
+                      <p className="feed-muted mt-0.5 text-left text-xs leading-snug line-clamp-1">
+                        {listing.description}
                       </p>
                     )}
 
                     {/* Location */}
                     {location && (
-                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-sm font-medium">
-                        <Icon name="map-pin" className="h-4 w-4 shrink-0" />
+                      <p className="feed-muted mt-1.5 flex items-center justify-start gap-1.5 text-xs font-medium">
+                        <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
                     )}
 
                     {/* Price + one clear action */}
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="mt-2 flex items-center justify-between gap-3">
                       <ListingPriceTag listing={listing} />
                       <Link
                         href={`/dashboard/listings/${listing.id}`}
-                        className="feed-cta inline-flex h-9 shrink-0 items-center rounded-md px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
+                        className="feed-btn--glass inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
                       >
                         View crib
                       </Link>
@@ -2044,7 +1856,7 @@ export default function DashboardPage() {
                     listingId={listing.id}
                     ownerId={listing.ownerId}
                     onClose={closeComments}
-                    onCountChange={() => {}}
+                    onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [listing.id]: count }))}
                   />
                 )}
               </article>
