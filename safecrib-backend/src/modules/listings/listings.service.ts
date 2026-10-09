@@ -399,8 +399,18 @@ export class ListingsService {
         body: true,
         parentId: true,
         createdAt: true,
-        user: { select: { id: true, displayName: true, username: true, role: true } },
-        mentions: { select: { user: { select: { id: true, displayName: true, username: true } } } },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            username: true,
+            role: true,
+            profilePicture: true,
+            studentProfile: { select: { profilePicture: true } },
+            providerPage: { select: { profilePicture: true } },
+          },
+        },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true, profilePicture: true, studentProfile: { select: { profilePicture: true } }, providerPage: { select: { profilePicture: true } } } } } },
       },
     });
   }

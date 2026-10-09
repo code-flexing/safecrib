@@ -18,6 +18,9 @@ interface MentionCandidate {
   displayName?: string | null;
   username?: string | null;
   role?: string;
+  profilePicture?: string | null;
+  studentProfile?: { profilePicture?: string | null } | null;
+  providerPage?: { profilePicture?: string | null } | null;
 }
 
 interface ListingCommentsProps {
@@ -198,7 +201,7 @@ export function ListingComments({
 
   const content = (
     <Modal open onClose={closeDiscussion} titleId={titleId}>
-      <div className="flex max-h-[85dvh] min-h-[50dvh] flex-col overflow-hidden rounded-3xl bg-theme-surface shadow-2xl">
+      <div className="flex max-h-[88dvh] min-h-[52dvh] flex-col overflow-hidden rounded-[28px] bg-theme-surface shadow-[0_24px_60px_-12px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-theme-border sm:hidden" />
         <header className="flex shrink-0 items-center justify-between border-b border-theme-border px-5 py-4 sm:px-6">
           <div className="flex items-center gap-2">

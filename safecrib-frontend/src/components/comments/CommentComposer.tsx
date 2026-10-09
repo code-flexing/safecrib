@@ -11,6 +11,9 @@ interface MentionCandidate {
   displayName?: string | null;
   username?: string | null;
   role?: string;
+  profilePicture?: string | null;
+  studentProfile?: { profilePicture?: string | null } | null;
+  providerPage?: { profilePicture?: string | null } | null;
 }
 
 interface CommentComposerProps {

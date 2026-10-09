@@ -457,10 +457,35 @@ async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let response = await fetch(`/api/backend${path}`, { ...init, headers });
+  // Fail fast when the backend is overwhelmed (e.g. DB connection-pool exhaustion)
+  // instead of hanging the whole UI on a single request.
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 12_000);
+  let response: Response;
+  try {
+    response = await fetch(`/api/backend${path}`, { ...init, headers, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(503, `Request timed out: ${method} ${path}`, method, path);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
   if ((method === "GET" || method === "HEAD") && response.status >= 500 && response.status < 600) {
     await new Promise((resolve) => setTimeout(resolve, 250));
-    response = await fetch(`/api/backend${path}`, { ...init, headers });
+    const retryController = new AbortController();
+    const retryTimer = window.setTimeout(() => retryController.abort(), 12_000);
+    try {
+      response = await fetch(`/api/backend${path}`, { ...init, headers, signal: retryController.signal });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ApiError(503, `Request timed out: ${method} ${path}`, method, path);
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(retryTimer);
+    }
   }
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
