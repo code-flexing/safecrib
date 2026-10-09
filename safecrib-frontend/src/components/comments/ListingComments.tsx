@@ -110,7 +110,7 @@ export function ListingComments({
     return () => {
       active = false;
     };
-  }, [listingId, onCountChange, initialComments.length, initialError]);
+  }, [listingId, initialComments.length, initialError]);
 
   const submitComment = async () => {
     const body = commentBody.trim();
@@ -130,8 +130,11 @@ export function ListingComments({
         }),
       });
       const newComment = unwrapData<ListingComment>(response);
-      setComments((current) => [newComment, ...current]);
-      onCountChange(comments.length + 1);
+      setComments((current) => {
+        const nextComments = [newComment, ...current];
+        onCountChange(nextComments.length);
+        return nextComments;
+      });
       setCommentBody("");
       setReplyParentId(null);
       setCommentMentionIds([]);
