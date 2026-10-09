@@ -124,7 +124,7 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
   const ringColor = getRingColor();
   const unit = size / 28;
   const sealSize = 56 * unit;
-  const cornerRadius = 16 * unit;
+  const radius = sealSize / 2;
   const ringRadius = 25 * unit;
   const ringStroke = 1.5 * unit;
   const glyphStroke = size <= 20 ? 6 * unit : 5 * unit;
@@ -133,6 +133,26 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
   const shieldPath = `M0,${-13 * unit} L${11 * unit},${-9 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-9 * unit} Z`;
   const crownPath = `M${-12 * unit},${7 * unit} L${-14 * unit},${-8 * unit} L${-6 * unit},${-1 * unit} L0,${-12 * unit} L${6 * unit},${-1 * unit} L${14 * unit},${-8 * unit} L${12 * unit},${7 * unit} Z`;
   const crownBase = `M${-12 * unit},${9 * unit} h${24 * unit} v${3.5 * unit} h${-24 * unit} Z`;
+
+  // Create a scalloped circle path - 12 scallops around the circle
+  const scallopCount = 12;
+  const scallopAngle = (Math.PI * 2) / scallopCount;
+  const outerRadius = radius;
+  const innerRadius = radius - 4 * unit;
+  
+  let scallopedPath = `M${outerRadius},0`;
+  for (let i = 1; i <= scallopCount; i++) {
+    const angle = i * scallopAngle;
+    const nextAngle = (i + 1) * scallopAngle;
+    // Outer point
+    const ox = Math.cos(angle) * outerRadius;
+    const oy = Math.sin(angle) * outerRadius;
+    // Inner point (for the scallop dip)
+    const ix = Math.cos(angle + scallopAngle / 2) * innerRadius;
+    const iy = Math.sin(angle + scallopAngle / 2) * innerRadius;
+    scallopedPath += ` L${ox},${oy} Q${ix},${iy} ${Math.cos(nextAngle) * outerRadius},${Math.sin(nextAngle) * outerRadius}`;
+  }
+  scallopedPath += "Z";
 
   return (
     <svg
@@ -144,10 +164,10 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
       className="shrink-0"
       style={{ flexShrink: 0 }}
     >
-      <g fill={fillColor}>
-        <rect x={-sealSize / 2} y={-sealSize / 2} width={sealSize} height={sealSize} rx={cornerRadius} />
-        <rect x={-sealSize / 2} y={-sealSize / 2} width={sealSize} height={sealSize} rx={cornerRadius} transform="rotate(45)" />
-      </g>
+      <path
+        d={scallopedPath}
+        fill={fillColor}
+      />
       {fullDetail && (
         <circle
           cx="0"

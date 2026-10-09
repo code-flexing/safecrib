@@ -8,7 +8,8 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { UserName } from "@/components/common/UserName";
+import type { VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { UserName, seedVerificationCache } from "@/components/common/UserName";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
@@ -55,7 +56,7 @@ export type ListingPhotoValue =
 export type Listing = {
   id: string;
   ownerId?: string;
-  owner?: { displayName?: string | null; profilePicture?: string | null };
+  owner?: { displayName?: string | null; profilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
   title?: string;
   description?: string;
   price?: number;
@@ -1823,6 +1824,29 @@ export default function DashboardPage() {
             const hasMedia = Boolean(image || listing.video);
             const isDescExpanded = Boolean(expandedDescriptions[listing.id]);
 
+            // Seed verification cache for provider
+            if (listing.ownerId && listing.owner) {
+              const verification = listing.owner.verification;
+              const stage = (verification?.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED";
+              const badge = (verification?.badge as VerificationStageResult["badge"]) || "GREEN_CHECK";
+              seedVerificationCache({
+                id: listing.ownerId,
+                displayName: listing.owner.displayName,
+                username: listing.owner.username,
+                verification: verification ? {
+                  eligible: verification.eligible ?? true,
+                  stage,
+                  badge,
+                  badgeColor: verification.badgeColor || "green",
+                  riskBlocked: verification.riskBlocked ?? false,
+                  nextMilestone: null,
+                  criteria: [],
+                } : null,
+                isVerified: verification?.eligible ?? false,
+                role: "AGENT",
+              });
+            }
+
             return (
               <article
                 key={listing.id}
@@ -1914,15 +1938,7 @@ export default function DashboardPage() {
                         </div>
                       ) : null}
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="feed-text truncate text-[15px] font-bold">
-                          {providerName}
-                        </span>
-                        <span
-                          title="Verified Host"
-                          className="feed-badge inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full"
-                        >
-                          <Icon name="check" className="feed-badge-mark h-2 w-2 stroke-[3]" />
-                        </span>
+                        <UserName user={{ id: listing.ownerId, displayName: listing.owner?.displayName, username: listing.owner?.username, verification: listing.owner?.verification ? { eligible: listing.owner.verification.eligible ?? true, stage: (listing.owner.verification.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED", badge: (listing.owner.verification.badge as VerificationStageResult["badge"]) || "GREEN_CHECK", badgeColor: listing.owner.verification.badgeColor || "green", riskBlocked: listing.owner.verification.riskBlocked ?? false, nextMilestone: null, criteria: [] } : null, isVerified: listing.owner?.verification?.eligible ?? false, role: "AGENT" }} size="sm" showHandle={false} nameClassName="feed-text truncate text-[15px] font-bold" />
                       </div>
                     </div>
 
