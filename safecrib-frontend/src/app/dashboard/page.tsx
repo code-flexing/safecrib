@@ -149,71 +149,14 @@ const FEED_CSS = `
 }
 .safecrib-feed .feed-chip:hover { background: #343942 !important; }
 
-/* Info card - Liquid Glass */
+/* Info card - Simple transparent */
 .safecrib-feed .feed-card {
-  background: var(--feed-card) !important;
+  background: transparent !important;
   color: var(--feed-text) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-}
-
-/* Liquid Glass variant for info card */
-.safecrib-feed .feed-card--glass {
-  --glass-tint: rgba(255, 255, 255, 0.12);
-  --glass-border-top: rgba(255, 255, 255, 0.35);
-  --glass-border-bottom: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --glass-sheen: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%);
-  background: var(--glass-tint) !important;
-  backdrop-filter: blur(20px) saturate(170%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
-  border: 1px solid transparent !important;
-  background-image: 
-    linear-gradient(var(--glass-border-top), var(--glass-border-top)),
-    linear-gradient(var(--glass-border-bottom), var(--glass-border-bottom)) !important;
-  background-origin: border-box !important;
-  background-clip: padding-box, border-box !important;
-  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-top) !important;
-  border-radius: 20px !important;
-  position: relative;
-  isolation: isolate;
-}
-.safecrib-feed .feed-card--glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--glass-sheen);
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-/* Reduced transparency / no backdrop-filter fallback */
-@media (prefers-reduced-transparency: reduce) {
-  .safecrib-feed .feed-card--glass {
-    background: rgba(9, 9, 11, 0.85) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    background-image: none !important;
-  }
-  .safecrib-feed .feed-card--glass::before {
-    display: none;
-  }
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .safecrib-feed .feed-card--glass {
-    background: rgba(9, 9, 11, 0.85) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    background-image: none !important;
-  }
-  .safecrib-feed .feed-card--glass::before {
-    display: none;
-  }
+  box-shadow: none !important;
 }
 
 .safecrib-feed .feed-text { color: var(--feed-text) !important; }
@@ -235,24 +178,22 @@ const FEED_CSS = `
   stroke: var(--feed-on-accent) !important;
 }
 
-/* Glass pill button (View crib) */
+/* Glass pill button (View crib) - simplified without backdrop */
 .safecrib-feed .feed-btn--glass {
-  --btn-glass-tint: rgba(16, 185, 129, 0.35);
-  --btn-glass-border: rgba(255, 255, 255, 0.25);
-  --btn-glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --btn-glass-tint: rgba(16, 185, 129, 0.9);
+  --btn-glass-border: rgba(255, 255, 255, 0.2);
   background: var(--btn-glass-tint) !important;
-  backdrop-filter: blur(20px) saturate(170%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
   border: 1px solid var(--btn-glass-border) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  box-shadow: var(--btn-glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
   border-radius: 9999px !important;
   transition: transform 0.1s ease, background 0.15s ease !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .safecrib-feed .feed-btn--glass:hover {
-  --btn-glass-tint: rgba(16, 185, 129, 0.45);
+  --btn-glass-tint: rgba(16, 185, 129, 1);
   background: var(--btn-glass-tint) !important;
 }
 .safecrib-feed .feed-btn--glass:active {
@@ -261,24 +202,6 @@ const FEED_CSS = `
 .safecrib-feed .feed-btn--glass:focus-visible {
   outline: 2px solid var(--feed-accent);
   outline-offset: 2px;
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .safecrib-feed .feed-btn--glass {
-    background: var(--feed-accent) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid var(--feed-accent) !important;
-  }
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .safecrib-feed .feed-btn--glass {
-    background: var(--feed-accent) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid var(--feed-accent) !important;
-  }
 }
 
 /* Counts under the rail sit on the photo, so they get a strong shadow */
@@ -1721,9 +1644,9 @@ export default function DashboardPage() {
                 )}
 
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-4 bottom-4 top-auto z-30 flex max-w-full items-end gap-3 md:bottom-8">
+                <div className="pointer-events-none absolute inset-x-4 bottom-2 top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
                   {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card feed-card--glass pointer-events-auto min-w-0 flex-1 rounded-2xl p-3 text-left shadow-xl">
+                  <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
                     {/* Row 1: avatar + name */}
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {listing.ownerId ? (
