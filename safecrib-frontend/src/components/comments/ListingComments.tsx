@@ -269,11 +269,6 @@ export function ListingComments({
             )}
           </ul>
         )}
-        <div className="pb-2 pt-4">
-          <Link href={`/dashboard/listings/${listingId}#comments`} className="text-xs font-semibold text-safecrib-green hover:underline">
-            Open full discussion thread →
-          </Link>
-        </div>
       </div>
 
       <CommentComposer
