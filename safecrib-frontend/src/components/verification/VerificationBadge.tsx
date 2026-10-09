@@ -110,49 +110,16 @@ function getGlyphColor(badgeColor: "green" | "blue" | "gold"): string {
   return badgeColor === "gold" ? "var(--badge-gold-glyph)" : "white";
 }
 
-function getFillColor(badgeColor: "green" | "blue" | "gold"): string {
-  return `var(--badge-${badgeColor})`;
-}
-
-function getRingColor(): string {
-  return "transparent";
-}
-
 function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blue" | "gold"; size: number; fullDetail: boolean }) {
   const glyphColor = getGlyphColor(badgeColor);
-  const fillColor = getFillColor(badgeColor);
-  const ringColor = getRingColor();
   const unit = size / 28;
   const sealSize = 56 * unit;
-  const radius = sealSize / 2;
-  const ringRadius = 25 * unit;
-  const ringStroke = 1.5 * unit;
   const glyphStroke = size <= 20 ? 6 * unit : 5 * unit;
 
   const checkPath = `M${-10 * unit},0 L${-3 * unit},${7 * unit} L${11 * unit},${-8 * unit}`;
   const shieldPath = `M0,${-13 * unit} L${11 * unit},${-9 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-9 * unit} Z`;
   const crownPath = `M${-12 * unit},${7 * unit} L${-14 * unit},${-8 * unit} L${-6 * unit},${-1 * unit} L0,${-12 * unit} L${6 * unit},${-1 * unit} L${14 * unit},${-8 * unit} L${12 * unit},${7 * unit} Z`;
   const crownBase = `M${-12 * unit},${9 * unit} h${24 * unit} v${3.5 * unit} h${-24 * unit} Z`;
-
-  // Create a scalloped circle path - 12 scallops around the circle
-  const scallopCount = 12;
-  const scallopAngle = (Math.PI * 2) / scallopCount;
-  const outerRadius = radius;
-  const innerRadius = radius - 4 * unit;
-  
-  let scallopedPath = `M${outerRadius},0`;
-  for (let i = 1; i <= scallopCount; i++) {
-    const angle = i * scallopAngle;
-    const nextAngle = (i + 1) * scallopAngle;
-    // Outer point
-    const ox = Math.cos(angle) * outerRadius;
-    const oy = Math.sin(angle) * outerRadius;
-    // Inner point (for the scallop dip)
-    const ix = Math.cos(angle + scallopAngle / 2) * innerRadius;
-    const iy = Math.sin(angle + scallopAngle / 2) * innerRadius;
-    scallopedPath += ` L${ox},${oy} Q${ix},${iy} ${Math.cos(nextAngle) * outerRadius},${Math.sin(nextAngle) * outerRadius}`;
-  }
-  scallopedPath += "Z";
 
   return (
     <svg
@@ -164,20 +131,6 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
       className="shrink-0"
       style={{ flexShrink: 0 }}
     >
-      <path
-        d={scallopedPath}
-        fill={fillColor}
-      />
-      {fullDetail && ringColor !== "transparent" && (
-        <circle
-          cx="0"
-          cy="0"
-          r={ringRadius}
-          fill="none"
-          stroke={ringColor}
-          strokeWidth={ringStroke}
-        />
-      )}
       <g fill={glyphColor}>
         {badgeColor === "green" && (
           <path
