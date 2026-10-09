@@ -347,6 +347,11 @@ function formatEngagementCount(count: number) {
   return String(count);
 }
 
+function toBadgeColor(color?: string | null): VerificationStageResult["badgeColor"] {
+  if (color === "gold") return "gold";
+  if (color === "blue" || color === "charcoal") return "charcoal";
+  return "green";
+}
 /* ---------- Price ---------- */
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
@@ -1513,7 +1518,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
         {/* Empty state when no listings exist */}
         {listings.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-950 px-6 pb-12 pt-28 text-center" aria-label="No listings available">
@@ -1568,25 +1572,28 @@ export default function DashboardPage() {
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
 
+            // Build the owner's verification object once and reuse it below
+            const ownerVerificationRaw = listing.owner?.verification;
+            const ownerVerification: VerificationStageResult | null = ownerVerificationRaw
+              ? {
+                  eligible: ownerVerificationRaw.eligible ?? true,
+                  stage: (ownerVerificationRaw.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED",
+                  badge: (ownerVerificationRaw.badge as VerificationStageResult["badge"]) || "GREEN_CHECK",
+                  badgeColor: toBadgeColor(ownerVerificationRaw.badgeColor),
+                  riskBlocked: ownerVerificationRaw.riskBlocked ?? false,
+                  nextMilestone: null,
+                  criteria: [],
+                }
+              : null;
+
             // Seed verification cache for provider
             if (listing.ownerId && listing.owner) {
-              const verification = listing.owner.verification;
-              const stage = (verification?.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED";
-              const badge = (verification?.badge as VerificationStageResult["badge"]) || "GREEN_CHECK";
               seedVerificationCache({
                 id: listing.ownerId,
                 displayName: listing.owner.displayName,
                 username: listing.owner.username,
-                verification: verification ? {
-                  eligible: verification.eligible ?? true,
-                  stage,
-                  badge,
-                  badgeColor: verification.badgeColor || "green",
-                  riskBlocked: verification.riskBlocked ?? false,
-                  nextMilestone: null,
-                  criteria: [],
-                } : null,
-                isVerified: verification?.eligible ?? false,
+                verification: ownerVerification,
+                isVerified: ownerVerificationRaw?.eligible ?? false,
                 role: "AGENT",
               });
             }
@@ -1682,7 +1689,19 @@ export default function DashboardPage() {
                         </div>
                       ) : null}
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <UserName user={{ id: listing.ownerId, displayName: listing.owner?.displayName, username: listing.owner?.username, verification: listing.owner?.verification ? { eligible: listing.owner.verification.eligible ?? true, stage: (listing.owner.verification.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED", badge: (listing.owner.verification.badge as VerificationStageResult["badge"]) || "GREEN_CHECK", badgeColor: listing.owner.verification.badgeColor || "green", riskBlocked: listing.owner.verification.riskBlocked ?? false, nextMilestone: null, criteria: [] } : null, isVerified: listing.owner?.verification?.eligible ?? false, role: "AGENT" }} size="sm" showHandle={false} nameClassName="text-white truncate text-[14px] font-bold" />
+                        <UserName
+                          user={{
+                            id: listing.ownerId,
+                            displayName: listing.owner?.displayName,
+                            username: listing.owner?.username,
+                            verification: ownerVerification,
+                            isVerified: ownerVerificationRaw?.eligible ?? false,
+                            role: "AGENT",
+                          }}
+                          size="sm"
+                          showHandle={false}
+                          nameClassName="text-white truncate text-[14px] font-bold"
+                        />
                       </div>
                     </div>
 

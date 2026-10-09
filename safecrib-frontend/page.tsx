@@ -6,7 +6,24 @@ import { useRouter } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Button } from "@/components/ui/Button";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
-import { ApiError, apiFetch, cachedApiFetch, cachedCurrentUser, cancelPendingUpload, clearClientCache, clearPendingUploads, getPendingUpload, getPendingUploads, isUnauthorizedError, normalizeAccountStatus, normalizePageStatus, uploadDocument, type AccountStatus, type PageStatus, type PendingUpload } from "@/lib/api";
+import {
+  ApiError,
+  apiFetch,
+  cachedApiFetch,
+  cachedCurrentUser,
+  cancelPendingUpload,
+  clearClientCache,
+  clearPendingUploads,
+  getPendingUpload,
+  getPendingUploads,
+  isUnauthorizedError,
+  normalizeAccountStatus,
+  normalizePageStatus,
+  uploadDocument,
+  type AccountStatus,
+  type PageStatus,
+  type PendingUpload,
+} from "@/lib/api";
 
 type StudentProfile = {
   displayName?: string;
@@ -24,9 +41,18 @@ type StudentProfile = {
   rejectionReason?: string;
   reason?: string;
 };
- 
-type User = { id?: string; email?: string; displayName?: string; studentProfileStatus?: unknown; role?: string };
-type FormState = Omit<StudentProfile, "status" | "rejectionReason" | "reason" | "socialLinks"> & { linkedin: string; website: string };
+
+type User = {
+  id?: string;
+  email?: string;
+  displayName?: string;
+  studentProfileStatus?: unknown;
+  role?: string;
+};
+type FormState = Omit<
+  StudentProfile,
+  "status" | "rejectionReason" | "reason" | "socialLinks"
+> & { linkedin: string; website: string };
 type ProfileDraft = { form: FormState; step: number };
 
 type UploadAccordionProps = {
@@ -40,7 +66,16 @@ type UploadAccordionProps = {
   onUpload: (file: File) => void;
 };
 
-function UploadAccordion({ title, description, accept, format, value, uploading, required = false, onUpload }: UploadAccordionProps) {
+function UploadAccordion({
+  title,
+  description,
+  accept,
+  format,
+  value,
+  uploading,
+  required = false,
+  onUpload,
+}: UploadAccordionProps) {
   const [dragging, setDragging] = useState(false);
 
   const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
@@ -54,30 +89,69 @@ function UploadAccordion({ title, description, accept, format, value, uploading,
     <details className="group min-w-0 rounded-[10px] border border-black/10 bg-[#FAFBF9] p-3 sm:p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-safecrib-black [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 items-center gap-3">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${value ? "bg-[#EAF7F1] text-safecrib-green" : "bg-black/[0.05] text-black/55"}`}>
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm ${value ? "bg-[#EAF7F1] text-safecrib-green" : "bg-black/[0.05] text-black/55"}`}
+          >
             {value ? "✓" : "↑"}
           </span>
           <span className="min-w-0">
-            <span className="block break-words text-sm font-medium">{title}{required ? " *" : ""}</span>
-            <span className="mt-1 block text-xs font-normal leading-5 text-black/55">{value ? "Uploaded and ready" : description}</span>
+            <span className="block break-words text-sm font-medium">
+              {title}
+              {required ? " *" : ""}
+            </span>
+            <span className="mt-1 block text-xs font-normal leading-5 text-black/55">
+              {value ? "Uploaded and ready" : description}
+            </span>
           </span>
         </span>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-lg text-black/50 transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-lg text-black/50 transition-transform group-open:rotate-45"
+          aria-hidden="true"
+        >
+          +
+        </span>
       </summary>
 
       <div className="pt-4">
         <label
           className={`flex cursor-pointer flex-col items-center justify-center rounded-[8px] border border-dashed px-5 py-7 text-center transition-colors ${dragging ? "border-safecrib-green bg-[#EAF7F1]" : "border-black/20 bg-white hover:border-safecrib-green hover:bg-[#F3FAF6]"} ${uploading ? "pointer-events-none opacity-60" : ""}`}
-          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EAF7F1] text-xl text-safecrib-green">↑</span>
-          <span className="mt-3 max-w-full break-words text-sm font-medium text-safecrib-black">{uploading ? "Uploading..." : value ? "Choose a different file" : "Drop your file here or browse"}</span>
-          <span className="mt-1 max-w-full break-words text-xs leading-5 text-black/50">{format}</span>
-          <input required={required && !value} type="file" accept={accept} disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} className="sr-only" />
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EAF7F1] text-xl text-safecrib-green">
+            ↑
+          </span>
+          <span className="mt-3 max-w-full break-words text-sm font-medium text-safecrib-black">
+            {uploading
+              ? "Uploading..."
+              : value
+                ? "Choose a different file"
+                : "Drop your file here or browse"}
+          </span>
+          <span className="mt-1 max-w-full break-words text-xs leading-5 text-black/50">
+            {format}
+          </span>
+          <input
+            required={required && !value}
+            type="file"
+            accept={accept}
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onUpload(file);
+            }}
+            className="sr-only"
+          />
         </label>
-        {value && <p className="mt-3 flex items-center gap-2 text-xs font-medium text-safecrib-green"><span aria-hidden="true">✓</span> File uploaded successfully</p>}
+        {value && (
+          <p className="mt-3 flex items-center gap-2 text-xs font-medium text-safecrib-green">
+            <span aria-hidden="true">✓</span> File uploaded successfully
+          </p>
+        )}
       </div>
     </details>
   );
@@ -108,8 +182,10 @@ function hasRequiredStudentDetails(form: FormState) {
 }
 
 function hasRequiredUploads(form: FormState) {
-  const proofOfStudentship = form.proofOfStudentship || getPendingUpload("PROOF_OF_STUDENTSHIP") || "";
-  const profilePicture = form.profilePicture || getPendingUpload("AVATAR") || "";
+  const proofOfStudentship =
+    form.proofOfStudentship || getPendingUpload("PROOF_OF_STUDENTSHIP") || "";
+  const profilePicture =
+    form.profilePicture || getPendingUpload("AVATAR") || "";
   return Boolean(proofOfStudentship && profilePicture);
 }
 
@@ -161,88 +237,196 @@ export default function CompleteStudentProfilePage() {
 
     void Promise.all([
       cachedCurrentUser<User>(),
-      cachedApiFetch<StudentProfile | null>("/api/v1/student-profiles/me").catch(() => null),
-      cachedApiFetch<unknown>("/api/v1/student-profiles/status").catch(() => null),
-      cachedApiFetch<{ status?: string }>("/api/v1/provider-pages/me").catch(() => null),
-    ]).then(([user, studentProfile, statusResponse, page]) => {
-      const currentDraftKey = profileDraftKey(user);
-      const draft = readDraft<ProfileDraft>(currentDraftKey);
-      const userStatus = typeof user.studentProfileStatus === "object" && user.studentProfileStatus !== null
-        ? (("status" in user.studentProfileStatus ? user.studentProfileStatus.status : "state" in user.studentProfileStatus ? user.studentProfileStatus.state : "profileStatus" in user.studentProfileStatus ? user.studentProfileStatus.profileStatus : "value" in user.studentProfileStatus ? user.studentProfileStatus.value : null) ?? ("profile" in user.studentProfileStatus && typeof user.studentProfileStatus.profile === "object" && user.studentProfileStatus.profile !== null && "status" in user.studentProfileStatus.profile ? user.studentProfileStatus.profile.status : null))
-        : null;
-      const studentProfileStatus = typeof studentProfile === "object" && studentProfile !== null && "status" in studentProfile ? studentProfile.status : null;
-      const responseStatus = statusResponse && typeof statusResponse === "object" && statusResponse !== null
-        ? (("status" in statusResponse ? statusResponse.status : "state" in statusResponse ? statusResponse.state : "profileStatus" in statusResponse ? statusResponse.profileStatus : "value" in statusResponse ? statusResponse.value : null) ?? ("profile" in statusResponse && typeof statusResponse.profile === "object" && statusResponse.profile !== null && "status" in statusResponse.profile ? statusResponse.profile.status : null))
-        : null;
-      const normalizedStatus = normalizeAccountStatus(studentProfileStatus ?? userStatus ?? responseStatus ?? statusResponse ?? "not_submitted");
-      if (normalizedStatus === "pending") {
-        setStatus("pending");
-        setStep(0);
-        setForm(emptyForm);
-        setDraftRestored(false);
-        setError("");
-        router.replace("/profile");
-        return;
-      }
-      setStatus(normalizedStatus);
-      setPageStatus(normalizePageStatus(page?.status));
-      setDraftKey(currentDraftKey);
-      setDraftRestored(Boolean(draft));
-      setDraftHydrated(true);
-      if (studentProfile) {
-        setForm((current) => ({ ...current, ...studentProfile, linkedin: studentProfile.socialLinks?.linkedin ?? "", website: studentProfile.socialLinks?.website ?? "", ...draft?.form }));
-        setRejectionReason(studentProfile.rejectionReason ?? studentProfile.reason ?? "");
-      } else if (draft) {
-        setForm(draft.form);
-      }
-      if (draft) setStep(Math.min(Math.max(draft.step, 0), 4));
-    }).catch((loadError: unknown) => {
-      if (isUnauthorizedError(loadError)) {
-        localStorage.removeItem("safecrib_access_token");
-        localStorage.removeItem("safecrib_refresh_token");
-        router.replace("/login?reason=session-expired");
-        return;
-      }
-      setStatus("not_submitted");
-      setPageStatus("none");
-      setDraftHydrated(true);
-    });
+      cachedApiFetch<StudentProfile | null>(
+        "/api/v1/student-profiles/me",
+      ).catch(() => null),
+      cachedApiFetch<unknown>("/api/v1/student-profiles/status").catch(
+        () => null,
+      ),
+      cachedApiFetch<{ status?: string }>("/api/v1/provider-pages/me").catch(
+        () => null,
+      ),
+    ])
+      .then(([user, studentProfile, statusResponse, page]) => {
+        const currentDraftKey = profileDraftKey(user);
+        const draft = readDraft<ProfileDraft>(currentDraftKey);
+        const userStatus =
+          typeof user.studentProfileStatus === "object" &&
+          user.studentProfileStatus !== null
+            ? (("status" in user.studentProfileStatus
+                ? user.studentProfileStatus.status
+                : "state" in user.studentProfileStatus
+                  ? user.studentProfileStatus.state
+                  : "profileStatus" in user.studentProfileStatus
+                    ? user.studentProfileStatus.profileStatus
+                    : "value" in user.studentProfileStatus
+                      ? user.studentProfileStatus.value
+                      : null) ??
+              ("profile" in user.studentProfileStatus &&
+              typeof user.studentProfileStatus.profile === "object" &&
+              user.studentProfileStatus.profile !== null &&
+              "status" in user.studentProfileStatus.profile
+                ? user.studentProfileStatus.profile.status
+                : null))
+            : null;
+        const studentProfileStatus =
+          typeof studentProfile === "object" &&
+          studentProfile !== null &&
+          "status" in studentProfile
+            ? studentProfile.status
+            : null;
+        const responseStatus =
+          statusResponse &&
+          typeof statusResponse === "object" &&
+          statusResponse !== null
+            ? (("status" in statusResponse
+                ? statusResponse.status
+                : "state" in statusResponse
+                  ? statusResponse.state
+                  : "profileStatus" in statusResponse
+                    ? statusResponse.profileStatus
+                    : "value" in statusResponse
+                      ? statusResponse.value
+                      : null) ??
+              ("profile" in statusResponse &&
+              typeof statusResponse.profile === "object" &&
+              statusResponse.profile !== null &&
+              "status" in statusResponse.profile
+                ? statusResponse.profile.status
+                : null))
+            : null;
+        const normalizedStatus = normalizeAccountStatus(
+          studentProfileStatus ??
+            userStatus ??
+            responseStatus ??
+            statusResponse ??
+            "not_submitted",
+        );
+        if (normalizedStatus === "pending") {
+          setStatus("pending");
+          setStep(0);
+          setForm(emptyForm);
+          setDraftRestored(false);
+          setError("");
+          router.replace("/profile");
+          return;
+        }
+        setStatus(normalizedStatus);
+        setPageStatus(normalizePageStatus(page?.status));
+        setDraftKey(currentDraftKey);
+        setDraftRestored(Boolean(draft));
+        setDraftHydrated(true);
+        if (studentProfile) {
+          setForm((current) => ({
+            ...current,
+            ...studentProfile,
+            linkedin: studentProfile.socialLinks?.linkedin ?? "",
+            website: studentProfile.socialLinks?.website ?? "",
+            ...draft?.form,
+          }));
+          setRejectionReason(
+            studentProfile.rejectionReason ?? studentProfile.reason ?? "",
+          );
+        } else if (draft) {
+          setForm(draft.form);
+        }
+        if (draft) setStep(Math.min(Math.max(draft.step, 0), 4));
+      })
+      .catch((loadError: unknown) => {
+        if (isUnauthorizedError(loadError)) {
+          localStorage.removeItem("safecrib_access_token");
+          localStorage.removeItem("safecrib_refresh_token");
+          router.replace("/login?reason=session-expired");
+          return;
+        }
+        setStatus("not_submitted");
+        setPageStatus("none");
+        setDraftHydrated(true);
+      });
   }, [router]);
 
   useEffect(() => {
     if (!draftKey || !draftHydrated) return;
-    const timeout = window.setTimeout(() => writeDraft<ProfileDraft>(draftKey, { form, step }), 400);
+    const timeout = window.setTimeout(
+      () => writeDraft<ProfileDraft>(draftKey, { form, step }),
+      400,
+    );
     return () => window.clearTimeout(timeout);
   }, [draftHydrated, draftKey, form, step]);
 
-  const update = (field: keyof FormState, value: string) => setForm((current) => ({ ...current, [field]: value }));
+  const update = (field: keyof FormState, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
   const uploadStudentship = async (file: File) => {
-    setUploadingStudentship(true); setError("");
-    try { update("proofOfStudentship", await uploadDocument(file, "PROOF_OF_STUDENTSHIP")); }
-    catch (uploadError) { if (uploadError instanceof ApiError && uploadError.status === 429) { setPendingUploads(await getPendingUploads().catch(() => [])); setStep(2); } setError(uploadError instanceof Error ? uploadError.message : "We could not upload the studentship document."); }
-    finally { setUploadingStudentship(false); }
+    setUploadingStudentship(true);
+    setError("");
+    try {
+      update(
+        "proofOfStudentship",
+        await uploadDocument(file, "PROOF_OF_STUDENTSHIP"),
+      );
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 429) {
+        setPendingUploads(await getPendingUploads().catch(() => []));
+        setStep(2);
+      }
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "We could not upload the studentship document.",
+      );
+    } finally {
+      setUploadingStudentship(false);
+    }
   };
   const uploadAvatar = async (file: File) => {
-    setUploadingAvatar(true); setError("");
-    try { update("profilePicture", await uploadDocument(file, "AVATAR")); }
-    catch (uploadError) { if (uploadError instanceof ApiError && uploadError.status === 429) { setPendingUploads(await getPendingUploads().catch(() => [])); setStep(2); } setError(uploadError instanceof Error ? uploadError.message : "We could not upload the profile image."); }
-    finally { setUploadingAvatar(false); }
+    setUploadingAvatar(true);
+    setError("");
+    try {
+      update("profilePicture", await uploadDocument(file, "AVATAR"));
+    } catch (uploadError) {
+      if (uploadError instanceof ApiError && uploadError.status === 429) {
+        setPendingUploads(await getPendingUploads().catch(() => []));
+        setStep(2);
+      }
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "We could not upload the profile image.",
+      );
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
   const cancelUpload = async (id: string) => {
     setCancellingUpload(id);
-    try { await cancelPendingUpload(id); setPendingUploads((current) => current.filter((upload) => upload.id !== id)); setError("Pending upload cancelled. You can upload the file again."); }
-    catch (cancelError) { setError(cancelError instanceof Error ? cancelError.message : "We could not cancel that pending upload."); }
-    finally { setCancellingUpload(null); }
+    try {
+      await cancelPendingUpload(id);
+      setPendingUploads((current) =>
+        current.filter((upload) => upload.id !== id),
+      );
+      setError("Pending upload cancelled. You can upload the file again.");
+    } catch (cancelError) {
+      setError(
+        cancelError instanceof Error
+          ? cancelError.message
+          : "We could not cancel that pending upload.",
+      );
+    } finally {
+      setCancellingUpload(null);
+    }
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (step !== 4) {
-      setError("Complete the final step before submitting your profile for review.");
+      setError(
+        "Complete the final step before submitting your profile for review.",
+      );
       return;
     }
 
-    const validationError = validateStep(1, form) || validateStep(2, form) || validateStep(3, form);
+    const validationError =
+      validateStep(1, form) || validateStep(2, form) || validateStep(3, form);
     if (validationError) {
       setError(validationError);
       if (!hasRequiredStudentDetails(form)) setStep(1);
@@ -251,11 +435,15 @@ export default function CompleteStudentProfilePage() {
       return;
     }
 
-    const proofOfStudentship = form.proofOfStudentship || getPendingUpload("PROOF_OF_STUDENTSHIP") || "";
-    const profilePicture = form.profilePicture || getPendingUpload("AVATAR") || "";
+    const proofOfStudentship =
+      form.proofOfStudentship || getPendingUpload("PROOF_OF_STUDENTSHIP") || "";
+    const profilePicture =
+      form.profilePicture || getPendingUpload("AVATAR") || "";
     if (!proofOfStudentship || !profilePicture) {
       setStep(2);
-      setError("Upload your studentship document and profile image before submitting.");
+      setError(
+        "Upload your studentship document and profile image before submitting.",
+      );
       return;
     }
     setSaving(true);
@@ -273,22 +461,35 @@ export default function CompleteStudentProfilePage() {
           ...(form.dateOfBirth ? { dateOfBirth: form.dateOfBirth } : {}),
           ...(form.gender ? { gender: form.gender } : {}),
           ...(form.phoneNumber ? { phoneNumber: form.phoneNumber } : {}),
-          ...(form.emergencyContact ? { emergencyContact: form.emergencyContact } : {}),
-          ...((form.linkedin.trim() || form.website.trim()) ? { socialLinks: { linkedin: form.linkedin, website: form.website } } : {}),
+          ...(form.emergencyContact
+            ? { emergencyContact: form.emergencyContact }
+            : {}),
+          ...(form.linkedin.trim() || form.website.trim()
+            ? {
+                socialLinks: { linkedin: form.linkedin, website: form.website },
+              }
+            : {}),
         }),
       });
-      clearClientCache("/api/v1/auth/me", "/api/v1/student-profiles/me", "/api/v1/student-profiles/status");
+      clearClientCache(
+        "/api/v1/auth/me",
+        "/api/v1/student-profiles/me",
+        "/api/v1/student-profiles/status",
+      );
       clearPendingUploads();
       if (draftKey) removeDraft(draftKey);
       router.replace("/dashboard");
     } catch {
-      setError("We could not submit your profile for review. Check the required fields and try again.");
+      setError(
+        "We could not submit your profile for review. Check the required fields and try again.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
+  const openPage = () =>
+    router.push(pageStatus === "none" ? "/page/new" : "/page");
   const discardDraft = () => {
     if (draftKey) removeDraft(draftKey);
     setForm(emptyForm);
@@ -296,10 +497,22 @@ export default function CompleteStudentProfilePage() {
     setDraftRestored(false);
     setError("");
   };
-  const input = (field: keyof FormState, label: string, required = false, type = "text") => (
+  const input = (
+    field: keyof FormState,
+    label: string,
+    required = false,
+    type = "text",
+  ) => (
     <label className="block text-sm font-medium text-safecrib-black">
-      {label}{required ? " *" : ""}
-      <input required={required} type={type} value={form[field] ?? ""} onChange={(event) => update(field, event.target.value)} className="mt-2 w-full rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none" />
+      {label}
+      {required ? " *" : ""}
+      <input
+        required={required}
+        type={type}
+        value={form[field] ?? ""}
+        onChange={(event) => update(field, event.target.value)}
+        className="mt-2 w-full rounded-[8px] border border-black/15 px-4 py-3 font-normal text-safecrib-black focus:border-safecrib-green focus:outline-none"
+      />
     </label>
   );
   const nextStep = () => {
@@ -325,7 +538,9 @@ export default function CompleteStudentProfilePage() {
   const handleFormSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (step !== 4) {
-      setError("Complete the final step before submitting your profile for review.");
+      setError(
+        "Complete the final step before submitting your profile for review.",
+      );
       return;
     }
     await submit(event);
@@ -338,69 +553,358 @@ export default function CompleteStudentProfilePage() {
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} />
       <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-8">
-        <Link href="/dashboard" className="text-sm font-medium text-safecrib-green hover:underline">Back to home</Link>
-        <h1 className="mt-6 text-3xl font-medium text-safecrib-black">Complete your student profile</h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-black/60">Complete your student details, then submit them for admin review from the final step.</p>
-        {draftRestored && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[8px] border border-safecrib-green/20 bg-[#EAF7F1] px-4 py-3 text-sm text-safecrib-green"><span>Draft restored. Your progress is saved on this device.</span><Button type="button" variant="secondary" className="border-safecrib-green/30 px-3 py-2 text-xs text-safecrib-green" onClick={discardDraft}>Discard draft</Button></div>}
+        <Link
+          href="/dashboard"
+          className="text-sm font-medium text-safecrib-green hover:underline"
+        >
+          Back to home
+        </Link>
+        <h1 className="mt-6 text-3xl font-medium text-safecrib-black">
+          Complete your student profile
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-black/60">
+          Complete your student details, then submit them for admin review from
+          the final step.
+        </p>
+        {draftRestored && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[8px] border border-safecrib-green/20 bg-[#EAF7F1] px-4 py-3 text-sm text-safecrib-green">
+            <span>Draft restored. Your progress is saved on this device.</span>
+            <Button
+              type="button"
+              variant="secondary"
+              className="border-safecrib-green/30 px-3 py-2 text-xs text-safecrib-green"
+              onClick={discardDraft}
+            >
+              Discard draft
+            </Button>
+          </div>
+        )}
         {status === "pending" ? (
-          <div className="mt-6 rounded-[4px] border border-black/10 bg-white p-4 text-sm text-black/65">Your profile is under review. You can update it after a decision.</div>
-        ) : (
-          status === "rejected" ? (
-            <>
-              <div className="mt-6 rounded-[4px] border border-red-200 bg-red-50 p-4 text-sm text-red-700"><p>Your profile was not approved. Update the details below and resubmit.</p>{rejectionReason && <p className="mt-2">Reason: {rejectionReason}</p>}</div>
-              {step === 0 ? (
-                <div className="mt-8 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Student profile</p>
-                  <h2 className="mt-3 text-2xl font-medium text-safecrib-black">Set up your profile in four steps</h2>
-                  <p className="mt-3 text-sm leading-6 text-black/60">Add your details, verification document, profile image, and contact information one step at a time. Nothing is submitted until you click the final button.</p>
-                  <Button type="button" className="mt-6" onClick={nextStep}>Start your profile</Button>
-                </div>
-              ) : (
-                <form onSubmit={handleFormSubmit} className="mt-8 grid gap-5 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)] sm:grid-cols-2">
-                  <div className="min-w-0 sm:col-span-2"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Step {step} of 4</p><span className="shrink-0 text-xs text-black/45">{Math.round((step / 4) * 100)}%</span></div><div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-safecrib-green transition-[width] duration-300" style={{ width: `${(step / 4) * 100}%` }} /></div></div>
-                  {step === 1 && <>{input("displayName", "Display name", true)}{input("schoolOfStudy", "School of study", true)}{input("courseOfStudy", "Course of study", true)}{input("level", "Level", true)}</>}
-                  {step === 2 && <div className="sm:col-span-2 grid min-w-0 gap-3 sm:grid-cols-2"><div className="sm:col-span-2"><p className="text-lg font-medium text-safecrib-black">Upload your verification files</p><p className="mt-1 text-sm leading-6 text-black/60">Add your verification document and profile image. Uploading saves them for the final review step; it does not submit your profile.</p></div><UploadAccordion title="Proof of studentship document" description="Required for student verification" accept="application/pdf,image/*" format="PDF or image · max 10 MB" value={form.proofOfStudentship} uploading={uploadingStudentship} required onUpload={(file) => void uploadStudentship(file)} /><UploadAccordion title="Profile image" description="Required for your student profile" accept="image/*" format="JPG, PNG, or WebP · max 10 MB" value={form.profilePicture} uploading={uploadingAvatar} required onUpload={(file) => void uploadAvatar(file)} />{pendingUploads.length > 0 && <div className="sm:col-span-2 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-medium">Pending uploads</p><p className="mt-1">Cancel an unfinished upload before trying again.</p><div className="mt-3 space-y-2">{pendingUploads.map((upload) => <div key={upload.id} className="flex flex-col items-start gap-2 rounded-[6px] border border-amber-900/10 p-2 sm:flex-row sm:items-center sm:justify-between"><span className="break-all">{upload.purpose ?? "Upload"}</span><Button type="button" variant="secondary" className="px-3 py-2 text-xs" loading={cancellingUpload === upload.id} onClick={() => void cancelUpload(upload.id)}>Cancel</Button></div>)}</div></div>}</div>}
-                  {step === 3 && <>{input("dateOfBirth", "Date of birth", false, "date")}{input("gender", "Gender")}{input("phoneNumber", "Phone number")}{input("emergencyContact", "Emergency contact")}</>}
-                  {step === 4 && <>{input("linkedin", "LinkedIn link")}{input("website", "Website link")}</>}
-                  {error && <p className="sm:col-span-2 text-sm text-red-600" role="alert">{error}</p>}
-                  <div className="sm:col-span-2 flex items-center justify-between gap-3">
-                    <Button type="button" variant="secondary" onClick={handleBackClick}>Back</Button>
-                    {step < 4 ? (
-                      <Button type="button" onClick={handleNextClick}>Next</Button>
-                    ) : (
-                      <Button type="submit" loading={saving} disabled={isPending || uploadingStudentship || uploadingAvatar}>{isRejected ? "Update and resubmit" : "Submit for review"}</Button>
-                    )}
-                  </div>
-                </form>
+          <div className="mt-6 rounded-[4px] border border-black/10 bg-white p-4 text-sm text-black/65">
+            Your profile is under review. You can update it after a decision.
+          </div>
+        ) : status === "rejected" ? (
+          <>
+            <div className="mt-6 rounded-[4px] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <p>
+                Your profile was not approved. Update the details below and
+                resubmit.
+              </p>
+              {rejectionReason && (
+                <p className="mt-2">Reason: {rejectionReason}</p>
               )}
-            </>
-          ) : (
-            step === 0 ? (
+            </div>
+            {step === 0 ? (
               <div className="mt-8 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Student profile</p>
-                <h2 className="mt-3 text-2xl font-medium text-safecrib-black">Set up your profile in four steps</h2>
-                <p className="mt-3 text-sm leading-6 text-black/60">Add your details, verification document, profile image, and contact information one step at a time. Nothing is submitted until you click the final button.</p>
-                <Button type="button" className="mt-6" onClick={nextStep}>Start your profile</Button>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">
+                  Student profile
+                </p>
+                <h2 className="mt-3 text-2xl font-medium text-safecrib-black">
+                  Set up your profile in four steps
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-black/60">
+                  Add your details, verification document, profile image, and
+                  contact information one step at a time. Nothing is submitted
+                  until you click the final button.
+                </p>
+                <Button type="button" className="mt-6" onClick={nextStep}>
+                  Start your profile
+                </Button>
               </div>
             ) : (
-              <form onSubmit={handleFormSubmit} className="mt-8 grid gap-5 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)] sm:grid-cols-2">
-                <div className="min-w-0 sm:col-span-2"><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">Step {step} of 4</p><span className="shrink-0 text-xs text-black/45">{Math.round((step / 4) * 100)}%</span></div><div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5"><div className="h-full rounded-full bg-safecrib-green transition-[width] duration-300" style={{ width: `${(step / 4) * 100}%` }} /></div></div>
-                {step === 1 && <>{input("displayName", "Display name", true)}{input("schoolOfStudy", "School of study", true)}{input("courseOfStudy", "Course of study", true)}{input("level", "Level", true)}</>}
-                {step === 2 && <div className="sm:col-span-2 grid min-w-0 gap-3 sm:grid-cols-2"><div className="sm:col-span-2"><p className="text-lg font-medium text-safecrib-black">Upload your verification files</p><p className="mt-1 text-sm leading-6 text-black/60">Add your verification document and profile image. Uploading saves them for the final review step; it does not submit your profile.</p></div><UploadAccordion title="Proof of studentship document" description="Required for student verification" accept="application/pdf,image/*" format="PDF or image · max 10 MB" value={form.proofOfStudentship} uploading={uploadingStudentship} required onUpload={(file) => void uploadStudentship(file)} /><UploadAccordion title="Profile image" description="Required for your student profile" accept="image/*" format="JPG, PNG, or WebP · max 10 MB" value={form.profilePicture} uploading={uploadingAvatar} required onUpload={(file) => void uploadAvatar(file)} />{pendingUploads.length > 0 && <div className="sm:col-span-2 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-medium">Pending uploads</p><p className="mt-1">Cancel an unfinished upload before trying again.</p><div className="mt-3 space-y-2">{pendingUploads.map((upload) => <div key={upload.id} className="flex flex-col items-start gap-2 rounded-[6px] border border-amber-900/10 p-2 sm:flex-row sm:items-center sm:justify-between"><span className="break-all">{upload.purpose ?? "Upload"}</span><Button type="button" variant="secondary" className="px-3 py-2 text-xs" loading={cancellingUpload === upload.id} onClick={() => void cancelUpload(upload.id)}>Cancel</Button></div>)}</div></div>}</div>}
-                {step === 3 && <>{input("dateOfBirth", "Date of birth", false, "date")}{input("gender", "Gender")}{input("phoneNumber", "Phone number")}{input("emergencyContact", "Emergency contact")}</>}
-                {step === 4 && <>{input("linkedin", "LinkedIn link")}{input("website", "Website link")}</>}
-                {error && <p className="sm:col-span-2 text-sm text-red-600" role="alert">{error}</p>}
+              <form
+                onSubmit={handleFormSubmit}
+                className="mt-8 grid gap-5 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)] sm:grid-cols-2"
+              >
+                <div className="min-w-0 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">
+                      Step {step} of 4
+                    </p>
+                    <span className="shrink-0 text-xs text-black/45">
+                      {Math.round((step / 4) * 100)}%
+                    </span>
+                  </div>
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5">
+                    <div
+                      className="h-full rounded-full bg-safecrib-green transition-[width] duration-300"
+                      style={{ width: `${(step / 4) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                {step === 1 && (
+                  <>
+                    {input("displayName", "Display name", true)}
+                    {input("schoolOfStudy", "School of study", true)}
+                    {input("courseOfStudy", "Course of study", true)}
+                    {input("level", "Level", true)}
+                  </>
+                )}
+                {step === 2 && (
+                  <div className="sm:col-span-2 grid min-w-0 gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <p className="text-lg font-medium text-safecrib-black">
+                        Upload your verification files
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-black/60">
+                        Add your verification document and profile image.
+                        Uploading saves them for the final review step; it does
+                        not submit your profile.
+                      </p>
+                    </div>
+                    <UploadAccordion
+                      title="Proof of studentship document"
+                      description="Required for student verification"
+                      accept="application/pdf,image/*"
+                      format="PDF or image · max 10 MB"
+                      value={form.proofOfStudentship}
+                      uploading={uploadingStudentship}
+                      required
+                      onUpload={(file) => void uploadStudentship(file)}
+                    />
+                    <UploadAccordion
+                      title="Profile image"
+                      description="Required for your student profile"
+                      accept="image/*"
+                      format="JPG, PNG, or WebP · max 10 MB"
+                      value={form.profilePicture}
+                      uploading={uploadingAvatar}
+                      required
+                      onUpload={(file) => void uploadAvatar(file)}
+                    />
+                    {pendingUploads.length > 0 && (
+                      <div className="sm:col-span-2 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <p className="font-medium">Pending uploads</p>
+                        <p className="mt-1">
+                          Cancel an unfinished upload before trying again.
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {pendingUploads.map((upload) => (
+                            <div
+                              key={upload.id}
+                              className="flex flex-col items-start gap-2 rounded-[6px] border border-amber-900/10 p-2 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <span className="break-all">
+                                {upload.purpose ?? "Upload"}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="px-3 py-2 text-xs"
+                                loading={cancellingUpload === upload.id}
+                                onClick={() => void cancelUpload(upload.id)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {step === 3 && (
+                  <>
+                    {input("dateOfBirth", "Date of birth", false, "date")}
+                    {input("gender", "Gender")}
+                    {input("phoneNumber", "Phone number")}
+                    {input("emergencyContact", "Emergency contact")}
+                  </>
+                )}
+                {step === 4 && (
+                  <>
+                    {input("linkedin", "LinkedIn link")}
+                    {input("website", "Website link")}
+                  </>
+                )}
+                {error && (
+                  <p
+                    className="sm:col-span-2 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
                 <div className="sm:col-span-2 flex items-center justify-between gap-3">
-                  <Button type="button" variant="secondary" onClick={handleBackClick}>Back</Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleBackClick}
+                  >
+                    Back
+                  </Button>
                   {step < 4 ? (
-                    <Button type="button" onClick={handleNextClick}>Next</Button>
+                    <Button type="button" onClick={handleNextClick}>
+                      Next
+                    </Button>
                   ) : (
-                    <Button type="submit" loading={saving} disabled={isPending || uploadingStudentship || uploadingAvatar}>{isRejected ? "Update and resubmit" : "Submit for review"}</Button>
+                    <Button
+                      type="submit"
+                      loading={saving}
+                      disabled={
+                        isPending || uploadingStudentship || uploadingAvatar
+                      }
+                    >
+                      {isRejected ? "Update and resubmit" : "Submit for review"}
+                    </Button>
                   )}
                 </div>
               </form>
-            )
-          )
+            )}
+          </>
+        ) : step === 0 ? (
+          <div className="mt-8 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">
+              Student profile
+            </p>
+            <h2 className="mt-3 text-2xl font-medium text-safecrib-black">
+              Set up your profile in four steps
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-black/60">
+              Add your details, verification document, profile image, and
+              contact information one step at a time. Nothing is submitted until
+              you click the final button.
+            </p>
+            <Button type="button" className="mt-6" onClick={nextStep}>
+              Start your profile
+            </Button>
+          </div>
+        ) : (
+          <form
+            onSubmit={handleFormSubmit}
+            className="mt-8 grid gap-5 rounded-[12px] border border-black/10 bg-white p-6 shadow-[0_18px_40px_rgba(11,12,14,0.05)] sm:grid-cols-2"
+          >
+            <div className="min-w-0 sm:col-span-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">
+                  Step {step} of 4
+                </p>
+                <span className="shrink-0 text-xs text-black/45">
+                  {Math.round((step / 4) * 100)}%
+                </span>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5">
+                <div
+                  className="h-full rounded-full bg-safecrib-green transition-[width] duration-300"
+                  style={{ width: `${(step / 4) * 100}%` }}
+                />
+              </div>
+            </div>
+            {step === 1 && (
+              <>
+                {input("displayName", "Display name", true)}
+                {input("schoolOfStudy", "School of study", true)}
+                {input("courseOfStudy", "Course of study", true)}
+                {input("level", "Level", true)}
+              </>
+            )}
+            {step === 2 && (
+              <div className="sm:col-span-2 grid min-w-0 gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <p className="text-lg font-medium text-safecrib-black">
+                    Upload your verification files
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-black/60">
+                    Add your verification document and profile image. Uploading
+                    saves them for the final review step; it does not submit
+                    your profile.
+                  </p>
+                </div>
+                <UploadAccordion
+                  title="Proof of studentship document"
+                  description="Required for student verification"
+                  accept="application/pdf,image/*"
+                  format="PDF or image · max 10 MB"
+                  value={form.proofOfStudentship}
+                  uploading={uploadingStudentship}
+                  required
+                  onUpload={(file) => void uploadStudentship(file)}
+                />
+                <UploadAccordion
+                  title="Profile image"
+                  description="Required for your student profile"
+                  accept="image/*"
+                  format="JPG, PNG, or WebP · max 10 MB"
+                  value={form.profilePicture}
+                  uploading={uploadingAvatar}
+                  required
+                  onUpload={(file) => void uploadAvatar(file)}
+                />
+                {pendingUploads.length > 0 && (
+                  <div className="sm:col-span-2 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p className="font-medium">Pending uploads</p>
+                    <p className="mt-1">
+                      Cancel an unfinished upload before trying again.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {pendingUploads.map((upload) => (
+                        <div
+                          key={upload.id}
+                          className="flex flex-col items-start gap-2 rounded-[6px] border border-amber-900/10 p-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span className="break-all">
+                            {upload.purpose ?? "Upload"}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-3 py-2 text-xs"
+                            loading={cancellingUpload === upload.id}
+                            onClick={() => void cancelUpload(upload.id)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {step === 3 && (
+              <>
+                {input("dateOfBirth", "Date of birth", false, "date")}
+                {input("gender", "Gender")}
+                {input("phoneNumber", "Phone number")}
+                {input("emergencyContact", "Emergency contact")}
+              </>
+            )}
+            {step === 4 && (
+              <>
+                {input("linkedin", "LinkedIn link")}
+                {input("website", "Website link")}
+              </>
+            )}
+            {error && (
+              <p className="sm:col-span-2 text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="sm:col-span-2 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleBackClick}
+              >
+                Back
+              </Button>
+              {step < 4 ? (
+                <Button type="button" onClick={handleNextClick}>
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  loading={saving}
+                  disabled={
+                    isPending || uploadingStudentship || uploadingAvatar
+                  }
+                >
+                  {isRejected ? "Update and resubmit" : "Submit for review"}
+                </Button>
+              )}
+            </div>
+          </form>
         )}
       </section>
     </main>
