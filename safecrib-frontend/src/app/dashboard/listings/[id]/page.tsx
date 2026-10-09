@@ -6,7 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { UserName } from "@/components/common/UserName";
-import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { Button } from "@/components/ui/Button";
@@ -34,14 +33,59 @@ function photoUrl(photo: string | { url?: string }) {
 
 function timeAgo(iso: string) {
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "now";
+  if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${minutes}min ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d`;
+  if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString();
+}
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+}
+
+/* ---------- icons ---------- */
+const ICONS = {
+  back: "m12 19-7-7 7-7M19 12H5",
+  heart: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z",
+  comment: "M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z",
+  bolt: "M13 2 3 14h9l-1 8 10-12h-9l1-8z",
+  mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm18 3-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7",
+  bookmark: "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z",
+  flag: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7",
+  pin: "M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11ZM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  play: "M6 3l14 9-14 9V3z",
+  pause: "M6 4h4v16H6zM14 4h4v16h-4z",
+  volume: "M11 5 6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14",
+  muted: "M11 5 6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6",
+  maximize: "M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3",
+  minimize: "M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3",
+  chevronLeft: "m15 18-6-6 6-6",
+  chevronRight: "m9 18 6-6-6-6",
+} as const;
+
+function Icon({ d, className = "h-5 w-5", filled = false, strokeWidth = 1.8 }: { d: string; className?: string; filled?: boolean; strokeWidth?: number }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
+}
+
+function ActionButton({ label, onClick, disabled, pressed, tone, count, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; tone: string; count?: number; children: ReactNode }) {
+  return <button type="button" title={label} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition hover:bg-black/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green disabled:cursor-not-allowed disabled:opacity-50 ${tone}`}>
+    {children}
+    {count !== undefined && <span className="tabular-nums">{count}</span>}
+  </button>;
+}
+
+/* ---------- comment avatar ---------- */
+const AVATAR_TONES = ["bg-safecrib-green/15 text-safecrib-green", "bg-amber-100 text-amber-800", "bg-sky-100 text-sky-800", "bg-rose-100 text-rose-800", "bg-violet-100 text-violet-800"];
+function CommentAvatar({ user, small }: { user: ListingComment["user"]; small: boolean }) {
+  let hash = 0;
+  for (let index = 0; index < user.id.length; index += 1) hash = (hash * 31 + user.id.charCodeAt(index)) >>> 0;
+  const letter = (user.displayName ?? user.username ?? "?").trim().slice(0, 1).toUpperCase() || "?";
+  return <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${small ? "h-7 w-7 text-xs" : "h-9 w-9 text-sm"} ${AVATAR_TONES[hash % AVATAR_TONES.length]}`}>{letter}</span>;
 }
 
 /** Uses the same verification source + badge the rest of the app already uses. */
@@ -63,7 +107,106 @@ function UserVerificationBadge({ userId }: { userId: string }) {
   return verification ? <VerificationBadge verification={verification} compact iconOnly /> : null;
 }
 
-const chevronProps = { "aria-hidden": true, viewBox: "0 0 24 24", className: "h-5 w-5", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+/* ---------- custom video player ---------- */
+const SPEEDS = [1, 1.5, 2, 0.5];
+
+function VideoPlayer({ src, reserveBottom }: { src: string; reserveBottom: boolean }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === wrapRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
+
+  const revealControls = () => {
+    setControlsVisible(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setControlsVisible(false);
+    }, 2500);
+  };
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play().catch(() => undefined); else video.pause();
+    revealControls();
+  };
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+  };
+  const cycleSpeed = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const next = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length] ?? 1;
+    video.playbackRate = next;
+    setSpeed(next);
+  };
+  const toggleFullscreen = () => {
+    const video = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+    if (document.fullscreenElement) { void document.exitFullscreen(); return; }
+    if (wrapRef.current?.requestFullscreen) void wrapRef.current.requestFullscreen().catch(() => undefined);
+    else video?.webkitEnterFullscreen?.();
+  };
+
+  const progress = duration > 0 ? (current / duration) * 100 : 0;
+  const visible = controlsVisible || !playing;
+  const controlButton = "flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white";
+
+  return <div ref={wrapRef} className="group relative h-full w-full bg-black" onMouseMove={revealControls} onMouseLeave={() => { if (playing) setControlsVisible(false); }}>
+    <video
+      ref={videoRef}
+      src={src}
+      playsInline
+      preload="metadata"
+      className="h-full w-full cursor-pointer object-contain"
+      onClick={togglePlay}
+      onPlay={() => { setPlaying(true); revealControls(); }}
+      onPause={() => { setPlaying(false); setControlsVisible(true); }}
+      onEnded={() => { setPlaying(false); setControlsVisible(true); }}
+      onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
+      onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+    />
+    {!playing && <button type="button" onClick={togglePlay} aria-label="Play video" className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 pl-1 text-safecrib-black shadow-lg transition hover:scale-105 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+      <Icon d={ICONS.play} className="h-7 w-7" filled strokeWidth={1} />
+    </button>}
+    <div data-no-swipe className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent px-3 pt-12 transition-opacity duration-200 ${reserveBottom ? "pb-8" : "pb-3"} ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+      <input
+        type="range"
+        min={0}
+        max={duration || 0}
+        step={0.1}
+        value={current}
+        onChange={(event) => { const video = videoRef.current; if (video) { video.currentTime = Number(event.target.value); setCurrent(video.currentTime); } }}
+        aria-label="Seek"
+        className="block h-3 w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow"
+        style={{ background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.3) ${progress}%) center / 100% 4px no-repeat` }}
+      />
+      <div className="mt-1 flex items-center gap-1 text-white">
+        <button type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} className={controlButton}><Icon d={playing ? ICONS.pause : ICONS.play} className="h-5 w-5" filled strokeWidth={1} /></button>
+        <button type="button" onClick={toggleMute} aria-label={muted ? "Unmute" : "Mute"} className={controlButton}><Icon d={muted ? ICONS.muted : ICONS.volume} /></button>
+        <span className="ml-1 text-xs font-medium tabular-nums text-white/90">{formatTime(current)} / {formatTime(duration)}</span>
+        <button type="button" onClick={cycleSpeed} aria-label={`Playback speed ${speed}x`} className="ml-auto h-9 rounded-full px-3 text-xs font-semibold tabular-nums text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">{speed}x</button>
+        <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"} className={controlButton}><Icon d={fullscreen ? ICONS.minimize : ICONS.maximize} /></button>
+      </div>
+    </div>
+  </div>;
+}
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -217,6 +360,7 @@ export default function ListingDetailPage() {
     }
   };
   const submitComment = async () => {
+    if (commentSubmitting) return;
     const body = commentBody.trim();
     if (!body || body.length > 1000) {
       setCommentError("Write a comment up to 1,000 characters.");
@@ -238,6 +382,8 @@ export default function ListingDetailPage() {
       setCommentBody("");
       setCommentMentionIds([]);
       setReplyParentId(null);
+      const box = document.getElementById("home-comment") as HTMLTextAreaElement | null;
+      if (box) box.style.height = "auto";
     } catch (error) {
       setCommentError(error instanceof Error ? error.message : "We could not post your comment.");
     } finally {
@@ -306,9 +452,8 @@ export default function ListingDetailPage() {
     } finally { setSubmitting(false); }
   };
   const openPage = () => router.push(pageStatus === "none" ? "/page/new" : "/page");
-  const focusComposer = () => {
-    document.getElementById("home-comment")?.focus();
-  };
+  const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/dashboard"); };
+  const focusComposer = () => { document.getElementById("home-comment")?.focus(); };
 
   /* ---------- location: text + map (coordinates first, text address as fallback) ---------- */
   const addressText = listing?.address?.trim() ?? "";
@@ -330,6 +475,33 @@ export default function ListingDetailPage() {
       if (open) next.add(threadId); else next.delete(threadId);
       return next;
     });
+  const replyingTo = replyParentId ? comments.find((comment) => comment.id === replyParentId) : undefined;
+
+  const startReply = (item: ListingComment) => {
+    const handle = item.user.username;
+    setReplyParentId(item.id);
+    setCommentError("");
+    setMentionCandidates([]);
+    if (handle) {
+      setCommentBody(`@${handle} `);
+      setCommentMentionIds([item.user.id]);
+      setTaggedUsers((current) => current.some((person) => person.id === item.user.id) ? current : [...current, { id: item.user.id, displayName: item.user.displayName, username: handle, role: item.user.role }]);
+    } else {
+      setCommentBody("");
+      setCommentMentionIds([]);
+    }
+    window.setTimeout(focusComposer, 0);
+  };
+
+  const renderBody = (item: ListingComment): ReactNode =>
+    item.body.split(/(@[A-Za-z0-9_.]+)/g).map((part, index) => {
+      if (part.length > 1 && part.startsWith("@")) {
+        const handle = part.slice(1).toLowerCase();
+        const mentioned = item.mentions?.find((mention) => (mention.user.username ?? "").toLowerCase() === handle);
+        if (mentioned) return <Link key={index} href={`/profile/${encodeURIComponent(mentioned.user.id)}`} className="font-medium text-blue-600 hover:underline">{part}</Link>;
+      }
+      return part;
+    });
 
   const renderComment = (item: ListingComment, depth = 0): ReactNode => {
     const replies = repliesOf(item.id);
@@ -337,25 +509,27 @@ export default function ListingDetailPage() {
     const visibleReplies = expanded ? replies : replies.slice(0, 1);
     const hiddenCount = replies.length - visibleReplies.length;
     const isAuthor = Boolean(listing?.ownerId && item.user.id === listing.ownerId);
-    return <li key={item.id} className="py-3">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-sm font-semibold text-safecrib-black"><UserName user={item.user} size="sm" showHandle={true} /></span>
-        <UserVerificationBadge userId={item.user.id} />
-        {isAuthor && <span className="rounded-md bg-safecrib-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-safecrib-green">Author</span>}
+    return <li key={item.id} className="py-2.5">
+      <div className="flex gap-3">
+        <CommentAvatar user={item.user} small={depth > 0} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-sm font-semibold text-safecrib-black"><UserName user={item.user} size="sm" showHandle={true} /></span>
+            <UserVerificationBadge userId={item.user.id} />
+            {isAuthor && <span className="rounded-md bg-safecrib-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-safecrib-green">Author</span>}
+            <time dateTime={item.createdAt} className="text-xs text-black/40">{timeAgo(item.createdAt)}</time>
+          </div>
+          {item.body && <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-6 text-black/75">{renderBody(item)}</p>}
+          <button type="button" onClick={() => startReply(item)} className="mt-0.5 text-xs font-semibold text-black/45 transition hover:text-safecrib-green">Reply</button>
+          {visibleReplies.length > 0 && <ul className="mt-1">{visibleReplies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+          {hiddenCount > 0 && <button type="button" onClick={() => expandThread(item.id, true)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/50 transition hover:text-safecrib-green">
+            <span aria-hidden="true" className="h-px w-6 bg-black/25" />View {hiddenCount} more {hiddenCount === 1 ? "reply" : "replies"}
+          </button>}
+          {expanded && replies.length > 1 && <button type="button" onClick={() => expandThread(item.id, false)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/40 transition hover:text-safecrib-green">
+            <span aria-hidden="true" className="h-px w-6 bg-black/25" />Hide replies
+          </button>}
+        </div>
       </div>
-      {item.body && <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-black/70">{item.body}</p>}
-      {item.mentions?.length ? <p className="mt-1 text-xs text-black/45">Tagged: {item.mentions.map((mention) => `@${mention.user.username ?? mention.user.displayName ?? "member"}`).join(", ")}</p> : null}
-      <div className="mt-1.5 flex items-center gap-3 text-xs text-black/45">
-        <time dateTime={item.createdAt}>{timeAgo(item.createdAt)}</time>
-        <button type="button" onClick={() => { setReplyParentId(item.id); setCommentBody(""); setCommentError(""); focusComposer(); }} className="font-semibold text-black/55 hover:text-safecrib-green">Reply</button>
-      </div>
-      {visibleReplies.length > 0 && <ul className={`mt-2 ${depth < 2 ? "ml-3 border-l-2 border-black/10 pl-3 sm:ml-5" : ""}`}>{visibleReplies.map((reply) => renderComment(reply, depth + 1))}</ul>}
-      {hiddenCount > 0 && <button type="button" onClick={() => expandThread(item.id, true)} className={`mt-1 flex items-center gap-2 text-xs font-semibold text-black/55 hover:text-safecrib-green ${depth < 2 ? "ml-3 sm:ml-5" : ""}`}>
-        <span aria-hidden="true" className="h-px w-6 bg-black/25" />View {hiddenCount} more {hiddenCount === 1 ? "reply" : "replies"}
-      </button>}
-      {expanded && replies.length > 1 && <button type="button" onClick={() => expandThread(item.id, false)} className={`mt-1 flex items-center gap-2 text-xs font-semibold text-black/45 hover:text-safecrib-green ${depth < 2 ? "ml-3 sm:ml-5" : ""}`}>
-        <span aria-hidden="true" className="h-px w-6 bg-black/25" />Hide replies
-      </button>}
     </li>;
   };
 
@@ -365,7 +539,9 @@ export default function ListingDetailPage() {
   return <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
     <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={false} />
     <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
-      <BackHomeLink label="Back to homes" />
+      <button type="button" onClick={goBack} aria-label="Back to homes" title="Back to homes" className="flex h-10 w-10 items-center justify-center rounded-full border border-safecrib-green/25 bg-safecrib-green/10 text-safecrib-green transition hover:bg-safecrib-green/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-safecrib-green">
+        <Icon d={ICONS.back} />
+      </button>
       {listing ? <article className="mt-5 grid gap-4 lg:h-[min(48rem,calc(100vh-9rem))] lg:min-h-[34rem] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
 
         {/* ---------- LEFT: media carousel (video first, then photos) ---------- */}
@@ -375,8 +551,15 @@ export default function ListingDetailPage() {
           role="region"
           aria-roledescription="carousel"
           aria-label="Home photos and video"
-          onKeyDown={(event) => { if (event.key === "ArrowLeft") goToSlide(activeIndex - 1); if (event.key === "ArrowRight") goToSlide(activeIndex + 1); }}
-          onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null; }}
+          onKeyDown={(event) => {
+            if ((event.target as HTMLElement).tagName === "INPUT") return;
+            if (event.key === "ArrowLeft") goToSlide(activeIndex - 1);
+            if (event.key === "ArrowRight") goToSlide(activeIndex + 1);
+          }}
+          onTouchStart={(event) => {
+            if ((event.target as HTMLElement).closest("[data-no-swipe]")) { touchStartX.current = null; return; }
+            touchStartX.current = event.touches[0]?.clientX ?? null;
+          }}
           onTouchEnd={(event) => {
             const start = touchStartX.current;
             touchStartX.current = null;
@@ -387,15 +570,15 @@ export default function ListingDetailPage() {
           }}
         >
           {activeSlide?.type === "video" && (activeSlide.url
-            ? <video key={activeSlide.url} src={activeSlide.url} controls playsInline preload="metadata" className="h-full w-full bg-black object-contain" />
+            ? <VideoPlayer key={activeSlide.url} src={activeSlide.url} reserveBottom={slides.length > 1} />
             : <div className="flex h-full w-full items-center justify-center p-6 text-center text-sm text-white/70">Video is not available yet. Refresh the listing to try again.</div>)}
           {activeSlide?.type === "image" && <Image key={activeSlide.url} src={activeSlide.url} alt={`${listing.title ?? "Home"} photo ${hasVideo ? activeIndex : activeIndex + 1}`} fill priority={activeIndex === 0} sizes="(min-width: 1024px) 55vw, 100vw" className="object-cover" />}
           {!activeSlide && <div className="flex h-full w-full items-center justify-center text-sm text-white/60">No photos or video yet.</div>}
 
           {slides.length > 1 && <>
             <span className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white" aria-live="polite">{activeIndex + 1}/{slides.length}</span>
-            {activeIndex > 0 && <button type="button" onClick={() => goToSlide(activeIndex - 1)} aria-label="Previous" className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"><svg {...chevronProps}><path d="m15 18-6-6 6-6" /></svg></button>}
-            {activeIndex < slides.length - 1 && <button type="button" onClick={() => goToSlide(activeIndex + 1)} aria-label="Next" className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"><svg {...chevronProps}><path d="m9 18 6-6-6-6" /></svg></button>}
+            {activeIndex > 0 && <button type="button" onClick={() => goToSlide(activeIndex - 1)} aria-label="Previous" className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"><Icon d={ICONS.chevronLeft} strokeWidth={2.2} /></button>}
+            {activeIndex < slides.length - 1 && <button type="button" onClick={() => goToSlide(activeIndex + 1)} aria-label="Next" className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"><Icon d={ICONS.chevronRight} strokeWidth={2.2} /></button>}
             <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
               {slides.map((slide, index) => <button key={`${slide.type}-${index}`} type="button" onClick={() => goToSlide(index)} aria-label={`Go to ${slide.type === "video" ? "video" : `photo ${hasVideo ? index : index + 1}`}`} aria-current={index === activeIndex} className={`pointer-events-auto h-1.5 rounded-full transition-all ${index === activeIndex ? "w-4 bg-white" : "w-1.5 bg-white/50 hover:bg-white/80"}`} />)}
             </div>
@@ -419,7 +602,7 @@ export default function ListingDetailPage() {
             <h1 className="mt-4 text-2xl font-medium text-safecrib-black">{listing.title ?? "Untitled home"}</h1>
             <p className="mt-2 text-xl font-medium text-safecrib-black">{typeof price === "number" ? `₦${price.toLocaleString()}` : "Price available on request"}</p>
             {typeof listing.discountAmount === "number" && listing.discountAmount > 0 && <p className="mt-0.5 text-sm text-black/50">Base price ₦{listing.price?.toLocaleString()}</p>}
-            <p className="mt-1 text-xs text-black/45">{listing.viewCount ?? 0} views · {likeCount} likes</p>
+            <p className="mt-1 text-xs text-black/45">{listing.viewCount ?? 0} views</p>
             <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-black/65">{listing.description ?? "No description provided."}</p>
 
             {/* location */}
@@ -427,9 +610,7 @@ export default function ListingDetailPage() {
               <h2 className="text-base font-semibold text-safecrib-black">Location</h2>
               <div className="mt-3 overflow-hidden rounded-xl border border-black/10">
                 <div className="flex items-start gap-3 p-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-safecrib-green/10 text-safecrib-green">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                  </span>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-safecrib-green/10 text-safecrib-green"><Icon d={ICONS.pin} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-safecrib-black">{addressText || campusText || "Location available on request"}</p>
                     {addressText && campusText && addressText.toLowerCase() !== campusText.toLowerCase() && <p className="mt-0.5 text-sm text-black/55">Near {campusText}</p>}
@@ -441,30 +622,38 @@ export default function ListingDetailPage() {
               </div>
             </section>
 
-            {/* actions */}
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Button type="button" onClick={() => gate("book this home")}>Book this home</Button>
-              {!isProvider && <Button type="button" variant="secondary" onClick={() => void toggleBookmark()}>{bookmarked ? "Saved" : "Save"}</Button>}
-              <Button type="button" variant="secondary" onClick={() => gate("contact the provider")}>Contact provider</Button>
-              <Button type="button" variant="secondary" onClick={() => setReportOpen(true)}>Report listing</Button>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/10 pt-3">
-              <button type="button" onClick={() => void toggleLike()} disabled={!listing.ownerId || likePending} aria-pressed={liked} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition ${liked ? "bg-safecrib-green/10 font-semibold text-safecrib-green" : "text-black/65 hover:bg-black/[0.04]"}`}>
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 11h9.2a3 3 0 0 0 2.9-2.2l2-7A3 3 0 0 0 18.2 8H14l.7-3.2A2.4 2.4 0 0 0 12.4 2L7 10v11Z" /></svg> Like <span>{likeCount}</span>
-              </button>
-              <button type="button" onClick={() => { document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" }); focusComposer(); }} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-black/65 transition hover:bg-black/[0.04]">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" /></svg> Comment
-              </button>
-              <button type="button" onClick={() => void toggleRecommendation()} disabled={role !== "STUDENT" || !listing.ownerId || !recommendationStateLoaded || recommendationPending} aria-pressed={recommended} title={role === "STUDENT" ? "Recommend this provider to students" : "Student accounts can recommend providers"} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${recommended ? "bg-amber-100 font-semibold text-amber-800" : "text-black/65 hover:bg-black/[0.04]"}`}>
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m13 2-3 8h7l-6 12 2-9H6l7-11Z" /></svg> Recommend provider <span>{recommendationCount}</span>
-              </button>
+            {/* primary action + icon actions */}
+            <Button type="button" onClick={() => gate("secure this accommodation")} className="mt-6 w-full">Secure accommodation</Button>
+            <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-2">
+              <div className="flex items-center">
+                <ActionButton label={liked ? "Unlike" : "Like"} onClick={() => void toggleLike()} disabled={!listing.ownerId || likePending} pressed={liked} tone="text-red-500" count={likeCount}>
+                  <Icon d={ICONS.heart} className="h-[22px] w-[22px]" filled={liked} />
+                </ActionButton>
+                <ActionButton label="Comments" onClick={() => { document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" }); focusComposer(); }} tone="text-black/65" count={comments.length}>
+                  <Icon d={ICONS.comment} className="h-[22px] w-[22px]" />
+                </ActionButton>
+                <ActionButton label={role === "STUDENT" ? (recommended ? "Remove recommendation" : "Recommend this provider") : "Student accounts can recommend providers"} onClick={() => void toggleRecommendation()} disabled={role !== "STUDENT" || !listing.ownerId || !recommendationStateLoaded || recommendationPending} pressed={recommended} tone="text-blue-600" count={recommendationCount}>
+                  <Icon d={ICONS.bolt} className="h-[22px] w-[22px]" filled={recommended} />
+                </ActionButton>
+                <ActionButton label="Contact provider" onClick={() => gate("contact the provider")} tone="text-black/65">
+                  <Icon d={ICONS.mail} className="h-[22px] w-[22px]" />
+                </ActionButton>
+              </div>
+              <div className="flex items-center">
+                {!isProvider && <ActionButton label={bookmarked ? "Remove from saved" : "Save listing"} onClick={() => void toggleBookmark()} pressed={bookmarked} tone={bookmarked ? "text-safecrib-green" : "text-black/65"}>
+                  <Icon d={ICONS.bookmark} className="h-[22px] w-[22px]" filled={bookmarked} />
+                </ActionButton>}
+                <ActionButton label="Report listing" onClick={() => setReportOpen(true)} tone="text-black/65 hover:text-red-600">
+                  <Icon d={ICONS.flag} className="h-[22px] w-[22px]" />
+                </ActionButton>
+              </div>
             </div>
 
             {/* comments */}
-            <section id="comments" className="mt-5 scroll-mt-2 border-t border-black/10 pt-5" aria-labelledby="home-comments-title">
-              <h2 id="home-comments-title" className="text-base font-semibold text-safecrib-black">Comments ({comments.length})</h2>
+            <section id="comments" className="mt-4 scroll-mt-2 border-t border-black/10 pt-5" aria-labelledby="home-comments-title">
+              <h2 id="home-comments-title" className="text-lg font-semibold text-safecrib-black">Comments <span className="font-normal text-black/45">({comments.length})</span></h2>
               {commentError && <p role="alert" className="mt-3 text-sm text-red-700">{commentError}</p>}
-              <ul className="mt-2 divide-y divide-black/10">
+              <ul className="mt-2">
                 {rootComments.map((comment) => renderComment(comment))}
                 {!comments.length && !commentError && <li className="py-4 text-sm text-black/50">No comments yet. Start the conversation.</li>}
               </ul>
@@ -472,18 +661,31 @@ export default function ListingDetailPage() {
           </div>
 
           {/* composer, pinned to the bottom of the panel */}
-          <div className="border-t border-black/10 bg-white p-3">
-            {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mb-2 max-h-40 overflow-auto rounded-lg border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="w-full px-4 py-2 text-left text-sm hover:bg-safecrib-green/5"><UserName user={person} size="sm" showHandle={true} /> <span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
-            {replyParentId && <div className="mb-2 flex items-center justify-between rounded-md bg-black/[0.04] px-3 py-1.5 text-xs text-black/60">
-              <span>Replying to a comment</span>
-              <button type="button" onClick={() => setReplyParentId(null)} className="font-semibold text-safecrib-green hover:underline">Cancel</button>
+          <div className="border-t border-black/10 bg-white px-4 py-3">
+            {mentionCandidates.length > 0 && <ul aria-label="Tag a user" className="mb-2 max-h-44 overflow-auto rounded-xl border border-black/10 bg-white shadow-lg">{mentionCandidates.map((person) => <li key={person.id}><button type="button" onClick={() => selectMention(person)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-safecrib-green/5"><CommentAvatar user={{ id: person.id, displayName: person.displayName, username: person.username }} small /><UserName user={person} size="sm" showHandle={true} /><span className="text-xs text-black/45">{person.role?.toLowerCase()}</span></button></li>)}</ul>}
+            {replyParentId && <div className="mb-2 flex items-center justify-between rounded-lg bg-black/[0.04] px-3 py-1.5 text-xs text-black/60">
+              <span>Replying to {replyingTo?.user.username ? `@${replyingTo.user.username}` : "a comment"}</span>
+              <button type="button" onClick={() => { setReplyParentId(null); setCommentBody(""); setCommentMentionIds([]); }} className="font-semibold text-safecrib-green hover:underline">Cancel</button>
             </div>}
             <label htmlFor="home-comment" className="sr-only">{replyParentId ? "Write a reply" : "Write a comment about this home"}</label>
-            <div className="flex items-end gap-2">
-              <textarea id="home-comment" value={commentBody} onChange={(event) => updateCommentBody(event.target.value)} maxLength={1000} rows={2} placeholder={replyParentId ? "Write a reply..." : "Ask a question or tag someone with @..."} className="min-h-[3rem] w-full resize-none rounded-lg border border-black/15 px-3 py-2 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
-              <Button type="button" loading={commentSubmitting} onClick={() => void submitComment()}>{replyParentId ? "Reply" : "Post"}</Button>
+            <div className="flex items-end gap-2 rounded-2xl border border-black/10 bg-black/[0.02] px-3 py-1 transition focus-within:border-safecrib-green focus-within:bg-white">
+              <textarea
+                id="home-comment"
+                value={commentBody}
+                rows={1}
+                maxLength={1000}
+                placeholder={replyParentId ? "Write a reply..." : "Add a comment, or tag someone with @..."}
+                onChange={(event) => {
+                  updateCommentBody(event.target.value);
+                  event.target.style.height = "auto";
+                  event.target.style.height = `${Math.min(event.target.scrollHeight, 112)}px`;
+                }}
+                onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitComment(); } }}
+                className="max-h-28 min-h-[2.25rem] w-full resize-none bg-transparent py-2 text-sm text-safecrib-black placeholder:text-black/40 focus:outline-none"
+              />
+              <button type="button" onClick={() => void submitComment()} disabled={commentSubmitting || !commentBody.trim()} className="mb-1 rounded-full px-3 py-1.5 text-sm font-semibold text-safecrib-green transition hover:bg-safecrib-green/10 disabled:cursor-not-allowed disabled:opacity-40">{commentSubmitting ? "Posting..." : "Post"}</button>
             </div>
-            <p className="mt-1 text-right text-xs text-black/40">{commentBody.length}/1000</p>
+            {commentBody.length > 800 && <p className="mt-1 text-right text-xs text-black/40">{commentBody.length}/1000</p>}
           </div>
         </aside>
       </article> : <p className="mt-8 text-sm text-black/60">Loading listing details...</p>}
@@ -496,7 +698,7 @@ export default function ListingDetailPage() {
       <Button type="button" loading={submitting} onClick={() => void submitContact()} className="mt-4">Send email</Button>
     </Modal>
     <Modal open={modal === "booking"} onClose={() => setModal(null)} titleId="booking-title">
-      <h2 id="booking-title" className="text-xl font-medium text-safecrib-black">Book this home</h2>
+      <h2 id="booking-title" className="text-xl font-medium text-safecrib-black">Secure accommodation</h2>
       <p className="mt-3 text-sm leading-6 text-black/60">Enter the deposit amount in the backend&apos;s minor currency unit.</p>
       <input inputMode="numeric" type="number" min="1" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} placeholder="Deposit amount" className="mt-4 w-full rounded-[8px] border border-black/15 px-4 py-3 text-sm text-safecrib-black focus:border-safecrib-green focus:outline-none" />
       <Button type="button" loading={submitting} onClick={() => void submitBooking()} className="mt-4">Create booking hold</Button>
