@@ -273,17 +273,6 @@ export default function Home() {
     router.prefetch(`/dashboard/listings/${listingId}`);
   };
 
-  const handleShare = async (listingId: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "SafeCrib Listing",
-          url: `${window.location.origin}/dashboard/listings/${listingId}`,
-        });
-      } catch {}
-    }
-  };
-
   const handleBookmark = async (listingId: string) => {
     // TODO: Implement bookmark via API
     console.log("Bookmark:", listingId);
@@ -472,7 +461,7 @@ export default function Home() {
                 onLike={handleLike}
                 onComment={handleComment}
                 onCommentPrefetch={prefetchListing}
-                onShare={handleShare}
+                onView={(listingId) => router.push(`/dashboard/listings/${listingId}`)}
                 onBookmark={handleBookmark}
               />
             ))}

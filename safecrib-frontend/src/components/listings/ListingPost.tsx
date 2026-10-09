@@ -60,7 +60,6 @@ export function ListingPost({
   onComment,
   onCommentPrefetch,
   onView,
-  onShare,
   onBookmark,
   onRecommend,
   onCall,
@@ -73,7 +72,6 @@ export function ListingPost({
   onComment: (listingId: string) => void;
   onCommentPrefetch?: (listingId: string) => void;
   onView?: (listingId: string) => void;
-  onShare?: (listingId: string) => Promise<void>;
   onBookmark: (listingId: string) => Promise<void>;
   onRecommend?: (providerId: string, recommended: boolean) => Promise<void>;
   onCall?: () => void;
