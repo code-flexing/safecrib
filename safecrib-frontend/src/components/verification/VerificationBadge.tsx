@@ -112,18 +112,19 @@ function getGlyphColor(badgeColor: "green" | "blue" | "gold"): string {
 
 function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blue" | "gold"; size: number; fullDetail: boolean }) {
   const glyphColor = getGlyphColor(badgeColor);
+  const fillColor = getFillColor(badgeColor);
   const unit = size / 28;
-  const sealSize = 56 * unit;
-  const glyphStroke = size <= 20 ? 6 * unit : 5 * unit;
+  const innerRadius = size * 0.42;
+  const glyphStroke = size <= 20 ? 5.4 * unit : 4.8 * unit;
 
   const checkPath = `M${-10 * unit},0 L${-3 * unit},${7 * unit} L${11 * unit},${-8 * unit}`;
-  const shieldPath = `M0,${-13 * unit} L${11 * unit},${-9 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-9 * unit} Z`;
+  const shieldPath = `M0,${-12 * unit} L${11 * unit},${-8 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-8 * unit} Z`;
   const crownPath = `M${-12 * unit},${7 * unit} L${-14 * unit},${-8 * unit} L${-6 * unit},${-1 * unit} L0,${-12 * unit} L${6 * unit},${-1 * unit} L${14 * unit},${-8 * unit} L${12 * unit},${7 * unit} Z`;
   const crownBase = `M${-12 * unit},${9 * unit} h${24 * unit} v${3.5 * unit} h${-24 * unit} Z`;
 
   return (
     <svg
-      viewBox={`-${sealSize / 2} -${sealSize / 2} ${sealSize} ${sealSize}`}
+      viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`}
       width={size}
       height={size}
       role="img"
@@ -131,6 +132,15 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
       className="shrink-0"
       style={{ flexShrink: 0 }}
     >
+      <circle cx="0" cy="0" r={innerRadius} fill={fillColor} />
+      <circle
+        cx="0"
+        cy="0"
+        r={innerRadius - Math.max(1.5, size * 0.06)}
+        fill="none"
+        stroke={badgeColor === "gold" ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.18)"}
+        strokeWidth={Math.max(1.2, size * 0.06)}
+      />
       <g fill={glyphColor}>
         {badgeColor === "green" && (
           <path
@@ -142,13 +152,11 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
             strokeLinejoin="round"
           />
         )}
-        {badgeColor === "blue" && (
-          <path d={shieldPath} />
-        )}
+        {badgeColor === "blue" && <path d={shieldPath} />}
         {badgeColor === "gold" && (
           <>
             <path d={crownPath} />
-            {fullDetail && <path d={crownBase} rx={1.5 * unit} />}
+            {fullDetail && <path d={crownBase} />}
           </>
         )}
       </g>
