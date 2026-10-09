@@ -503,35 +503,35 @@ export default function ListingDetailPage() {
       return part;
     });
 
-const renderComment = (item: ListingComment, depth = 0): ReactNode => {
-  const replies = repliesOf(item.id);
-  const expanded = expandedThreads.has(item.id);
-  const isAuthor = Boolean(listing?.ownerId && item.user.id === listing.ownerId);
-  return <li key={item.id} className="py-2.5">
-    <div className="flex gap-3">
-      <CommentAvatar user={item.user} small={depth > 0} />
-      <div className="min-w-0 flex-1">
-        {/* header + body + Reply button stay exactly as they are */}
-
-        {replies.length > 0 && (
-          <button
-            type="button"
-            onClick={() => expandThread(item.id, !expanded)}
-            aria-expanded={expanded}
-            className="mt-1 flex items-center gap-2 text-xs font-semibold text-safecrib-green transition hover:underline"
-          >
-            <span aria-hidden="true" className="h-px w-6 bg-safecrib-green/40" />
-            {expanded ? "Hide replies" : `View ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
-          </button>
-        )}
-
-        {expanded && replies.length > 0 && (
-          <ul className="mt-1">{replies.map((reply) => renderComment(reply, depth + 1))}</ul>
-        )}
+  const renderComment = (item: ListingComment, depth = 0): ReactNode => {
+    const replies = repliesOf(item.id);
+    const expanded = expandedThreads.has(item.id);
+    const visibleReplies = expanded ? replies : replies.slice(0, 1);
+    const hiddenCount = replies.length - visibleReplies.length;
+    const isAuthor = Boolean(listing?.ownerId && item.user.id === listing.ownerId);
+    return <li key={item.id} className="py-2.5">
+      <div className="flex gap-3">
+        <CommentAvatar user={item.user} small={depth > 0} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-sm font-semibold text-safecrib-black"><UserName user={item.user} size="sm" showHandle={true} /></span>
+            <UserVerificationBadge userId={item.user.id} />
+            {isAuthor && <span className="rounded-md bg-safecrib-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-safecrib-green">Author</span>}
+            <time dateTime={item.createdAt} className="text-xs text-black/40">{timeAgo(item.createdAt)}</time>
+          </div>
+          {item.body && <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-6 text-black/75">{renderBody(item)}</p>}
+          <button type="button" onClick={() => startReply(item)} className="mt-0.5 text-xs font-semibold text-black/45 transition hover:text-safecrib-green">Reply</button>
+          {visibleReplies.length > 0 && <ul className="mt-1">{visibleReplies.map((reply) => renderComment(reply, depth + 1))}</ul>}
+          {hiddenCount > 0 && <button type="button" onClick={() => expandThread(item.id, true)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/50 transition hover:text-safecrib-green">
+            <span aria-hidden="true" className="h-px w-6 bg-black/25" />View {hiddenCount} more {hiddenCount === 1 ? "reply" : "replies"}
+          </button>}
+          {expanded && replies.length > 1 && <button type="button" onClick={() => expandThread(item.id, false)} className="mt-1 flex items-center gap-2 text-xs font-semibold text-black/40 transition hover:text-safecrib-green">
+            <span aria-hidden="true" className="h-px w-6 bg-black/25" />Hide replies
+          </button>}
+        </div>
       </div>
-    </div>
-  </li>;
-};
+    </li>;
+  };
 
   const price = listing?.discountedPrice ?? listing?.price;
   const isProvider = ["AGENT", "LANDLORD"].includes(role);
