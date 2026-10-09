@@ -115,7 +115,7 @@ function getFillColor(badgeColor: "green" | "blue" | "gold"): string {
 }
 
 function getRingColor(): string {
-  return "var(--badge-ring)";
+  return "transparent";
 }
 
 function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blue" | "gold"; size: number; fullDetail: boolean }) {
@@ -168,7 +168,7 @@ function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blu
         d={scallopedPath}
         fill={fillColor}
       />
-      {fullDetail && (
+      {fullDetail && ringColor !== "transparent" && (
         <circle
           cx="0"
           cy="0"
