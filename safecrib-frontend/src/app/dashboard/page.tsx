@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import type { VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -12,9 +12,9 @@ import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionMo
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { Button } from "@/components/ui/Button";
+
 import { Icon } from "@/components/ui/Icon";
-import { Modal } from "@/components/ui/Modal";
+
 import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 import { useNotify } from "@/components/ui/Toast";
 import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
