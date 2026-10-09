@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { PostHeader } from "./PostHeader";
 import { PostMedia } from "./PostMedia";
 import { PostActions } from "./PostActions";
@@ -55,25 +54,12 @@ function formatPrice(price: number, discountAmount?: number | null) {
   }).format(finalPrice);
 }
 
-function renderDescriptionWithLinks(text: string) {
-  const parts = text.split(/(#\w+|@\w+)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("#") || part.startsWith("@")) {
-      return (
-        <span key={i} className="text-safecrib-green hover:underline cursor-pointer">
-          {part}
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
-
 export function ListingPost({
   listing,
   onLike,
   onComment,
   onCommentPrefetch,
+  onView,
   onShare,
   onBookmark,
   onRecommend,
@@ -86,7 +72,8 @@ export function ListingPost({
   onLike: (listingId: string, liked: boolean) => Promise<void>;
   onComment: (listingId: string) => void;
   onCommentPrefetch?: (listingId: string) => void;
-  onShare: (listingId: string) => Promise<void>;
+  onView?: (listingId: string) => void;
+  onShare?: (listingId: string) => Promise<void>;
   onBookmark: (listingId: string) => Promise<void>;
   onRecommend?: (providerId: string, recommended: boolean) => Promise<void>;
   onCall?: () => void;
@@ -94,13 +81,7 @@ export function ListingPost({
   onBookInspection?: () => void;
   onMessageAgent?: () => void;
 }) {
-  const [showMore, setShowMore] = useState(false);
-
   const displayTitle = listing.title ?? "Untitled listing";
-  const descriptionText = listing.description ?? "";
-  const descLines = descriptionText.split("\n");
-  const hasMore = descLines.length > 3;
-  const clampedText = hasMore ? descLines.slice(0, 3).join("\n") : descriptionText;
 
   const mediaItems = [
     ...listing.photos.map((photo, index) => ({
@@ -181,23 +162,6 @@ export function ListingPost({
           )}
         </div>
 
-        {/* Description */}
-        {descriptionText && (
-          <div className="mt-3 text-[0.95rem] leading-6 text-black/70">
-            <p className={showMore ? "whitespace-pre-line" : "line-clamp-3 whitespace-pre-line"}>
-              {renderDescriptionWithLinks(showMore ? descriptionText : clampedText)}
-            </p>
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => setShowMore((v) => !v)}
-                className="mt-1 text-sm font-medium text-safecrib-green hover:underline"
-              >
-                {showMore ? "Show less" : "Show more"}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Media */}
@@ -227,7 +191,6 @@ export function ListingPost({
           likeCount={listing.likeCount}
           isLiked={listing.likedByCurrentUser}
           commentCount={listing.commentCount}
-          shareCount={listing.shareCount}
           viewCount={listing.viewCount}
           isBookmarked={listing.isBookmarked}
           agentPhone={listing.ownerPhone}
@@ -240,7 +203,7 @@ export function ListingPost({
           onLike={onLike}
           onComment={onComment}
           onCommentPrefetch={onCommentPrefetch}
-          onShare={onShare}
+          onView={onView}
           onBookmark={onBookmark}
           onRecommend={onRecommend}
           onCall={onCall}

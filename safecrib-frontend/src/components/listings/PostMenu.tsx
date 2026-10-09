@@ -47,6 +47,8 @@ export function PostMenu({ items, triggerLabel = "More options", className = "" 
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
+  const filteredItems = items.filter((item) => !/open post/i.test(item.label));
+
   const handleItemClick = (item: MenuItem) => {
     if (!item.disabled) {
       item.onClick();
@@ -74,7 +76,7 @@ export function PostMenu({ items, triggerLabel = "More options", className = "" 
           role="menu"
           className="absolute right-0 z-20 mt-2 min-w-[180px] origin-top-right rounded-lg border border-black/10 bg-white shadow-lg animate-in fade-in-0 zoom-in-95"
         >
-          {items.map((item, index) => (
+          {filteredItems.map((item, index) => (
             <button
               key={index}
               type="button"

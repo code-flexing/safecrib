@@ -1,3 +1,5 @@
+import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
+
 export type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN";
 
 export type VerificationCriterion = {
@@ -13,7 +15,7 @@ export type VerificationStageResult = {
   eligible: boolean;
   stage: VerificationStage;
   badge: "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN";
-  badgeColor: "green" | "blue" | "gold";
+  badgeColor: "green" | "charcoal" | "gold";
   riskBlocked: boolean;
   nextMilestone: string | null;
   criteria: VerificationCriterion[];
@@ -28,7 +30,7 @@ const stageConfig = {
   },
   AGENT_VERIFIED: {
     badge: "BLUE_SHIELD",
-    color: "blue",
+    color: "charcoal",
     label: "Verified provider",
   },
   TRUST_CROWN: {
@@ -59,8 +61,8 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
   const riskBlocked = response.riskBlocked === true;
   const stage: VerificationStage = riskBlocked ? "PROFILE_VERIFIED" : originalStage;
   const config = stageConfig[stage];
-  const badgeColor = typeof response.badgeColor === "string" && ["green", "blue", "gold"].includes(response.badgeColor)
-    ? response.badgeColor as "green" | "blue" | "gold"
+  const badgeColor = typeof response.badgeColor === "string" && ["green", "charcoal", "gold"].includes(response.badgeColor)
+    ? response.badgeColor as "green" | "charcoal" | "gold"
     : config.color;
   const badge = typeof response.badge === "string" && ["GREEN_CHECK", "BLUE_SHIELD", "GOLD_CROWN"].includes(response.badge)
     ? response.badge as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN"
@@ -106,61 +108,34 @@ function resolveSize(size: BadgeSize): number {
   return SIZE_MAP[size] ?? 16;
 }
 
-function getGlyphColor(badgeColor: "green" | "blue" | "gold"): string {
+function getGlyphColor(badgeColor: "green" | "charcoal" | "gold"): string {
   return badgeColor === "gold" ? "var(--badge-gold-glyph)" : "white";
 }
 
-function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blue" | "gold"; size: number; fullDetail: boolean }) {
-  const glyphColor = getGlyphColor(badgeColor);
-  const fillColor = getFillColor(badgeColor);
-  const unit = size / 28;
-  const innerRadius = size * 0.42;
-  const glyphStroke = size <= 20 ? 5.4 * unit : 4.8 * unit;
+function getFillColor(badgeColor: "green" | "charcoal" | "gold"): string {
+  return badgeColor === "charcoal" ? "#111827" : `var(--badge-${badgeColor})`;
+}
 
-  const checkPath = `M${-10 * unit},0 L${-3 * unit},${7 * unit} L${11 * unit},${-8 * unit}`;
-  const shieldPath = `M0,${-12 * unit} L${11 * unit},${-8 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-8 * unit} Z`;
-  const crownPath = `M${-12 * unit},${7 * unit} L${-14 * unit},${-8 * unit} L${-6 * unit},${-1 * unit} L0,${-12 * unit} L${6 * unit},${-1 * unit} L${14 * unit},${-8 * unit} L${12 * unit},${7 * unit} Z`;
-  const crownBase = `M${-12 * unit},${9 * unit} h${24 * unit} v${3.5 * unit} h${-24 * unit} Z`;
+function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "charcoal" | "gold"; size: number; fullDetail: boolean }) {
+  const fillColor = getFillColor(badgeColor);
+  const accentColor = getGlyphColor(badgeColor);
+  const Icon = badgeColor === "green" ? BadgeCheck : badgeColor === "charcoal" ? ShieldCheck : Crown;
+  const iconSize = fullDetail ? Math.max(12, size * 0.7) : Math.max(10, size * 0.64);
 
   return (
-    <svg
-      viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`}
-      width={size}
-      height={size}
-      role="img"
+    <span
       aria-hidden="true"
-      className="shrink-0"
-      style={{ flexShrink: 0 }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: fillColor,
+        color: accentColor,
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
+      }}
     >
-      <circle cx="0" cy="0" r={innerRadius} fill={fillColor} />
-      <circle
-        cx="0"
-        cy="0"
-        r={innerRadius - Math.max(1.5, size * 0.06)}
-        fill="none"
-        stroke={badgeColor === "gold" ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.18)"}
-        strokeWidth={Math.max(1.2, size * 0.06)}
-      />
-      <g fill={glyphColor}>
-        {badgeColor === "green" && (
-          <path
-            d={checkPath}
-            fill="none"
-            stroke={glyphColor}
-            strokeWidth={glyphStroke}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
-        {badgeColor === "blue" && <path d={shieldPath} />}
-        {badgeColor === "gold" && (
-          <>
-            <path d={crownPath} />
-            {fullDetail && <path d={crownBase} />}
-          </>
-        )}
-      </g>
-    </svg>
+      <Icon size={iconSize} strokeWidth={2.25} aria-hidden="true" />
+    </span>
   );
 }
 
@@ -181,7 +156,7 @@ export function VerificationBadge({
 
   const badge = verification?.badge ?? "GREEN_CHECK";
   const role = verification?.role ?? "STUDENT";
-  const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "blue" : "green");
+  const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "charcoal" : "green");
   const riskBlocked = verification?.riskBlocked === true;
   const label = badge === "GOLD_CROWN"
     ? "Trust crown"
