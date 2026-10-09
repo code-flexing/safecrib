@@ -24,7 +24,7 @@ type StudentProfile = {
   rejectionReason?: string;
   reason?: string;
 };
-
+ 
 type User = { id?: string; email?: string; displayName?: string; studentProfileStatus?: unknown; role?: string };
 type FormState = Omit<StudentProfile, "status" | "rejectionReason" | "reason" | "socialLinks"> & { linkedin: string; website: string };
 type ProfileDraft = { form: FormState; step: number };
