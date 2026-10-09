@@ -92,28 +92,136 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
   };
 }
 
-export function VerificationBadge({ verification, verified = false, compact = false, iconOnly = false }: { verification?: VerificationStageResult | null; verified?: boolean; compact?: boolean; iconOnly?: boolean }) {
+type BadgeSize = "sm" | "md" | "lg" | "xl" | number;
+
+const SIZE_MAP: Record<string, number> = {
+  sm: 14,
+  md: 16,
+  lg: 20,
+  xl: 28,
+};
+
+function resolveSize(size: BadgeSize): number {
+  if (typeof size === "number") return size;
+  return SIZE_MAP[size] ?? 16;
+}
+
+function getGlyphColor(badgeColor: "green" | "blue" | "gold"): string {
+  return badgeColor === "gold" ? "var(--badge-gold-glyph)" : "white";
+}
+
+function getFillColor(badgeColor: "green" | "blue" | "gold"): string {
+  return `var(--badge-${badgeColor})`;
+}
+
+function getRingColor(): string {
+  return "var(--badge-ring)";
+}
+
+function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "blue" | "gold"; size: number; fullDetail: boolean }) {
+  const glyphColor = getGlyphColor(badgeColor);
+  const fillColor = getFillColor(badgeColor);
+  const ringColor = getRingColor();
+  const unit = size / 28;
+  const sealSize = 56 * unit;
+  const cornerRadius = 16 * unit;
+  const ringRadius = 25 * unit;
+  const ringStroke = 1.5 * unit;
+  const glyphStroke = size <= 20 ? 6 * unit : 5 * unit;
+
+  const checkPath = `M${-10 * unit},0 L${-3 * unit},${7 * unit} L${11 * unit},${-8 * unit}`;
+  const shieldPath = `M0,${-13 * unit} L${11 * unit},${-9 * unit} V0 Q${11 * unit},${9 * unit} 0,${14 * unit} Q${-11 * unit},${9 * unit} ${-11 * unit},0 V${-9 * unit} Z`;
+  const crownPath = `M${-12 * unit},${7 * unit} L${-14 * unit},${-8 * unit} L${-6 * unit},${-1 * unit} L0,${-12 * unit} L${6 * unit},${-1 * unit} L${14 * unit},${-8 * unit} L${12 * unit},${7 * unit} Z`;
+  const crownBase = `M${-12 * unit},${9 * unit} h${24 * unit} v${3.5 * unit} h${-24 * unit} Z`;
+
+  return (
+    <svg
+      viewBox={`-${sealSize / 2} -${sealSize / 2} ${sealSize} ${sealSize}`}
+      width={size}
+      height={size}
+      role="img"
+      aria-hidden="true"
+      className="shrink-0"
+      style={{ flexShrink: 0 }}
+    >
+      <g fill={fillColor}>
+        <rect x={-sealSize / 2} y={-sealSize / 2} width={sealSize} height={sealSize} rx={cornerRadius} />
+        <rect x={-sealSize / 2} y={-sealSize / 2} width={sealSize} height={sealSize} rx={cornerRadius} transform="rotate(45)" />
+      </g>
+      {fullDetail && (
+        <circle
+          cx="0"
+          cy="0"
+          r={ringRadius}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={ringStroke}
+        />
+      )}
+      <g transform="scale(1, -1)" fill={glyphColor}>
+        {badgeColor === "green" && (
+          <path
+            d={checkPath}
+            fill="none"
+            stroke={glyphColor}
+            strokeWidth={glyphStroke}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {badgeColor === "blue" && (
+          <path d={shieldPath} />
+        )}
+        {badgeColor === "gold" && (
+          <>
+            <path d={crownPath} />
+            {fullDetail && <path d={crownBase} rx={1.5 * unit} />}
+          </>
+        )}
+      </g>
+    </svg>
+  );
+}
+
+export function VerificationBadge({
+  verification,
+  verified = false,
+  compact = false,
+  iconOnly = false,
+  size,
+}: {
+  verification?: VerificationStageResult | null;
+  verified?: boolean;
+  compact?: boolean;
+  iconOnly?: boolean;
+  size?: BadgeSize;
+}) {
   if (!verification?.eligible && !verified) return null;
 
   const badge = verification?.badge ?? "GREEN_CHECK";
   const role = verification?.role ?? "STUDENT";
   const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "blue" : "green");
   const riskBlocked = verification?.riskBlocked === true;
-  const label = badge === "GOLD_CROWN" ? "Trusted provider" : badge === "BLUE_SHIELD" ? (role === "STUDENT" ? "Verified student" : "Verified provider") : (role === "STUDENT" ? "Verified student" : "Verified");
+  const label = badge === "GOLD_CROWN"
+    ? "Trust crown"
+    : badge === "BLUE_SHIELD"
+    ? (role === "STUDENT" ? "Verified student" : "Verified provider")
+    : (role === "STUDENT" ? "Verified student" : "Verified");
+
+  const resolvedSize = size ?? (iconOnly ? 20 : compact ? 16 : 20);
+  const pixelSize = resolveSize(resolvedSize);
+  const fullDetail = pixelSize >= 24;
+  const glyphAriaLabel = `${label}${riskBlocked ? ", advanced badge upgrade blocked for review" : ""}`;
+
   return (
     <span
-      title={`${label}${riskBlocked ? ". Advanced badge upgrade is blocked for review." : ""}`}
-      aria-label={`${label}${riskBlocked ? ", risk review required" : ""}`}
-      className={`verification-badge verification-badge--${badgeColor} inline-flex w-fit items-center gap-2 rounded-full border font-semibold ${iconOnly ? "verification-badge--icon h-5 w-5 justify-center border-0 bg-transparent p-0" : compact ? "px-2 py-0.5 text-[0.7rem]" : "px-3 py-1.5 text-sm"}`}
+      title={glyphAriaLabel}
+      aria-label={glyphAriaLabel}
+      className={`inline-flex items-center justify-center shrink-0 verification-badge verification-badge--${badgeColor} ${iconOnly ? "verification-badge--icon" : ""}`}
+      style={{ width: pixelSize, height: pixelSize, flexShrink: 0 }}
     >
-      {iconOnly ? <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path fill="currentColor" stroke="none" d="M12 1.25 14.1 3.1l2.8-.75L18 5.1l2.9.45-.45 2.9 2.3 2.05-1.9 2.3.75 2.9-2.75 1.15-.5 2.9-2.9-.45-2.1 2.7-2.3-1.9-2.85.75-1.15-2.75-2.9-.45.45-2.9L2.3 12.7l1.9-2.3-.75-2.9L6.2 6.35l.5-2.9 2.9.45Z" />
-        {badge === "GOLD_CROWN" ? <path d="m5.5 9 4 2.6L12 6l2.5 5.6L18.5 9l-1 8h-11z" /> : <path d="m7.5 12 3 3 6-6" />}
-      </svg> : <svg aria-hidden="true" viewBox="0 0 20 20" className={`shrink-0 ${compact ? "h-3.5 w-3.5" : "h-4 w-4"}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {badge === "GOLD_CROWN" && <path d="m2.5 6 4.3 3.2L10 3l3.2 6.2L17.5 6l-1.2 9H3.7L2.5 6Zm1.2 12h12.6" />}
-        {(badge === "GREEN_CHECK" || badge === "BLUE_SHIELD") && <path d="m4 10 4 4 8-9" />}
-      </svg>}
-      <span className={iconOnly ? "sr-only" : undefined}>{label}</span>
+      <SealIcon badgeColor={badgeColor} size={pixelSize} fullDetail={fullDetail} />
+      {iconOnly ? null : <span className="sr-only">{glyphAriaLabel}</span>}
     </span>
   );
 }

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
-import { VerificationBadge } from "@/components/verification/VerificationBadge";
+import { UserName } from "@/components/common/UserName";
 import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, getCachedMediaUrl, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type Listing = {
@@ -248,10 +248,7 @@ export default function PublicProfilePage() {
                   : avatarUrl && <Image src={avatarUrl} alt={`${profile.displayName || "Member"} profile`} width={128} height={128} unoptimized className="-mt-14 h-32 w-32 shrink-0 rounded-full border-4 border-white object-cover sm:-mt-16" />}
                 <div className="min-w-0 flex-1 sm:pb-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-safecrib-green">SafeCrib member</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <h1 className="break-words font-display text-3xl font-bold text-safecrib-black sm:text-4xl">{profile.displayName || "SafeCrib member"}</h1>
-                    <VerificationBadge verified={profile.isVerified === true} compact iconOnly />
-                  </div>
+                  <UserName user={profile} size="xl" showHandle={true} fallback="SafeCrib member" nameClassName="break-words font-display text-3xl font-bold text-safecrib-black sm:text-4xl" handleClassName="font-normal text-black/45" />
                   <p className="mt-2 text-sm text-black/55">{readable(profile.role)}{profile.createdAt ? ` · Member since ${new Date(profile.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long" })}` : ""}</p>
                   {profile.shortBio && <p className="mt-3 max-w-2xl text-sm leading-6 text-black/65">{profile.shortBio}</p>}
                   <p className="mt-1 text-sm text-black/55">{profile.followerCount ?? 0} followers</p>

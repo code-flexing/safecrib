@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon } from "@/components/ui/Icon";
+import { UserName } from "@/components/common/UserName";
 import { apiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/api";
 import {
   connectNotificationSocket,
@@ -41,6 +42,9 @@ function NotificationActor({ notification }: { notification: NotificationItem })
   const actorName = typeof notification.data?.actorName === "string"
     ? notification.data.actorName
     : null;
+  const actorId = typeof notification.data?.actorId === "string"
+    ? notification.data.actorId
+    : null;
   const photoReference = typeof notification.data?.actorProfilePicture === "string"
     ? notification.data.actorProfilePicture
     : null;
@@ -66,7 +70,15 @@ function NotificationActor({ notification }: { notification: NotificationItem })
   return (
     <span className="flex shrink-0 flex-col items-center gap-1">
       <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "SafeCrib notification"} size="small" className="h-11 w-11" />
-      {actorName && <span className="max-w-16 truncate text-[10px] text-black/50">{actorName}</span>}
+      {actorName && (
+        <UserName
+          user={{ id: actorId ?? undefined, displayName: actorName }}
+          size="sm"
+          showHandle={false}
+          fallback="SafeCrib member"
+          nameClassName="max-w-16 truncate text-[10px] text-black/50"
+        />
+      )}
     </span>
   );
 }

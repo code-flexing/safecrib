@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { MediaImage } from "./MediaImage";
 import { PostMenu } from "./PostMenu";
-import { Icon } from "@/components/ui/Icon";
 import { formatDistanceToNow } from "date-fns";
+import { UserName } from "@/components/common/UserName";
+import type { VerificationCriterion } from "@/components/verification/VerificationBadge";
 
 type AgentInfo = {
   id: string;
@@ -51,6 +52,40 @@ function formatRelativeTime(date: string | Date) {
   } catch {
     return "";
   }
+}
+
+function agentToUser(agent: AgentInfo) {
+  const badgeMap: Record<string, "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN"> = {
+    green: "GREEN_CHECK",
+    blue: "BLUE_SHIELD",
+    gold: "GOLD_CROWN",
+  };
+  const colorMap: Record<string, "green" | "blue" | "gold"> = {
+    green: "green",
+    blue: "blue",
+    gold: "gold",
+  };
+  const isBadgeColor = (badge: string): badge is "green" | "blue" | "gold" => 
+    badge === "green" || badge === "blue" || badge === "gold";
+  
+  const verification = agent.isVerified && agent.verificationBadge && isBadgeColor(agent.verificationBadge) ? {
+    eligible: true as const,
+    stage: (agent.verificationBadge === "gold" ? "TRUST_CROWN" : agent.verificationBadge === "blue" ? "AGENT_VERIFIED" : "PROFILE_VERIFIED") as "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN",
+    badge: badgeMap[agent.verificationBadge] as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN",
+    badgeColor: colorMap[agent.verificationBadge] as "green" | "blue" | "gold",
+    riskBlocked: false,
+    nextMilestone: null,
+    criteria: [] as VerificationCriterion[],
+  } : null;
+  
+  return {
+    id: agent.id,
+    displayName: agent.displayName,
+    username: agent.handle,
+    verification,
+    isVerified: agent.isVerified,
+    role: "AGENT",
+  };
 }
 
 export function PostHeader({
@@ -101,6 +136,8 @@ export function PostHeader({
     .toUpperCase()
     .slice(0, 2);
 
+  const user = agentToUser(agent);
+
   return (
     <div className="flex items-start gap-3 px-4 pt-4">
       <Link href={`/profile/${agent.id}`} aria-label={`View ${agent.displayName}'s profile`} className="shrink-0">
@@ -120,21 +157,9 @@ export function PostHeader({
       </Link>
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Link href={`/profile/${agent.id}`} className="font-semibold text-sm text-safecrib-black hover:underline">
-            {agent.displayName}
-          </Link>
-          {agent.isVerified && (
-            <span
-              className="flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700"
-              aria-label="Verified agent"
-            >
-              <Icon name="check-circle" className="h-3 w-3" />
-              <span>Verified</span>
-            </span>
-          )}
+          <UserName user={user} size="sm" showHandle={true} />
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-black/50">
-          {agent.handle && <span>@{agent.handle}</span>}
           {agent.agencyName && (
             <>
               <span aria-hidden="true">·</span>

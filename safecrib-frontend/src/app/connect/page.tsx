@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { NameHandle } from "@/components/common/NameHandle";
+import { UserName, seedVerificationCache } from "@/components/common/UserName";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { VerificationBadge } from "@/components/verification/VerificationBadge";
 import { apiFetch, cachedApiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/api";
 
 type UserResult = {
@@ -96,7 +95,8 @@ function UserResultCard({ person, pending, onFollow }: { person: UserResult; pen
 
   useEffect(() => {
     setAvatarReady(Boolean(!person.profilePicture));
-  }, [person.profilePicture]);
+    seedVerificationCache(person);
+  }, [person]);
 
   return (
     <article className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 transition-colors hover:border-safecrib-green/25 sm:p-4">
@@ -110,10 +110,7 @@ function UserResultCard({ person, pending, onFollow }: { person: UserResult; pen
         </div>
       ) : (
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Link href={`/profile/${encodeURIComponent(person.id)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green"><NameHandle displayName={person.displayName} username={person.username} /></Link>
-            {person.isVerified && <VerificationBadge verified compact iconOnly />}
-          </div>
+          <UserName user={person} size="sm" showHandle={true} />
           <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>
           {person.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{person.shortBio}</p>}
           <p className="mt-1 text-xs text-black/45">{person.followerCount} followers</p>
@@ -131,7 +128,8 @@ function PageResultCard({ page, pending, onFollow, showFollowButton = true }: { 
 
   useEffect(() => {
     setAvatarReady(Boolean(!page.profilePicture));
-  }, [page.profilePicture]);
+    seedVerificationCache({ ...page, id: page.ownerId });
+  }, [page]);
 
   return (
     <article className="flex min-w-0 items-center gap-3 rounded-xl border border-black/10 bg-white p-3.5 sm:p-4">
@@ -143,7 +141,7 @@ function PageResultCard({ page, pending, onFollow, showFollowButton = true }: { 
         </div>
       ) : (
         <div className="min-w-0 flex-1">
-          <Link href={`/profile/${encodeURIComponent(page.ownerId)}`} className="truncate font-semibold text-safecrib-black hover:text-safecrib-green">{page.displayName}</Link>
+          <UserName user={{ ...page, id: page.ownerId }} size="sm" showHandle={false} />
           {page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}
           <p className="mt-1 text-xs text-black/45">{showFollowButton ? `${page.followerCount} followers` : `${page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · ${page.followerCount} followers`}</p>
         </div>

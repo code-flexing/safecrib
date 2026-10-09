@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SETTINGS_CATEGORIES, isCategoryVisible, type SettingsCategory, type SettingsUserRole } from "@/lib/settings-config";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { cachedCurrentUser, isUnauthorizedError, clearSession, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent } from "@/lib/api";
+import { cachedCurrentUser, isUnauthorizedError, clearSession, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, apiFetch } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { SettingsSignOutButton } from "@/components/settings/SettingsSignOutButton";
 import { SettingsCategoryIcon } from "./SettingsCategoryIcon";
+import { VerificationProgressLadder } from "@/components/verification/VerificationProgressLadder";
+import { normalizeVerificationStage, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 
 type User = {
   id?: string;
@@ -41,6 +43,7 @@ export function SettingsHub() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
+  const [verification, setVerification] = useState<VerificationStageResult | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("safecrib_access_token")) {
@@ -60,6 +63,14 @@ export function SettingsHub() {
       if (active) {
         setUser(currentUser);
         setLoading(false);
+        if (currentUser?.id) {
+          void apiFetch<unknown>("/api/v1/trust/me/verification-stage")
+            .then((response) => {
+              const stage = normalizeVerificationStage(response);
+              if (stage) setVerification(stage);
+            })
+            .catch(() => {});
+        }
       }
     }).catch((loadError: unknown) => {
       if (active) {
@@ -75,6 +86,7 @@ export function SettingsHub() {
 
     const handleSessionCleared = () => {
       setUser(null);
+      setVerification(null);
       setError("");
       setLoading(true);
     };
@@ -124,48 +136,56 @@ export function SettingsHub() {
         )}
 
         {!loading && user && (
-          <aside className="mb-8 rounded-xl border border-black/10 bg-white p-5 sm:p-6">
-            <div className="flex items-center gap-4">
-              <ProfileAvatar
-                src={profilePicture ?? null}
-                seed={user?.id ?? user?.email ?? "safecrib-member"}
-                alt={`${nameFrom(user?.displayName) || "Your"} profile`}
-                size="medium"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-safecrib-black">{nameFrom(user?.displayName) || "Your profile"}</p>
-                <p className="text-sm text-black/55 break-all">{user?.email ?? "Loading..."}</p>
+          <>
+            <aside className="mb-8 rounded-xl border border-black/10 bg-white p-5 sm:p-6">
+              <div className="flex items-center gap-4">
+                <ProfileAvatar
+                  src={profilePicture ?? null}
+                  seed={user?.id ?? user?.email ?? "safecrib-member"}
+                  alt={`${nameFrom(user?.displayName) || "Your"} profile`}
+                  size="medium"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-safecrib-black">{nameFrom(user?.displayName) || "Your profile"}</p>
+                  <p className="text-sm text-black/55 break-all">{user?.email ?? "Loading..."}</p>
+                </div>
               </div>
+            </aside>
+
+            {verification && (
+              <section className="mb-8 rounded-xl border border-black/10 bg-white p-5 sm:p-6" aria-labelledby="verification-progress-heading">
+                <VerificationProgressLadder currentStage={verification} />
+              </section>
+            )}
+
+            <div className="relative mb-6">
+              <Icon name="search" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-black/35" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search settings..."
+                className="w-full rounded-xl border border-black/15 pl-10 pr-4 py-2.5 text-sm focus:border-safecrib-green focus:outline-none"
+              />
             </div>
-          </aside>
-        )}
 
-        <div className="relative mb-6">
-          <Icon name="search" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-black/35" />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            placeholder="Search settings..."
-            className="w-full rounded-xl border border-black/15 pl-10 pr-4 py-2.5 text-sm focus:border-safecrib-green focus:outline-none"
-          />
-        </div>
-
-        {filteredCategories.length === 0 ? (
-          <div className="rounded-xl border border-black/10 bg-white p-8 text-center">
-            <Icon name="search" className="mx-auto h-8 w-8 text-black/35" />
-            <h2 className="mt-3 text-lg font-semibold text-safecrib-black">No settings found</h2>
-            <p className="mt-1 text-sm text-black/55">
-              {searchQuery.trim() ? "Try different keywords." : "No settings are visible for your account."}
-            </p>
-          </div>
-        ) : (
-          <nav className="grid gap-2" aria-label="Settings categories">
-            {filteredCategories.map((category) => (
-              <CategoryLink key={category.id} category={category} isActive={false} />
-            ))}
-          </nav>
+            {filteredCategories.length === 0 ? (
+              <div className="rounded-xl border border-black/10 bg-white p-8 text-center">
+                <Icon name="search" className="mx-auto h-8 w-8 text-black/35" />
+                <h2 className="mt-3 text-lg font-semibold text-safecrib-black">No settings found</h2>
+                <p className="mt-1 text-sm text-black/55">
+                  {searchQuery.trim() ? "Try different keywords." : "No settings are visible for your account."}
+                </p>
+              </div>
+            ) : (
+              <nav className="grid gap-2" aria-label="Settings categories">
+                {filteredCategories.map((category) => (
+                  <CategoryLink key={category.id} category={category} isActive={false} />
+                ))}
+              </nav>
+            )}
+          </>
         )}
       </div>
 

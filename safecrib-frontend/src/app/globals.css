@@ -29,6 +29,14 @@
   --verification-gold-border: rgba(244, 196, 48, 0.45);
   --verification-gold-text: #7a4b00;
 
+  /* Verification badge seal colours (flat, no gradients/shadows).
+     One token map for every theme so the three stages read as one family. */
+  --badge-green: #12a150;
+  --badge-blue: #2f6fed;
+  --badge-gold: #f5b83d;
+  --badge-gold-glyph: #3b2a00;
+  --badge-ring: rgba(255, 255, 255, 0.40);
+
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -589,6 +597,12 @@ html[data-theme="dim"] {
   --verification-gold-bg: #493b12;
   --verification-gold-border: rgba(255, 220, 145, 0.42);
   --verification-gold-text: #ffdc91;
+
+  --badge-green: #1fae7a;
+  --badge-blue: #5b9cff;
+  --badge-gold: #ffd86b;
+  --badge-gold-glyph: #3b2a00;
+  --badge-ring: rgba(0, 0, 0, 0.40);
 }
 
 html[data-theme="dark"] {
@@ -617,6 +631,12 @@ html[data-theme="dark"] {
   --verification-gold-bg: #493b12;
   --verification-gold-border: rgba(247, 209, 138, 0.42);
   --verification-gold-text: #f7d18a;
+
+  --badge-green: #2f9e6b;
+  --badge-blue: #7fb0ff;
+  --badge-gold: #ffd86b;
+  --badge-gold-glyph: #3b2a00;
+  --badge-ring: rgba(0, 0, 0, 0.45);
 }
 
 .verification-badge--green {

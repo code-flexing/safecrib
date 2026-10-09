@@ -8,6 +8,7 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { UserName } from "@/components/common/UserName";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearSession, displayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar } from "@/lib/api";
 
 type User = {
@@ -22,6 +23,18 @@ type User = {
   verificationStage?: unknown;
   verification?: unknown;
 };
+
+function toUserLike(user: User | null | undefined) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    displayName: typeof user.displayName === "string" ? user.displayName : null,
+    username: null,
+    role: user.role,
+    verification: null,
+    isVerified: false,
+  };
+}
 
 type StudentProfile = {
   displayName?: string;
@@ -337,10 +350,7 @@ export default function ProfilePage() {
             <div className="mt-7 flex flex-col gap-6 sm:flex-row sm:items-center">
               <ProfileAvatar src={avatarUrl} seed={user?.id ?? user?.email ?? "safecrib-member-avatar"} alt={`${name} profile`} size="large" className="border-8 border-[#123b2f] ring-1 ring-[#a8e7cb]/40" />
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 id="profile-heading" className="break-words font-display text-3xl font-bold tracking-tight text-white sm:text-5xl">{name}</h1>
-                  {verification && <VerificationBadge verification={verification} compact iconOnly />}
-                </div>
+                <UserName user={toUserLike(user)} size="xl" showHandle={true} fallback="Your profile" nameClassName="break-words font-display text-3xl font-bold tracking-tight text-white sm:text-5xl" handleClassName="font-normal text-white/60" />
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/60"><span className="text-[#a8e7cb]">{accountLabel}</span><span aria-hidden="true">/</span>{dateLabel(user?.createdAt) && <span>Member since {dateLabel(user?.createdAt)}</span>}</div>
               </div>
               <Link href="/settings" className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-[#a8e7cb] hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a8e7cb] sm:w-auto">

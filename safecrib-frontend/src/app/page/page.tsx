@@ -7,8 +7,9 @@ import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ListingMediaImage, ListingMediaVideo } from "@/components/listings/ListingMediaPreview";
 import { Button } from "@/components/ui/Button";
 import { ReviewPendingState } from "@/components/verification/ReviewPendingState";
-import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
-import { ApiError, apiFetch, cachedApiFetch, clearClientCache, displayName, getCurrentUser, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { normalizeVerificationStage, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { UserName } from "@/components/common/UserName";
+import { ApiError, apiFetch, cachedApiFetch, clearClientCache, getCurrentUser, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 import { readDraft, removeDraft } from "@/lib/drafts";
 
 type ProviderPageData = { id?: string; displayName?: string; status?: string; verificationNotes?: string; rejectionReason?: string; reason?: string } | null;
@@ -16,6 +17,18 @@ type ListingPhoto = string | { id?: string; url?: string; mediaId?: string };
 type Listing = { id: string; title?: string; description?: string; status?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhoto[]; video?: { mediaId?: string } | null; updatedAt?: string; createdAt?: string };
 type User = { id?: string; role?: string; displayName?: unknown; email?: string; verificationStage?: unknown };
 type LocalListingDraft = { listingId?: string };
+
+function toUserLike(user: User | null | undefined) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    displayName: typeof user.displayName === "string" ? user.displayName : null,
+    username: null,
+    role: user.role,
+    verification: null,
+    isVerified: false,
+  };
+}
 
 function statusLabel(status?: string) {
   return (status || "UNKNOWN").replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -168,8 +181,7 @@ export default function ProviderWorkspacePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-safecrib-green">{studentReviewPending ? "Account review" : "Provider workspace"}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-medium text-safecrib-black">{studentReviewPending ? "Your profile is awaiting approval" : providerPage?.displayName || displayName(user?.displayName) || "Manage your homes"}</h1>
-              {!studentReviewPending && verification && <VerificationBadge verification={verification} compact iconOnly />}
+              <UserName user={providerPage ? { ...providerPage, id: user?.id } : toUserLike(user)} size="lg" showHandle={false} fallback="Manage your homes" nameClassName="text-3xl font-medium text-safecrib-black" />
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-black/60">{studentReviewPending ? "Your student profile is with the SafeCrib review team." : "Manage your provider verification and accommodation listings from one place."}</p>
           </div>
@@ -186,8 +198,7 @@ export default function ProviderWorkspacePage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Provider verification</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <h2 id="verification-heading" className="text-xl font-medium text-safecrib-black">{providerPage?.displayName || "Provider Page"}</h2>
-                  {verification && <VerificationBadge verification={verification} compact iconOnly />}
+                  <UserName user={providerPage ? { ...providerPage, id: user?.id } : toUserLike(user)} size="lg" showHandle={false} fallback="Provider Page" nameClassName="text-xl font-medium text-safecrib-black" />
                 </div>
               </div>
               {setupAvailable && <Link href="/page/new"><Button type="button" variant="secondary">{rawPageStatus === "REJECTED" ? "Update and resubmit" : rawPageStatus === "DRAFT" ? "Continue verification" : "Set up provider Page"}</Button></Link>}

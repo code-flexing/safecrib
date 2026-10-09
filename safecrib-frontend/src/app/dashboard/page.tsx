@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { NameHandle } from "@/components/common/NameHandle";
+import { UserName } from "@/components/common/UserName";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
@@ -19,7 +19,6 @@ import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 import { useNotify } from "@/components/ui/Toast";
-import { useOptimisticToggle, createOptimisticKey } from "@/lib/optimistic";
 import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
 import {
   apiFetch,
@@ -657,7 +656,7 @@ function ListingComments({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               <Link href={`/profile/${encodeURIComponent(item.user.id)}`} className="font-semibold text-neutral-900 transition hover:text-emerald-600">
-                <NameHandle displayName={item.user.displayName} username={item.user.username} />
+                <UserName user={item.user} size="sm" showHandle={true} />
               </Link>
               {isCreatorReply && (
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
@@ -781,7 +780,7 @@ function ListingComments({
                       onClick={() => selectMention(person)}
                       className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition hover:bg-emerald-50"
                     >
-                      <NameHandle displayName={person.displayName} username={person.username} />
+                      <UserName user={person} size="sm" showHandle={true} />
                       <span className="text-xs font-medium text-neutral-400">{person.role?.toLowerCase()}</span>
                     </button>
                   </li>
