@@ -1635,21 +1635,6 @@ export default function DashboardPage() {
                               className="h-full w-full object-cover"
                             />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => void toggleProviderFollow(listing)}
-                            disabled={listing.ownerId === profile?.id || pendingEngagement.has(`follow:${listing.ownerId}`)}
-                            aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
-                            aria-pressed={Boolean(listing.followedPage)}
-                            title={listing.followedPage ? "Unfollow provider" : "Follow provider"}
-                            className="feed-badge absolute -bottom-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#09090b] text-xs font-bold leading-none disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {listing.followedPage ? (
-                              <Icon name="check" className="feed-badge-mark h-2 w-2 stroke-[3]" />
-                            ) : (
-                              <span className="feed-badge-mark">+</span>
-                            )}
-                          </button>
                         </div>
                       ) : null}
                       <div className="flex min-w-0 items-center gap-1.5 leading-none">
@@ -1666,6 +1651,18 @@ export default function DashboardPage() {
                           showHandle={false}
                           nameClassName="text-white truncate text-[14px] font-bold leading-5"
                         />
+                        {listing.ownerId && listing.ownerId !== profile?.id && (
+                          <button
+                            type="button"
+                            onClick={() => void toggleProviderFollow(listing)}
+                            disabled={pendingEngagement.has(`follow:${listing.ownerId}`)}
+                            aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
+                            aria-pressed={Boolean(listing.followedPage)}
+                            className="shrink-0 rounded-full border border-white/25 px-2 py-1 text-[10px] font-semibold text-white/90 transition hover:bg-white/15 hover:text-white disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {listing.followedPage ? "Following" : "Follow"}
+                          </button>
+                        )}
                       </div>
                     </div>
 
