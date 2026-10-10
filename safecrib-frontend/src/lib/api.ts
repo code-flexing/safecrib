@@ -869,6 +869,7 @@ const userAvatarCacheTtlMs = 24 * 60 * 60 * 1000; // 24 hours
 
 export function withMediaCacheBust(url: string, cacheBurst = Date.now()): string {
   if (!url || /^(https?:|data:|blob:)/.test(url) === false) return url;
+  if (/[?&]safecrib_force_load=/.test(url)) return url; // Avoid adding a duplicate SafeCrib cache-busting query parameter
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}safecrib_force_load=${cacheBurst}`;
 }

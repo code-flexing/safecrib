@@ -64,6 +64,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
   const pathname = usePathname();
   const pageLabel = pageStatus === "none" ? "Create provider Page" : "My provider Page";
   const pageActive = isRouteActive(pathname, "/page");
+  const showPageAction = canManagePage && !isRouteActive(pathname, "/support");
   const [navUser, setNavUser] = useState<NavUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationStageResult | null>(null);
@@ -252,7 +253,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
               <span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="settings" className="h-5 w-5" /></span>
               <span>Settings</span>
             </Link>
-            {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive, true, darkMode)}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="page" className="h-5 w-5" /></span><span>{pageStatus === "none" ? "Create Page" : "My Page"}</span></button>}
+            {showPageAction && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive, true, darkMode)}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="page" className="h-5 w-5" /></span><span>{pageStatus === "none" ? "Create Page" : "My Page"}</span></button>}
             <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={`${iconLinkClass(false, true, darkMode)} mt-auto`}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="logout" className="h-5 w-5" /></span><span>Log out</span></button>
           </nav>
 
@@ -280,7 +281,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={isRouteActive(pathname, "/dashboard") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/dashboard"), darkMode)}><Icon name="home" className="h-5 w-5" /></Link>
           <Link href="/support" aria-label="Support" title="Support" aria-current={isRouteActive(pathname, "/support") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/support"), darkMode)}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
           <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={isRouteActive(pathname, "/notifications") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/notifications"), darkMode)}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
-          {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={mobileIconLinkClass(pageActive, darkMode)}><Icon name="page" className="h-5 w-5" /></button>}
+          {showPageAction && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={mobileIconLinkClass(pageActive, darkMode)}><Icon name="page" className="h-5 w-5" /></button>}
           <Link href="/settings" aria-label="Settings" title="Settings" aria-current={isRouteActive(pathname, "/settings") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/settings"), darkMode)}><Icon name="settings" className="h-5 w-5" /></Link>
           <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={mobileIconLinkClass(false, darkMode)}><Icon name="logout" className="h-5 w-5" /></button>
         </div>

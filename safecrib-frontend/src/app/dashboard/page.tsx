@@ -735,7 +735,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [resolvedProviderAvatars, setResolvedProviderAvatars] = useState<Record<string, string | null>>({});
+  const [resolvedProviderAvatars, setResolvedProviderAvatars] = useState<Record<string, { src: string | null; fallbackSrc: string | null }>>({});
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [openSupportCount, setOpenSupportCount] = useState(0);
   const [dashboardLoading, setDashboardLoading] = useState(() => {
@@ -1076,27 +1076,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let active = true;
-    const resolveProviderAvatar = (listingId: string, picture?: string | null) => {
+    const resolveProviderAvatar = async (picture?: string | null): Promise<string | null> => {
       const reference = picture?.trim();
-      if (!reference) return;
-      const setAvatar = (url: string) => {
-        if (active && isUsableImageSource(url)) {
-          setResolvedProviderAvatars((current) => ({ ...current, [listingId]: url }));
-        }
-      };
-
-      if (/^(https?:|data:|blob:|\/)/i.test(reference)) {
-        setAvatar(reference);
-        return;
+      if (!reference) return null;
+      if (/^(https?:|data:|blob:)/i.test(reference) || (reference.startsWith("/") && !reference.startsWith("/api/"))) {
+        return reference;
       }
-      const cachedPicture = getCachedMediaUrl(reference, "avatar_sm");
-      if (cachedPicture) {
-        setAvatar(cachedPicture);
-        return;
-      }
-      void resolveMediaUrl(reference, "avatar_sm").then((url) => {
-        if (url) setAvatar(url);
-      }).catch(() => undefined);
+      return getCachedMediaUrl(reference, "avatar_sm") ?? await resolveMediaUrl(reference, "avatar_sm");
     };
 
     const publicProfileRequests = new Map<string, Promise<{ profilePicture?: string | null; providerPageProfilePicture?: string | null } | null>>();
@@ -1104,8 +1090,8 @@ export default function DashboardPage() {
       const ownerId = listing.ownerId;
       if (!ownerId) return;
       const resolveListingAvatar = async () => {
-        let picture = listing.owner?.providerPageProfilePicture;
-        if (!picture) {
+        let publicProfile: { profilePicture?: string | null; providerPageProfilePicture?: string | null } | null = null;
+        if (!listing.owner?.providerPageProfilePicture || !listing.owner.profilePicture) {
           let publicProfileRequest = publicProfileRequests.get(ownerId);
           if (!publicProfileRequest) {
             publicProfileRequest = apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`)
@@ -1113,10 +1099,27 @@ export default function DashboardPage() {
               .catch(() => null);
             publicProfileRequests.set(ownerId, publicProfileRequest);
           }
-          const publicProfile = await publicProfileRequest;
-          picture = publicProfile?.providerPageProfilePicture ?? listing.owner?.profilePicture ?? publicProfile?.profilePicture;
+          publicProfile = await publicProfileRequest;
         }
-        resolveProviderAvatar(listing.id, picture);
+        const candidates = [
+          listing.owner?.providerPageProfilePicture,
+          publicProfile?.providerPageProfilePicture,
+          listing.owner?.profilePicture,
+          publicProfile?.profilePicture,
+        ];
+        const resolved: string[] = [];
+        for (const candidate of candidates) {
+          if (!candidate || resolved.includes(candidate)) continue;
+          const url = await resolveProviderAvatar(candidate).catch(() => null);
+          if (url && isUsableImageSource(url) && !resolved.includes(url)) resolved.push(url);
+          if (resolved.length === 2) break;
+        }
+        if (active) {
+          setResolvedProviderAvatars((current) => ({
+            ...current,
+            [listing.id]: { src: resolved[0] ?? null, fallbackSrc: resolved[1] ?? null },
+          }));
+        }
       };
       void resolveListingAvatar().catch(() => undefined);
     });
@@ -1622,7 +1625,8 @@ export default function DashboardPage() {
                             className="absolute inset-0 overflow-hidden rounded-full border border-white/30"
                           >
                             <ProfileAvatar
-                              src={resolvedProviderAvatars[listing.id] ?? null}
+                              src={resolvedProviderAvatars[listing.id]?.src}
+                              fallbackSrc={resolvedProviderAvatars[listing.id]?.fallbackSrc}
                               seed={listing.ownerId}
                               alt={`${providerName} avatar`}
                               size="small"
