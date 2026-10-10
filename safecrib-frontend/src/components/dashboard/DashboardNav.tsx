@@ -39,6 +39,20 @@ function iconLinkClass(active: boolean, desktopVertical = false, darkMode = fals
   return `relative inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green shadow-[0_0_0_1px_rgba(12,115,85,0.08)] scale-[1.02]" : "border-transparent text-black/60 hover:-translate-y-0.5 hover:border-black/10 hover:bg-black/[0.03] hover:text-safecrib-black"}`;
 }
 
+function isRouteActive(pathname: string, href: string) {
+  return href === "/dashboard"
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function mobileIconLinkClass(active: boolean, darkMode: boolean) {
+  const base = "relative flex h-12 min-w-0 flex-1 items-center justify-center rounded-full border transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  if (darkMode) {
+    return `${base} focus-visible:outline-emerald-400 ${active ? "border-emerald-400/30 bg-[#12382D] text-white shadow-[0_0_0_1px_rgba(52,211,153,0.2)]" : "border-transparent bg-transparent text-white/70 hover:bg-white/10 hover:text-white"}`;
+  }
+  return `${base} focus-visible:outline-safecrib-green ${active ? "border-safecrib-green/20 bg-safecrib-green/10 text-safecrib-green" : "border-transparent bg-transparent text-black/60 hover:bg-black/[0.04] hover:text-safecrib-black"}`;
+}
+
 function SupportCount({ count }: { count: number }) {
   if (count < 1) return null;
   return <span aria-label={`${count} open support conversations`} className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-safecrib-green px-1 text-[10px] font-bold text-white">{count > 9 ? "9+" : count}</span>;
@@ -47,7 +61,7 @@ function SupportCount({ count }: { count: number }) {
 export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, supportCount = 0, darkMode = false }: DashboardNavProps) {
   const pathname = usePathname();
   const pageLabel = pageStatus === "none" ? "Create provider Page" : "My provider Page";
-  const pageActive = pathname.startsWith("/page");
+  const pageActive = isRouteActive(pathname, "/page");
   const [navUser, setNavUser] = useState<NavUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationStageResult | null>(null);
@@ -205,29 +219,14 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
 
   const accountName = getDisplayName(navUser) || getAuthenticatedDisplayName() || "Your profile";
   const profileLinkClass = darkMode
-    ? `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${pathname === "/profile" ? "bg-white/10" : "hover:bg-white/5"}`
-    : `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${pathname === "/profile" ? "bg-black/[0.04]" : "hover:bg-black/[0.03]"}`;
+    ? `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${isRouteActive(pathname, "/profile") ? "bg-white/10" : "hover:bg-white/5"}`
+    : `inline-flex items-center gap-3 rounded-full p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green ${isRouteActive(pathname, "/profile") ? "bg-black/[0.04]" : "hover:bg-black/[0.03]"}`;
   const handleSignOut = () => {
     void logoutSession();
   };
 
   return (
     <>
-      <style jsx global>{`
-        .dashboard-dark-mobile-nav a,
-        .dashboard-dark-mobile-nav button {
-          color: #f8fafc !important;
-        }
-        .dashboard-dark-mobile-nav a:hover,
-        .dashboard-dark-mobile-nav button:hover {
-          background-color: #17191d;
-        }
-        .dashboard-dark-mobile-nav [aria-current="page"],
-        .dashboard-dark-mobile-nav [aria-current="page"]:hover {
-          color: #ffffff !important;
-          background-color: #12382d;
-        }
-      `}</style>
       <header className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:block md:h-screen md:w-72 md:border-r md:shadow-[0_0_0_1px_rgba(0,0,0,0.02)] ${darkMode ? "md:border-white/10 md:bg-[#09090B] md:text-white" : "md:border-black/10 md:bg-white md:text-safecrib-black"}`}>
         <div className="flex h-full flex-col px-4 py-5">
           <Link href="/dashboard" aria-label="SafeCrib home" title="SafeCrib home" className="mb-6 flex items-center gap-2 px-2">
@@ -235,15 +234,15 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           </Link>
 
           <nav aria-label="Desktop dashboard navigation" className="flex flex-1 flex-col gap-1.5">
-            <Link href="/connect" aria-label="Search people" title="Search people" aria-current={pathname.startsWith("/connect") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/connect"), true, darkMode)}>
+            <Link href="/connect" aria-label="Search people" title="Search people" aria-current={isRouteActive(pathname, "/connect") ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, "/connect"), true, darkMode)}>
               <span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="search" className="h-5 w-5" /></span>
               <span>Search</span>
             </Link>
-            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={pathname === item.href ? "page" : undefined} className={iconLinkClass(pathname === item.href, true, darkMode)}>
+            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={isRouteActive(pathname, item.href) ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, item.href), true, darkMode)}>
               <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name={item.icon} className="h-5 w-5" />{item.href === "/support" && <SupportCount count={supportCount} />}</span>
               <span>{item.label}</span>
             </Link>)}
-            <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={iconLinkClass(pathname.startsWith("/notifications"), true, darkMode)}>
+            <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={isRouteActive(pathname, "/notifications") ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, "/notifications"), true, darkMode)}>
               <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></span>
               <span>Notifications</span>
             </Link>
@@ -251,7 +250,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
             <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={`${iconLinkClass(false, true, darkMode)} mt-auto`}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="logout" className="h-5 w-5" /></span><span>Log out</span></button>
           </nav>
 
-          <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={pathname === "/profile" ? "page" : undefined} className={`${profileLinkClass} mt-5 w-full justify-between ${darkMode ? "border-t border-white/10" : "border-t border-black/10"} pt-4`}>
+          <Link href="/profile" aria-label="View your profile" title="Your profile" aria-current={isRouteActive(pathname, "/profile") ? "page" : undefined} className={`${profileLinkClass} mt-5 w-full justify-between ${darkMode ? "border-t border-white/10" : "border-t border-black/10"} pt-4`}>
             <span className="flex items-center gap-3">
               <span className="relative inline-flex">
                 <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
@@ -269,14 +268,14 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         className={`fixed inset-x-0 top-0 z-40 border-b px-4 pb-2 pt-3 md:hidden ${darkMode ? "border-white/10 bg-[#09090B]" : "border-black/10 bg-white/90 backdrop-blur-md"}`}
         style={darkMode ? { height: "calc(env(safe-area-inset-top, 0px) + 1.25rem)", padding: 0 } : undefined}
       />
-      <nav aria-label="Mobile dashboard navigation" className={`fixed inset-x-3 bottom-3 z-50 md:hidden ${darkMode ? "dashboard-dark-mobile-nav" : ""}`}>
-        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-full border p-1.5 shadow-none ${darkMode ? "border-white/15 bg-transparent" : "border-black/15 bg-transparent"}`}>
-          <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/dashboard" ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="home" className="h-5 w-5" /></Link>
-          <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/support") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
-          <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/notifications") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
-          {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pageActive ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="page" className="h-5 w-5" /></button>}
-          <Link href="/settings" aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/settings" ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="settings" className="h-5 w-5" /></Link>
-          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={`flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]"}`}><Icon name="logout" className="h-5 w-5" /></button>
+      <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
+        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-full border p-1.5 shadow-none ${darkMode ? "border-white/10 bg-transparent" : "border-black/10 bg-transparent"}`}>
+          <Link href="/dashboard" aria-label="Home" title="Home" aria-current={isRouteActive(pathname, "/dashboard") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/dashboard"), darkMode)}><Icon name="home" className="h-5 w-5" /></Link>
+          <Link href="/support" aria-label="Support" title="Support" aria-current={isRouteActive(pathname, "/support") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/support"), darkMode)}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
+          <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={isRouteActive(pathname, "/notifications") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/notifications"), darkMode)}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
+          {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={mobileIconLinkClass(pageActive, darkMode)}><Icon name="page" className="h-5 w-5" /></button>}
+          <Link href="/settings" aria-label="Settings" title="Settings" aria-current={isRouteActive(pathname, "/settings") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/settings"), darkMode)}><Icon name="settings" className="h-5 w-5" /></Link>
+          <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={mobileIconLinkClass(false, darkMode)}><Icon name="logout" className="h-5 w-5" /></button>
         </div>
       </nav>
     </>
