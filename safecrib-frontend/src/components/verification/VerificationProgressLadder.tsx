@@ -1,8 +1,10 @@
 "use client";
 
-import { VerificationBadge } from "@/components/verification/VerificationBadge";
-
-type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN";
+import {
+  VerificationBadge,
+  type VerificationStage,
+  type VerificationStageResult,
+} from "@/components/verification/VerificationBadge";
 
 const STAGES: VerificationStage[] = ["PROFILE_VERIFIED", "AGENT_VERIFIED", "TRUST_CROWN"];
 
@@ -32,8 +34,8 @@ export function VerificationProgressLadder({ currentStage, nextMilestone }: Veri
           {STAGES.map((stage, index) => {
             const isCurrent = index === currentIndex;
             const isPast = index < currentIndex;
-            const isFuture = index > currentIndex;
-            const badgeColor = stage === "PROFILE_VERIFIED" ? "green" : stage === "AGENT_VERIFIED" ? "blue" : "gold";
+            const badgeColor: VerificationStageResult["badgeColor"] =
+              stage === "PROFILE_VERIFIED" ? "green" : stage === "AGENT_VERIFIED" ? "charcoal" : "gold";
 
             return (
               <div key={stage} className="flex flex-col items-center relative z-10">
@@ -44,7 +46,9 @@ export function VerificationProgressLadder({ currentStage, nextMilestone }: Veri
                       : "border-black/10 bg-white"
                   } ${isRiskBlocked && isCurrent ? "ring-2 ring-amber-300" : ""}`}
                   style={{
-                    background: isPast || isCurrent ? `var(--badge-${badgeColor})` : undefined,
+                    background: isPast || isCurrent
+                      ? badgeColor === "charcoal" ? "#111827" : `var(--badge-${badgeColor})`
+                      : undefined,
                   }}
                 >
                   <VerificationBadge
@@ -79,16 +83,3 @@ export function VerificationProgressLadder({ currentStage, nextMilestone }: Veri
     </div>
   );
 }
-
-type VerificationStageResult = {
-  userId?: string;
-  role?: string;
-  eligible: boolean;
-  stage: VerificationStage;
-  badge: "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN";
-  badgeColor: "green" | "blue" | "gold";
-  riskBlocked: boolean;
-  nextMilestone: string | null;
-  criteria: Array<{ key: string; label?: string; met: boolean; required?: boolean }>;
-  generatedAt?: string;
-};
