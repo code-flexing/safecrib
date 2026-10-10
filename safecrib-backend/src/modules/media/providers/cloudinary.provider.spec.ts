@@ -24,10 +24,7 @@ describe('CloudinaryStorageProvider', () => {
 
   beforeEach(() => {
     provider = new CloudinaryStorageProvider(makeConfig());
-    // Manually set private fields (no onModuleInit side effects in unit tests)
-    (provider as any).cloudName = 'test_cloud';
-    (provider as any).apiKey = 'test_key_123';
-    (provider as any).apiSecret = 'test_secret_abc';
+    provider.onModuleInit();
   });
 
   describe('createUploadSignature', () => {
