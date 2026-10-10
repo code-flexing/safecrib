@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+import { getCachedMediaUrl, resolveMediaUrl } from "@/lib/api";
 
 const AVATAR_TONES = [
   "bg-safecrib-green/15 text-safecrib-green",
@@ -10,24 +12,12 @@ const AVATAR_TONES = [
   "bg-violet-100 text-violet-800",
 ];
 
-function resolveProfilePicture(user: {
-  profilePicture?: string | null;
-  studentProfile?: { profilePicture?: string | null } | null;
-  providerPage?: { profilePicture?: string | null } | null;
-}): string | null {
-  return (
-    user.profilePicture ??
-    user.studentProfile?.profilePicture ??
-    user.providerPage?.profilePicture ??
-    null
-  );
-}
-
 interface CommentAvatarProps {
   user: {
     id: string;
     displayName?: string | null;
     username?: string | null;
+    role?: string;
     profilePicture?: string | null;
     studentProfile?: { profilePicture?: string | null } | null;
     providerPage?: { profilePicture?: string | null } | null;
@@ -39,8 +29,40 @@ export function CommentAvatar({
   user,
   small = false,
 }: CommentAvatarProps) {
-  const profilePicture = resolveProfilePicture(user);
+  const [avatarSources, setAvatarSources] = useState<{ src: string | null; fallbackSrc: string | null }>({ src: null, fallbackSrc: null });
+  const [resolving, setResolving] = useState(true);
   const letter = (user.displayName ?? user.username ?? "?").trim().slice(0, 1).toUpperCase() || "?";
+
+  useEffect(() => {
+    let active = true;
+    const isProvider = ["AGENT", "LANDLORD"].includes(String(user.role ?? "").toUpperCase());
+    const candidates = isProvider
+      ? [user.providerPage?.profilePicture, user.profilePicture, user.studentProfile?.profilePicture]
+      : [user.profilePicture, user.studentProfile?.profilePicture, user.providerPage?.profilePicture];
+    const resolveCandidate = async (reference?: string | null): Promise<string | null> => {
+      const value = reference?.trim();
+      if (!value) return null;
+      if (/^(https?:|data:|blob:)/i.test(value) || (value.startsWith("/") && !value.startsWith("/api/"))) return value;
+      return getCachedMediaUrl(value) ?? await resolveMediaUrl(value);
+    };
+
+    setResolving(true);
+    void (async () => {
+      const resolved: string[] = [];
+      for (const candidate of candidates) {
+        if (!candidate || resolved.includes(candidate)) continue;
+        const url = await resolveCandidate(candidate).catch(() => null);
+        if (url && !resolved.includes(url)) resolved.push(url);
+        if (resolved.length === 2) break;
+      }
+      if (active) {
+        setAvatarSources({ src: resolved[0] ?? null, fallbackSrc: resolved[1] ?? null });
+        setResolving(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, [user.id, user.role, user.profilePicture, user.studentProfile?.profilePicture, user.providerPage?.profilePicture]);
 
   // Deterministic tone for the initials fallback so it stays stable per user.
   let hash = 0;
@@ -61,20 +83,16 @@ export function CommentAvatar({
     </span>
   );
 
-  if (!profilePicture) {
-    return (
-      fallback
-    );
-  }
-
   return (
-    <span className="relative inline-flex">
-      <ProfileAvatar
-        src={profilePicture}
+    <span className="relative inline-flex" aria-hidden={!avatarSources.src && !avatarSources.fallbackSrc && !resolving}>
+      {avatarSources.src || avatarSources.fallbackSrc || resolving ? <ProfileAvatar
+        src={avatarSources.src}
+        fallbackSrc={avatarSources.fallbackSrc}
         alt={`${user.displayName ?? user.username ?? "Member"} profile`}
         size={small ? "small" : "medium"}
+        loading={resolving}
         className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
-      />
+      /> : fallback}
     </span>
   );
 }
