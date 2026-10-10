@@ -7,6 +7,7 @@ type ModalProps = {
   onClose: () => void;
   titleId: string;
   children: ReactNode;
+  variant?: "default" | "bottom-sheet";
 };
 
 const FOCUSABLE_SELECTOR =
@@ -16,7 +17,7 @@ const FOCUSABLE_SELECTOR =
  * A minimal, accessible modal shell: focus trap, Escape to close, backdrop
  * click to close, scroll lock, and focus restoration on close.
  */
-export function Modal({ open, onClose, titleId, children }: ModalProps) {
+export function Modal({ open, onClose, titleId, children, variant = "default" }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -67,13 +68,13 @@ export function Modal({ open, onClose, titleId, children }: ModalProps) {
   if (!open) return null;
 
   return (
-    <div className="safecrib-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`safecrib-modal-backdrop${variant === "bottom-sheet" ? " safecrib-modal-backdrop--bottom-sheet" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="safecrib-modal"
+        className={`safecrib-modal${variant === "bottom-sheet" ? " safecrib-modal--bottom-sheet" : ""}`}
       >
         {children}
       </div>

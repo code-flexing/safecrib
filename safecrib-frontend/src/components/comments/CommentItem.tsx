@@ -74,58 +74,56 @@ export function CommentItem({
   const remainingRepliesCount = replies.length - visibleReplies.length;
 
   return (
-    <li key={comment.id} className="py-2.5" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
+    <li key={comment.id} className="py-4 first:pt-2 last:pb-2" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
       <div className="group relative">
-        <div className="rounded-2xl border border-theme-border bg-theme-surface p-3.5 transition-colors hover:border-safecrib-green/40 hover:bg-theme-field/40">
-          <div className="flex gap-3">
-            <CommentAvatar user={comment.user} small={depth > 0} showVerification />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <Link
-                  href={`/profile/${encodeURIComponent(comment.user.id)}`}
-                  className="font-semibold text-theme-text-primary transition hover:text-theme-text-link"
+        <div className="flex gap-3">
+          <CommentAvatar user={comment.user} small={depth > 0} showVerification />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <Link
+                href={`/profile/${encodeURIComponent(comment.user.id)}`}
+                className="font-semibold text-theme-text-primary transition hover:text-theme-text-link"
+              >
+                <UserName user={comment.user} size="sm" showHandle={true} />
+              </Link>
+              {isAuthor && (
+                <span
+                  className="rounded-full bg-safecrib-green/15 px-2 py-0.5 text-[10px] font-bold text-safecrib-green"
+                  aria-label="Listing author"
                 >
-                  <UserName user={comment.user} size="sm" showHandle={true} />
-                </Link>
-                {isAuthor && (
-                  <span
-                    className="rounded-full bg-safecrib-green/15 px-2 py-0.5 text-[10px] font-bold text-safecrib-green"
-                    aria-label="Listing author"
+                  Author
+                </span>
+              )}
+              <time dateTime={comment.createdAt} className="font-normal text-theme-text-muted">
+                {commentTime}
+              </time>
+            </div>
+            {comment.body && (
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-theme-text-primary">
+                {renderBody ? renderBody(comment) : comment.body}
+              </p>
+            )}
+            {comment.mentions && comment.mentions.length > 0 && (
+              <p className="mt-1 text-xs text-theme-text-muted">
+                Tagged:{comment.mentions.map((m) => (
+                  <Link
+                    key={m.user.id}
+                    href={`/profile/${encodeURIComponent(m.user.id)}`}
+                    className="mx-0.5 font-medium text-theme-text-link hover:underline"
                   >
-                    Author
-                  </span>
-                )}
-                <time dateTime={comment.createdAt} className="font-normal text-theme-text-muted">
-                  • {commentTime}
-                </time>
-              </div>
-              {comment.body && (
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-theme-text-primary">
-                  {renderBody ? renderBody(comment) : comment.body}
-                </p>
-              )}
-              {comment.mentions && comment.mentions.length > 0 && (
-                <p className="mt-1 text-xs text-theme-text-muted">
-                  Tagged:{comment.mentions.map((m) => (
-                    <Link
-                      key={m.user.id}
-                      href={`/profile/${encodeURIComponent(m.user.id)}`}
-                      className="font-medium text-theme-text-link hover:underline mx-0.5"
-                    >
-                      @{m.user.username ?? m.user.displayName ?? "member"}
-                    </Link>
-                  ))}
-                </p>
-              )}
-              <div className="mt-2 flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => onReply?.(comment)}
-                  className="text-xs font-semibold text-safecrib-green hover:text-safecrib-green/80 transition"
-                >
-                  Reply
-                </button>
-              </div>
+                    @{m.user.username ?? m.user.displayName ?? "member"}
+                  </Link>
+                ))}
+              </p>
+            )}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onReply?.(comment)}
+                className="rounded-full px-2.5 py-1 text-xs font-semibold text-theme-text-muted transition hover:bg-safecrib-green/10 hover:text-safecrib-green"
+              >
+                Reply
+              </button>
             </div>
           </div>
         </div>

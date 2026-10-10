@@ -541,6 +541,26 @@ body {
   animation: safecrib-rise 0.18s ease-out;
 }
 
+.safecrib-modal--bottom-sheet {
+  max-width: 34rem;
+  padding: 0;
+  border: 0;
+  border-radius: 1.75rem;
+  background: transparent;
+}
+
+@media (max-width: 639px) {
+  .safecrib-modal-backdrop--bottom-sheet {
+    padding: 0;
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .safecrib-modal--bottom-sheet {
+    max-width: none;
+    border-radius: 1.75rem 1.75rem 0 0;
+  }
+}
+
 @keyframes safecrib-fade {
   from {
     opacity: 0;

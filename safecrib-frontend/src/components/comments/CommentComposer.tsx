@@ -85,7 +85,7 @@ export function CommentComposer({
   const defaultPlaceholder = isReplying ? "Write a reply..." : "Add a comment, or tag someone with @...";
 
   return (
-    <div className="border-t border-theme-border bg-theme-surface/50 p-4">
+    <div className="border-t border-theme-border bg-theme-surface p-4 sm:p-5">
       {replyParentId && replyingToUser && onCancelReply && (
         <div className="mb-2 flex items-center justify-between rounded-lg bg-theme-field/50 px-3 py-1.5 text-xs text-theme-text-muted">
           <span>Replying to @{replyingToUser.username ?? replyingToUser.displayName ?? "a comment"}</span>
@@ -97,7 +97,7 @@ export function CommentComposer({
       <label htmlFor={id} className="sr-only">
         {isReplying ? "Write a reply" : "Write a comment"}
       </label>
-      <div className="flex items-end gap-2 rounded-2xl border border-theme-border bg-theme-field/30 px-3 py-1 transition focus-within:border-safecrib-green focus-within:bg-theme-surface">
+      <div className="flex items-end gap-2 rounded-2xl border border-theme-border bg-theme-field/40 px-3 py-1.5 transition focus-within:border-safecrib-green focus-within:bg-theme-surface focus-within:ring-2 focus-within:ring-safecrib-green/10">
         <textarea
           ref={textareaRef}
           id={id}
@@ -107,14 +107,14 @@ export function CommentComposer({
           maxLength={maxLength}
           rows={1}
           placeholder={placeholder ?? defaultPlaceholder}
-          className="max-h-28 min-h-[2.25rem] w-full resize-none bg-transparent py-2 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none"
+          className="max-h-28 min-h-[2.5rem] w-full resize-none bg-transparent py-2.5 text-sm text-theme-text-primary placeholder:text-theme-text-muted focus:outline-none"
           aria-describedby={mentionCandidates.length > 0 ? `${id}-mentions` : undefined}
         />
         <button
           type="button"
           onClick={onSubmit}
           disabled={commentSubmitting || !commentBody.trim()}
-          className="mb-1 rounded-full px-3 py-1.5 text-sm font-semibold text-safecrib-green transition hover:bg-safecrib-green/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mb-0.5 shrink-0 rounded-xl bg-safecrib-green px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-safecrib-green/90 disabled:cursor-not-allowed disabled:bg-theme-field disabled:text-theme-text-muted disabled:shadow-none"
         >
           {commentSubmitting ? "Posting..." : isReplying ? "Post Reply" : "Post"}
         </button>
@@ -146,7 +146,7 @@ export function CommentComposer({
           {commentBody.length}/{maxLength}
         </p>
       )}
-      {commentError && <p role="alert" className="mt-2 text-xs font-medium text-theme-text-error">{commentError}</p>}
+      {commentError && <p role="alert" className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-theme-text-error">{commentError}</p>}
     </div>
   );
 }

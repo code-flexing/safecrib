@@ -211,13 +211,16 @@ export function ListingComments({
     >
       <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-theme-border sm:hidden" />
       <header className="flex shrink-0 items-center justify-between border-b border-theme-border px-5 py-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <h2 id={titleId} className="text-base font-bold text-theme-text-primary">
-            Comments
-          </h2>
-          <span className="rounded-full bg-theme-border px-2 py-0.5 text-xs font-semibold text-theme-text-muted">
-            {comments.length}
-          </span>
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 id={titleId} className="text-lg font-bold tracking-tight text-theme-text-primary">
+              Comments
+            </h2>
+            <span className="rounded-full bg-theme-field px-2.5 py-1 text-xs font-semibold tabular-nums text-theme-text-muted">
+              {comments.length}
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-theme-text-muted">Questions or helpful details about this home</p>
         </div>
         {isModal && (
           <button
@@ -239,7 +242,7 @@ export function ListingComments({
             <Skeleton className="h-12 w-4/5 rounded-2xl" />
           </div>
         ) : (
-          <ul className="divide-y divide-theme-border">
+          <ul className="divide-y divide-theme-border/70">
             {rootComments.map((comment) => (
               <CommentItem
                 key={comment.id}
@@ -293,7 +296,7 @@ export function ListingComments({
 
   if (isModal) {
     return createPortal(
-      <Modal open onClose={closeDiscussion} titleId={titleId}>{content}</Modal>,
+      <Modal open onClose={closeDiscussion} titleId={titleId} variant="bottom-sheet">{content}</Modal>,
       document.body,
     );
   }
