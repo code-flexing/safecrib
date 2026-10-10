@@ -178,32 +178,6 @@ const FEED_CSS = `
   stroke: var(--feed-on-accent) !important;
 }
 
-/* Glass pill button (View crib) - simplified without backdrop */
-.safecrib-feed .feed-btn--glass {
-  --btn-glass-tint: rgba(16, 185, 129, 0.9);
-  --btn-glass-border: rgba(255, 255, 255, 0.2);
-  background: var(--btn-glass-tint) !important;
-  border: 1px solid var(--btn-glass-border) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  border-radius: 9999px !important;
-  transition: transform 0.1s ease, background 0.15s ease !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.safecrib-feed .feed-btn--glass:hover {
-  --btn-glass-tint: rgba(16, 185, 129, 1);
-  background: var(--btn-glass-tint) !important;
-}
-.safecrib-feed .feed-btn--glass:active {
-  transform: scale(0.98);
-}
-.safecrib-feed .feed-btn--glass:focus-visible {
-  outline: 2px solid var(--feed-accent);
-  outline-offset: 2px;
-}
-
 /* Counts under the rail sit on the photo, so they get a strong shadow */
 .safecrib-feed .feed-count {
   color: #ffffff !important;
@@ -610,7 +584,6 @@ function ListingActionTray({
   onCloseMenu,
 }: ListingActionTrayProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -629,18 +602,6 @@ function ListingActionTray({
       document.removeEventListener("keydown", closeOnEsc);
     };
   }, [menuOpen, onCloseMenu]);
-
-  const copyListingLink = async () => {
-    try {
-      const url = `${window.location.origin}/dashboard/listings/${listing.id}`;
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-      onCloseMenu();
-    } catch {
-      // ignore
-    }
-  };
 
   return (
     <div
@@ -671,9 +632,21 @@ function ListingActionTray({
           aria-label={`Open comments, ${commentCount} total`}
           className={railBtn}
         >
-          <Icon name="message-circle" className="h-5 w-5" />
+          <Icon name="message-square" className="h-5 w-5" />
         </button>
         <span className={railCount}>{formatEngagementCount(commentCount)}</span>
+      </div>
+
+      {/* View listing */}
+      <div className="flex flex-col items-center gap-1">
+        <Link
+          href={`/dashboard/listings/${listing.id}`}
+          aria-label="View listing"
+          className={railBtn}
+        >
+          <Icon name="eye" className="h-5 w-5" />
+        </Link>
+        <span className={railCount}>View</span>
       </div>
 
       {/* Recommend (trust) */}
@@ -711,14 +684,6 @@ function ListingActionTray({
         </div>
       )}
 
-      {/* Share = copy link */}
-      <div className="flex flex-col items-center gap-1">
-        <button type="button" onClick={() => void copyListingLink()} aria-label="Copy link" className={railBtn}>
-          <Icon name="share-2" className="h-5 w-5" />
-        </button>
-        <span className={railCount}>{copied ? "Copied" : "Share"}</span>
-      </div>
-
       {/* More */}
       <div className="relative">
         <button
@@ -737,15 +702,6 @@ function ListingActionTray({
             role="menu"
             className="feed-surface absolute bottom-0 right-11 z-50 w-44 overflow-hidden rounded-xl p-1 animate-in fade-in zoom-in-95 duration-150"
           >
-            <Link
-              role="menuitem"
-              href={`/dashboard/listings/${listing.id}`}
-              onClick={onCloseMenu}
-              className="feed-text flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
-            >
-              <Icon name="external-link" className="h-4 w-4" />
-              Open post
-            </Link>
             {listing.ownerId && (
               <Link
                 role="menuitem"
@@ -1705,17 +1661,10 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Row 2: title + description underneath, same left edge as the avatar */}
-                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1.5 block">
-                      <h2 className="feed-text line-clamp-1 text-left text-[14px] font-semibold leading-snug">
-                        {listing.title ?? "Verified Campus Home"}
-                      </h2>
-                    </Link>
-                    {listing.description && (
-                      <p className="feed-muted mt-0.5 text-left text-xs leading-snug line-clamp-1">
-                        {listing.description}
-                      </p>
-                    )}
+                    {/* Row 2: title */}
+                    <h2 className="feed-text mt-1.5 line-clamp-1 text-left text-[14px] font-semibold leading-snug">
+                      {listing.title ?? "Verified Campus Home"}
+                    </h2>
 
                     {/* Location */}
                     {location && (
@@ -1725,15 +1674,9 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    {/* Price + one clear action */}
+                    {/* Price */}
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <ListingPriceTag listing={listing} />
-                      <Link
-                        href={`/dashboard/listings/${listing.id}`}
-                        className="feed-btn--glass inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
-                      >
-                        View crib
-                      </Link>
                     </div>
                   </div>
 
