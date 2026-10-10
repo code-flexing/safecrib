@@ -1590,7 +1590,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-4 bottom-2 top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
+                <div className="pointer-events-none absolute inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
                   {/* Left: everything starts at the same left edge */}
                   <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
                     {/* Row 1: avatar + name */}

@@ -46,7 +46,7 @@ function isRouteActive(pathname: string, href: string) {
 }
 
 function mobileIconLinkClass(active: boolean, darkMode: boolean) {
-  const base = "relative flex h-12 min-w-0 flex-1 items-center justify-center rounded-full border transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  const base = "relative flex h-11 min-w-0 flex-1 items-center justify-center rounded-full border transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
   if (darkMode) {
     return `${base} focus-visible:outline-emerald-400 ${active ? "border-emerald-400/30 bg-[#12382D] text-white shadow-[0_0_0_1px_rgba(52,211,153,0.2)]" : "border-transparent bg-transparent text-white/70 hover:bg-white/10 hover:text-white"}`;
   }
@@ -268,7 +268,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
       </header>
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
         <div
-          className="mx-auto flex max-w-md items-center gap-1 rounded-full border p-1.5 shadow-lg"
+          className="mx-auto flex max-w-md items-center gap-1 rounded-full border p-1 shadow-lg"
           style={{ backgroundColor: "var(--theme-surface)", borderColor: "var(--theme-border)" }}
         >
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={isRouteActive(pathname, "/dashboard") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/dashboard"), darkMode)}><Icon name="home" className="h-5 w-5" /></Link>
