@@ -158,7 +158,7 @@ const FEED_CSS = `
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 .safecrib-feed .feed-listing-details .feed-muted {
-  color: rgba(255, 255, 255, 0.82) !important;
+  color: #ffffff !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
