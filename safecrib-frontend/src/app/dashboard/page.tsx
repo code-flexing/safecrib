@@ -153,6 +153,15 @@ const FEED_CSS = `
 .safecrib-feed .feed-muted { color: var(--feed-muted) !important; }
 .safecrib-feed a.feed-text:hover { color: var(--theme-text-link) !important; }
 
+.safecrib-feed .feed-listing-details .feed-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.safecrib-feed .feed-listing-details .feed-muted {
+  color: rgba(255, 255, 255, 0.82) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
 /* Primary action: dark text on emerald for real contrast */
 .safecrib-feed .feed-cta {
   background: var(--feed-accent) !important;
@@ -1592,7 +1601,7 @@ export default function DashboardPage() {
                 {/* Bottom UI: listing card on the left, engagement rail on the right */}
                 <div className="pointer-events-none absolute inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
                   {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
+                  <div className="feed-card feed-listing-details pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
                     {/* Row 1: avatar + name */}
                     <div className="flex min-w-0 items-center justify-start gap-2">
                       {listing.ownerId ? (
@@ -1645,20 +1654,20 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Row 2: title */}
-                    <h2 className="feed-text mt-2 line-clamp-1 text-left text-[14px] font-semibold leading-5">
+                    <h2 className="feed-text mt-1.5 line-clamp-1 text-left text-[14px] font-semibold leading-5">
                       {listing.title ?? "Verified Campus Home"}
                     </h2>
 
                     {/* Location */}
                     {location && (
-                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
+                      <p className="feed-muted mt-1 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
                         <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
                     )}
 
                     {/* Price */}
-                    <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="mt-1.5 flex items-center justify-between gap-3">
                       <ListingPriceTag listing={listing} />
                     </div>
                   </div>

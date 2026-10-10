@@ -240,13 +240,17 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
               <span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="search" className="h-5 w-5" /></span>
               <span>Search</span>
             </Link>
-            {items.map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={isRouteActive(pathname, item.href) ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, item.href), true, darkMode)}>
+            {items.filter((item) => item.href !== "/settings").map((item) => <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} aria-current={isRouteActive(pathname, item.href) ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, item.href), true, darkMode)}>
               <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name={item.icon} className="h-5 w-5" />{item.href === "/support" && <SupportCount count={supportCount} />}</span>
               <span>{item.label}</span>
             </Link>)}
             <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={isRouteActive(pathname, "/notifications") ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, "/notifications"), true, darkMode)}>
               <span className="relative inline-flex h-6 w-6 items-center justify-center"><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></span>
               <span>Notifications</span>
+            </Link>
+            <Link href="/settings" aria-label="Settings" title="Settings" aria-current={isRouteActive(pathname, "/settings") ? "page" : undefined} className={iconLinkClass(isRouteActive(pathname, "/settings"), true, darkMode)}>
+              <span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="settings" className="h-5 w-5" /></span>
+              <span>Settings</span>
             </Link>
             {canManagePage && <button type="button" onClick={onCreatePage} aria-label={pageLabel} title={pageLabel} aria-current={pageActive ? "page" : undefined} className={iconLinkClass(pageActive, true, darkMode)}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="page" className="h-5 w-5" /></span><span>{pageStatus === "none" ? "Create Page" : "My Page"}</span></button>}
             <button type="button" onClick={handleSignOut} aria-label="Sign out" title="Sign out" className={`${iconLinkClass(false, true, darkMode)} mt-auto`}><span className="inline-flex h-6 w-6 items-center justify-center"><Icon name="logout" className="h-5 w-5" /></span><span>Log out</span></button>

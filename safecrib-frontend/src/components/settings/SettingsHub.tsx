@@ -11,6 +11,7 @@ import { SettingsSignOutButton } from "@/components/settings/SettingsSignOutButt
 import { SettingsCategoryIcon } from "./SettingsCategoryIcon";
 import { VerificationProgressLadder } from "@/components/verification/VerificationProgressLadder";
 import { normalizeVerificationStage, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 
 type User = {
   id?: string;
@@ -119,7 +120,8 @@ export function SettingsHub() {
   const profilePicture = user?.profilePicture;
 
   return (
-    <main className="min-h-screen bg-[#f7f8f5]">
+    <main className="min-h-screen bg-[#f7f8f5] pb-24 md:pb-0">
+      <DashboardNav onCreatePage={() => router.push("/page/new")} pageStatus="none" canManagePage={false} />
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-safecrib-green">Account settings</p>
