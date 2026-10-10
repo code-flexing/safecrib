@@ -217,7 +217,6 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         .dashboard-dark-mobile-nav a,
         .dashboard-dark-mobile-nav button {
           color: #f8fafc !important;
-          background-color: #09090b;
         }
         .dashboard-dark-mobile-nav a:hover,
         .dashboard-dark-mobile-nav button:hover {
@@ -271,7 +270,7 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
         style={darkMode ? { height: "calc(env(safe-area-inset-top, 0px) + 1.25rem)", padding: 0 } : undefined}
       />
       <nav aria-label="Mobile dashboard navigation" className={`fixed inset-x-3 bottom-3 z-50 md:hidden ${darkMode ? "dashboard-dark-mobile-nav" : ""}`}>
-        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border p-1.5 shadow-[0_14px_36px_rgba(11,12,14,0.32)] ${darkMode ? "border-white/10 bg-[#09090B]" : "border-black/10 bg-white/25 backdrop-blur-2xl"}`}>
+        <div className="mx-auto flex max-w-md items-center gap-1 rounded-[2.4rem] border border-transparent bg-transparent p-1.5 shadow-none">
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={pathname === "/dashboard" ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname === "/dashboard" ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="home" className="h-5 w-5" /></Link>
           <Link href="/support" aria-label="Support" title="Support" aria-current={pathname.startsWith("/support") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/support") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
           <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={pathname.startsWith("/notifications") ? "page" : undefined} className={`relative flex h-12 flex-1 items-center justify-center rounded-[1.9rem] transition-all duration-200 ease-out ${pathname.startsWith("/notifications") ? (darkMode ? "bg-white/10 text-white shadow-sm scale-[1.01]" : "bg-black/[0.05] text-current shadow-sm scale-[1.01]") : (darkMode ? "text-white/70 hover:bg-white/5 hover:text-white hover:scale-[1.01]" : "text-current/70 hover:bg-black/[0.03] hover:scale-[1.01]")}`}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
