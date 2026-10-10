@@ -1,9 +1,5 @@
 import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
 
-import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
-
-import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
-
 export type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN";
 
 export type VerificationCriterion = {
