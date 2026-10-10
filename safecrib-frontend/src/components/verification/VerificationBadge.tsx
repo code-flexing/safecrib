@@ -1,5 +1,9 @@
 import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
 
+import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
+
+import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
+
 export type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN";
 
 export type VerificationCriterion = {
@@ -108,37 +112,6 @@ function resolveSize(size: BadgeSize): number {
   return SIZE_MAP[size] ?? 16;
 }
 
-function getGlyphColor(badgeColor: "green" | "charcoal" | "gold"): string {
-  return badgeColor === "gold" ? "var(--badge-gold-glyph)" : "white";
-}
-
-function getFillColor(badgeColor: "green" | "charcoal" | "gold"): string {
-  return badgeColor === "charcoal" ? "#111827" : `var(--badge-${badgeColor})`;
-}
-
-function SealIcon({ badgeColor, size, fullDetail }: { badgeColor: "green" | "charcoal" | "gold"; size: number; fullDetail: boolean }) {
-  const fillColor = getFillColor(badgeColor);
-  const accentColor = getGlyphColor(badgeColor);
-  const Icon = badgeColor === "green" ? BadgeCheck : badgeColor === "charcoal" ? ShieldCheck : Crown;
-  const iconSize = fullDetail ? Math.max(12, size * 0.7) : Math.max(10, size * 0.64);
-
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: fillColor,
-        color: accentColor,
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
-      }}
-    >
-      <Icon size={iconSize} strokeWidth={2.25} aria-hidden="true" />
-    </span>
-  );
-}
-
 export function VerificationBadge({
   verification,
   verified = false,
@@ -166,17 +139,19 @@ export function VerificationBadge({
 
   const resolvedSize = size ?? (iconOnly ? 20 : compact ? 16 : 20);
   const pixelSize = resolveSize(resolvedSize);
-  const fullDetail = pixelSize >= 24;
+  const fullDetail = pixelSize >= 24; 
   const glyphAriaLabel = `${label}${riskBlocked ? ", advanced badge upgrade blocked for review" : ""}`;
+  const BadgeIcon = badge === "GOLD_CROWN" ? Crown : badge === "BLUE_SHIELD" ? ShieldCheck : BadgeCheck;
+  const badgeTextColor = badgeColor === "gold" ? "#d4a017" : badgeColor === "charcoal" ? "#111827" : "#16a34a";
 
   return (
     <span
       title={glyphAriaLabel}
       aria-label={glyphAriaLabel}
-      className={`inline-flex items-center justify-center shrink-0 verification-badge verification-badge--${badgeColor} ${iconOnly ? "verification-badge--icon" : ""}`}
-      style={{ width: pixelSize, height: pixelSize, flexShrink: 0 }}
+      className="inline-flex shrink-0 items-center justify-center align-middle bg-transparent p-0"
+      style={{ width: pixelSize, height: pixelSize, flexShrink: 0, color: badgeTextColor }}
     >
-      <SealIcon badgeColor={badgeColor} size={pixelSize} fullDetail={fullDetail} />
+      <BadgeIcon size={pixelSize} strokeWidth={2.25} aria-hidden="true" />
       {iconOnly ? null : <span className="sr-only">{glyphAriaLabel}</span>}
     </span>
   );

@@ -1644,7 +1644,7 @@ export default function DashboardPage() {
                           </button>
                         </div>
                       ) : null}
-                      <div className="flex min-w-0 items-center gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5 leading-none">
                         <UserName
                           user={{
                             id: listing.ownerId,
@@ -1656,19 +1656,19 @@ export default function DashboardPage() {
                           }}
                           size="sm"
                           showHandle={false}
-                          nameClassName="text-white truncate text-[14px] font-bold"
+                          nameClassName="text-white truncate text-[14px] font-bold leading-5"
                         />
                       </div>
                     </div>
 
                     {/* Row 2: title */}
-                    <h2 className="feed-text mt-1.5 line-clamp-1 text-left text-[14px] font-semibold leading-snug">
+                    <h2 className="feed-text mt-2 line-clamp-1 text-left text-[14px] font-semibold leading-5">
                       {listing.title ?? "Verified Campus Home"}
                     </h2>
 
                     {/* Location */}
                     {location && (
-                      <p className="feed-muted mt-1.5 flex items-center justify-start gap-1.5 text-xs font-medium">
+                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
                         <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
