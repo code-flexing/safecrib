@@ -1,7 +1,6 @@
 "use client";
 
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { UserVerificationBadge } from "./UserVerificationBadge";
 
 const AVATAR_TONES = [
   "bg-safecrib-green/15 text-safecrib-green",
@@ -34,13 +33,11 @@ interface CommentAvatarProps {
     providerPage?: { profilePicture?: string | null } | null;
   };
   small?: boolean;
-  showVerification?: boolean;
 }
 
 export function CommentAvatar({
   user,
   small = false,
-  showVerification = false,
 }: CommentAvatarProps) {
   const profilePicture = resolveProfilePicture(user);
   const letter = (user.displayName ?? user.username ?? "?").trim().slice(0, 1).toUpperCase() || "?";
@@ -66,24 +63,18 @@ export function CommentAvatar({
 
   if (!profilePicture) {
     return (
-      <span className="flex items-center gap-1.5">
-        {fallback}
-        {showVerification && <UserVerificationBadge userId={user.id} />}
-      </span>
+      fallback
     );
   }
 
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="relative inline-flex">
-        <ProfileAvatar
-          src={profilePicture}
-          alt={`${user.displayName ?? user.username ?? "Member"} profile`}
-          size={small ? "small" : "medium"}
-          className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
-        />
-      </span>
-      {showVerification && <UserVerificationBadge userId={user.id} />}
+    <span className="relative inline-flex">
+      <ProfileAvatar
+        src={profilePicture}
+        alt={`${user.displayName ?? user.username ?? "Member"} profile`}
+        size={small ? "small" : "medium"}
+        className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
+      />
     </span>
   );
 }

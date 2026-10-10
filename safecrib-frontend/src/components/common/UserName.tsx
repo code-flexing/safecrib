@@ -193,6 +193,7 @@ interface UserNameProps {
   nameClassName?: string;
   handleClassName?: string;
   onNameClick?: () => void;
+  showVerificationBadge?: boolean;
 }
 
 export function UserName({
@@ -204,6 +205,7 @@ export function UserName({
   nameClassName = "font-semibold text-safecrib-black",
   handleClassName = "font-normal text-black/45",
   onNameClick,
+  showVerificationBadge = true,
 }: UserNameProps) {
   const cachedStage = useCachedStage(user?.id);
   const stage = useMemo(() => {
@@ -216,7 +218,7 @@ export function UserName({
     : fallback;
   const handle = typeof user?.username === "string" && user.username.trim() ? user.username.trim() : null;
 
-  const showBadge = !!stage?.eligible;
+  const showBadge = showVerificationBadge && !!stage?.eligible;
 
   const nameContent = onNameClick ? (
     <button

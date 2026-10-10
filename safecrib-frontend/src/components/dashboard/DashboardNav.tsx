@@ -260,10 +260,12 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
             <span className="flex items-center gap-3">
               <span className="relative inline-flex">
                 <ProfileAvatar src={avatarUrl} seed={navUser?.id ?? navUser?.email ?? "safecrib-member-avatar"} alt={`${accountName} profile`} size="small" />
-                {verification && <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-white bg-white shadow-sm"><VerificationBadge verification={verification} compact iconOnly /></span>}
               </span>
               <span className="min-w-0">
-                <span className={`block truncate text-sm font-semibold ${darkMode ? "text-white" : "text-safecrib-black"}`}>{accountName}</span>
+                <span className="flex min-w-0 items-center gap-1">
+                  <span className={`truncate text-sm font-semibold ${darkMode ? "text-white" : "text-safecrib-black"}`}>{accountName}</span>
+                  {verification && <VerificationBadge verification={verification} compact iconOnly />}
+                </span>
                 <span className={`block text-xs ${darkMode ? "text-white/60" : "text-black/45"}`}>View profile</span>
               </span>
             </span>

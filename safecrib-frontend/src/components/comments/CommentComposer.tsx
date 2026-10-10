@@ -4,6 +4,7 @@ import { useId, useRef, useEffect, useCallback } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { UserName } from "@/components/common/UserName";
 import { CommentAvatar } from "./CommentAvatar";
+import { UserVerificationBadge } from "./UserVerificationBadge";
 import { Button } from "@/components/ui/Button";
 
 interface MentionCandidate {
@@ -133,8 +134,9 @@ export function CommentComposer({
                 onClick={() => onSelectMention(person)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-safecrib-green/5"
               >
-                <CommentAvatar user={person} small showVerification />
-                <UserName user={person} size="sm" showHandle={true} />
+                <CommentAvatar user={person} small />
+                <UserName user={person} size="sm" showHandle={true} showVerificationBadge={false} />
+                <UserVerificationBadge userId={person.id} />
                 <span className="text-xs text-theme-text-muted">{person.role?.toLowerCase()}</span>
               </button>
             </li>

@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Icon } from "@/components/ui/Icon";
 import { UserName } from "@/components/common/UserName";
 import { CommentAvatar } from "./CommentAvatar";
+import { UserVerificationBadge } from "./UserVerificationBadge";
 
 export interface ListingComment {
   id: string;
@@ -77,15 +78,16 @@ export function CommentItem({
     <li key={comment.id} className="py-4 first:pt-2 last:pb-2" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
       <div className="group relative">
         <div className="flex gap-3">
-          <CommentAvatar user={comment.user} small={depth > 0} showVerification />
+          <CommentAvatar user={comment.user} small={depth > 0} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <Link
                 href={`/profile/${encodeURIComponent(comment.user.id)}`}
                 className="font-semibold text-theme-text-primary transition hover:text-theme-text-link"
               >
-                <UserName user={comment.user} size="sm" showHandle={true} />
+                <UserName user={comment.user} size="sm" showHandle={true} showVerificationBadge={false} />
               </Link>
+              <UserVerificationBadge userId={comment.user.id} />
               {isAuthor && (
                 <span
                   className="rounded-full bg-safecrib-green/15 px-2 py-0.5 text-[10px] font-bold text-safecrib-green"
