@@ -61,7 +61,7 @@ export function ProfileAvatar({
 
   const sizeClass = size === "small" ? "h-12 w-12" : size === "large" ? "h-32 w-32" : "h-16 w-16";
   const containerClass = `${sizeClass} shrink-0 overflow-hidden rounded-full border border-black/10 ${className}`;
-  const isPending = loading || (!failedSource && !imageLoaded && (!src || !showFallback));
+  const isPending = loading || (Boolean(src) && !failedSource && !imageLoaded && !showFallback);
 
   if (renderedSource && failedSource !== src) {
     return (

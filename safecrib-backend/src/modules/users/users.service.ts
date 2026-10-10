@@ -276,6 +276,7 @@ export class UserService {
       followerCount: user._count.followers,
       isFollowingUser: Boolean(user.followers?.length),
       providerPageId: providerPage?.id ?? null,
+      providerPageProfilePicture: providerPage?.profilePicture ?? null,
       isFollowingPage: Boolean(providerPage?.followers?.length),
       providerPageFollowerCount: providerPage?._count.followers ?? 0,
       publicEngagement: providerPage

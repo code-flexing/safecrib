@@ -1099,14 +1099,22 @@ export default function DashboardPage() {
       }).catch(() => undefined);
     };
 
+    const publicProfileRequests = new Map<string, Promise<{ profilePicture?: string | null; providerPageProfilePicture?: string | null } | null>>();
     listings.forEach((listing) => {
       const ownerId = listing.ownerId;
       if (!ownerId) return;
       const resolveListingAvatar = async () => {
-        let picture = listing.owner?.providerPageProfilePicture ?? listing.owner?.profilePicture;
+        let picture = listing.owner?.providerPageProfilePicture;
         if (!picture) {
-          const response = await apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`).catch(() => null);
-          picture = unwrapData<{ profilePicture?: string | null } | null>(response)?.profilePicture;
+          let publicProfileRequest = publicProfileRequests.get(ownerId);
+          if (!publicProfileRequest) {
+            publicProfileRequest = apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`)
+              .then((response) => unwrapData<{ profilePicture?: string | null; providerPageProfilePicture?: string | null } | null>(response))
+              .catch(() => null);
+            publicProfileRequests.set(ownerId, publicProfileRequest);
+          }
+          const publicProfile = await publicProfileRequest;
+          picture = publicProfile?.providerPageProfilePicture ?? listing.owner?.profilePicture ?? publicProfile?.profilePicture;
         }
         resolveProviderAvatar(listing.id, picture);
       };
