@@ -11,7 +11,7 @@ export { metadata, viewport } from "./metadata";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="safecrib-theme-frame bg-safecrib-white font-sans text-safecrib-black antialiased">
+      <body className="safecrib-theme-frame font-sans antialiased">
         <ThemeProvider>
           <PWAProvider>
             <Analytics />

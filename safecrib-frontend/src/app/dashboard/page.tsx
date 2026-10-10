@@ -105,27 +105,20 @@ export type StudentProfile = { profilePicture?: string } | null;
 export type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 
 /* ---------------------------------------------------------------------------
- * Feed colors
- *
- * The feed always sits on photos/video, so its UI uses ONE fixed, solid dark
- * palette that never depends on the app theme. Everything is scoped under
- * `.safecrib-feed` and uses !important so global theme rules (light / dark /
- * custom) cannot recolor it.
- *
- * Contrast (WCAG): #f8fafc on #111318 ≈ 17:1, #cbd5e1 on #09090b ≈ 13:1,
- * #022c22 on #10b981 ≈ 7:1.
+ * Feed colors use the selected app theme for controls and surfaces. Text
+ * directly over listing media keeps a subtle shadow for contrast.
  * ------------------------------------------------------------------------- */
 const FEED_CSS = `
 .safecrib-feed {
-  --feed-surface: #111318;
-  --feed-surface-hover: #1b1e24;
-  --feed-card: #09090b;
-  --feed-border: #3a3f47;
-  --feed-text: #f8fafc;
-  --feed-muted: #cbd5e1;
-  --feed-accent: #10b981;
-  --feed-accent-hover: #34d399;
-  --feed-on-accent: #022c22;
+  --feed-surface: var(--theme-surface);
+  --feed-surface-hover: var(--theme-surface-raised);
+  --feed-card: var(--theme-surface-raised);
+  --feed-border: var(--theme-border);
+  --feed-text: var(--theme-text-primary);
+  --feed-muted: var(--theme-text-muted);
+  --feed-accent: var(--safecrib-green);
+  --feed-accent-hover: var(--theme-text-link);
+  --feed-on-accent: #ffffff;
 }
 
 /* Solid round buttons / pills */
@@ -133,21 +126,19 @@ const FEED_CSS = `
   background: var(--feed-surface) !important;
   color: var(--feed-text) !important;
   border: 1px solid var(--feed-border) !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
 }
 .safecrib-feed button.feed-surface:hover,
 .safecrib-feed a.feed-surface:hover { background: var(--feed-surface-hover) !important; }
-.safecrib-feed .feed-surface:focus-within { border-color: #6ee7b7 !important; }
-.safecrib-feed .feed-surface[aria-pressed="true"] { color: #fbbf24 !important; border-color: #b45309 !important; }
+.safecrib-feed .feed-surface:focus-within { border-color: var(--feed-accent) !important; }
+.safecrib-feed .feed-surface[aria-pressed="true"] { color: var(--feed-accent) !important; border-color: var(--feed-accent) !important; }
 
 /* Small chips inside a surface (e.g. clear-search button) */
 .safecrib-feed .feed-chip {
-  background: #262a31 !important;
+  background: var(--theme-surface-raised) !important;
   color: var(--feed-text) !important;
 }
-.safecrib-feed .feed-chip:hover { background: #343942 !important; }
+.safecrib-feed .feed-chip:hover { background: var(--feed-surface-hover) !important; }
 
 /* Info card - Simple transparent */
 .safecrib-feed .feed-card {
@@ -155,13 +146,12 @@ const FEED_CSS = `
   color: var(--feed-text) !important;
   border: none !important;
   backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
 }
 
 .safecrib-feed .feed-text { color: var(--feed-text) !important; }
 .safecrib-feed .feed-muted { color: var(--feed-muted) !important; }
-.safecrib-feed a.feed-text:hover { color: #6ee7b7 !important; }
+.safecrib-feed a.feed-text:hover { color: var(--theme-text-link) !important; }
 
 /* Primary action: dark text on emerald for real contrast */
 .safecrib-feed .feed-cta {
@@ -187,9 +177,9 @@ const FEED_CSS = `
 /* Search input: immune to global input/theme/autofill styles */
 .safecrib-feed .feed-input {
   background: transparent !important;
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff;
-  caret-color: #6ee7b7;
+  color: var(--feed-text) !important;
+  -webkit-text-fill-color: var(--feed-text);
+  caret-color: var(--feed-accent);
   border: 0 !important;
   box-shadow: none !important;
   outline: none !important;
@@ -200,7 +190,7 @@ const FEED_CSS = `
   opacity: 1;
 }
 .safecrib-feed .feed-input:-webkit-autofill {
-  -webkit-text-fill-color: #ffffff;
+  -webkit-text-fill-color: var(--feed-text);
   box-shadow: 0 0 0 1000px var(--feed-surface) inset !important;
 }
 
@@ -228,13 +218,6 @@ const FEED_CSS = `
 .safecrib-feed .dashboard-engagement-shell button[aria-label="Remove recommendation"] svg { color: #6ee7b7 !important; }
 .safecrib-feed .dashboard-engagement-shell button:hover { background: var(--feed-surface-hover) !important; }
 
-/* Navigation (sidebar on desktop, bar on mobile): always a solid surface */
-.safecrib-feed :is(nav, aside):not(section *) {
-  background: #0b0d10 !important;
-  border-color: #2a2f37 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
 `;
 
 function FeedStyles() {
@@ -355,7 +338,7 @@ function ListingCardImage({ src, fallbackSrc, alt, priority = false }: { src: st
   const imageSrc = useFallback && fallbackSrc ? fallbackSrc : src;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-neutral-950">
+    <div className="absolute inset-0 overflow-hidden bg-[var(--theme-bg)]">
       {loadedSrc !== imageSrc && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-white/5" />}
       <Image
         src={imageSrc}
@@ -468,7 +451,7 @@ function ListingCardVideo({
   };
 
   return (
-    <div ref={containerRef} className="absolute inset-0 select-none overflow-hidden bg-neutral-950">
+    <div ref={containerRef} className="absolute inset-0 select-none overflow-hidden bg-[var(--theme-bg)]">
       {videoUrl && !videoFailed ? (
         <>
           <video
@@ -1357,9 +1340,9 @@ export default function DashboardPage() {
     return (
       <main className="safecrib-feed fixed inset-0 h-[100dvh] overflow-hidden md:relative md:inset-auto md:h-auto md:min-h-[100dvh] md:overflow-x-hidden" style={{ backgroundColor: 'var(--theme-bg)' }} aria-busy="true">
         <FeedStyles />
-        <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
+        <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden" aria-label="Loading homes">
-          <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-neutral-950 md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
+          <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-[var(--theme-bg)] md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
             {/* Top bar skeleton */}
             <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
               <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
@@ -1369,23 +1352,23 @@ export default function DashboardPage() {
 
             {/* Bottom card + rail skeleton */}
             <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
-              <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-white/10 bg-[#09090b] p-3">
+              <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface)] p-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 animate-pulse rounded-full bg-white/15" />
-                  <div className="h-4 w-28 animate-pulse rounded-full bg-white/20" />
+                  <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+                  <div className="h-4 w-28 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
                 </div>
-                <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/20" />
-                <div className="h-3 w-2/3 animate-pulse rounded-full bg-white/10" />
+                <div className="h-4 w-3/4 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+                <div className="h-3 w-2/3 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
                 <div className="flex items-center justify-between pt-2">
                   <div className="h-7 w-28 animate-pulse rounded-lg bg-white/20" />
                   <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
                 </div>
               </div>
               <div className="flex -translate-y-10 flex-col items-center gap-4">
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[#111318]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
               </div>
             </div>
           </div>
@@ -1402,9 +1385,9 @@ export default function DashboardPage() {
   return (
     <main className="safecrib-feed fixed inset-0 h-[100dvh] overflow-hidden md:relative md:inset-auto md:h-auto md:min-h-[100dvh] md:overflow-x-hidden" style={{ backgroundColor: 'var(--theme-bg)' }}>
       <FeedStyles />
-      <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} darkMode />
+      <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden">
-        <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-neutral-950 md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
+        <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-[var(--theme-bg)] md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
         {/* Top bar: avatar | For You | search */}
         <div className="pointer-events-none absolute inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-40">
           <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
@@ -1476,7 +1459,7 @@ export default function DashboardPage() {
         </div>
         {/* Empty state when no listings exist */}
         {listings.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-950 px-6 pb-12 pt-28 text-center" aria-label="No listings available">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[var(--theme-bg)] px-6 pb-12 pt-28 text-center" aria-label="No listings available">
             <div className="feed-card flex max-w-sm flex-col items-center rounded-3xl p-8 shadow-2xl">
               <EmptyListingsIllustration />
               <h2 className="feed-text mt-5 font-display text-xl font-bold">No homes listed yet</h2>
@@ -1557,8 +1540,8 @@ export default function DashboardPage() {
             return (
               <article
                 key={listing.id}
-                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-white ${
-                  hasMedia ? "bg-neutral-950" : "bg-gradient-to-br from-emerald-950 via-neutral-900 to-black"
+                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-[var(--feed-text)] ${
+                  hasMedia ? "bg-[var(--theme-bg)]" : "bg-[var(--theme-surface-raised)]"
                 }`}
               >
                 {/* Media layer (video or image) */}

@@ -12,6 +12,8 @@
   --theme-bg: #ffffff;
   --theme-surface: #ffffff;
   --theme-surface-raised: #f4f7f6;
+  --theme-border: rgba(11, 12, 14, 0.12);
+  --theme-field: #f4f7f6;
   --theme-text-primary: #0b0c0e;
   --theme-text-muted: #626b72;
   --theme-text-link: #0c7355;
@@ -62,7 +64,8 @@ html::-webkit-scrollbar {
 body {
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
-  background: #ffffff;
+  background: var(--theme-bg);
+  color: var(--theme-text-primary);
   overscroll-behavior-y: none;
 }
 
@@ -411,7 +414,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--theme-bg);
   backdrop-filter: blur(1.5px);
   padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
@@ -461,9 +464,9 @@ body {
 
 .safecrib-offline-dialog {
   width: min(100%, 26rem);
-  border: 1px solid rgba(11, 12, 14, 0.12);
+  border: 1px solid var(--theme-border);
   border-radius: 4px;
-  background: var(--safecrib-white);
+  background: var(--theme-surface);
   padding: 1.75rem;
   text-align: center;
   animation: safecrib-rise 0.22s ease-out;
@@ -534,8 +537,8 @@ body {
 .safecrib-modal {
   width: 100%;
   max-width: 26rem;
-  background: var(--safecrib-white);
-  border: 1px solid rgba(11, 12, 14, 0.12);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 4px;
   padding: 1.75rem;
   animation: safecrib-rise 0.18s ease-out;

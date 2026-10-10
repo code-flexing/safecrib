@@ -8,6 +8,7 @@ import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { apiFetch, cachedApiFetch, displayName as getDisplayName, getAuthenticatedDisplayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, logoutSession, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar } from "@/lib/api";
 
 type DashboardNavProps = {
@@ -15,7 +16,6 @@ type DashboardNavProps = {
   pageStatus: "none" | "pending" | "approved" | "rejected";
   canManagePage?: boolean;
   supportCount?: number;
-  darkMode?: boolean;
 };
 
 const items = [
@@ -58,7 +58,9 @@ function SupportCount({ count }: { count: number }) {
   return <span aria-label={`${count} open support conversations`} className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-safecrib-green px-1 text-[10px] font-bold text-white">{count > 9 ? "9+" : count}</span>;
 }
 
-export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, supportCount = 0, darkMode = false }: DashboardNavProps) {
+export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, supportCount = 0 }: DashboardNavProps) {
+  const { resolvedTheme } = useTheme();
+  const darkMode = resolvedTheme !== "light";
   const pathname = usePathname();
   const pageLabel = pageStatus === "none" ? "Create provider Page" : "My provider Page";
   const pageActive = isRouteActive(pathname, "/page");

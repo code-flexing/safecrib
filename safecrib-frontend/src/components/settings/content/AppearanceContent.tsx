@@ -7,7 +7,7 @@ import { SettingsSection, SettingsSectionDivider } from "@/components/settings/S
 import { useToast } from "@/components/ui/Toast";
 
 export function AppearanceContent() {
-  const { mode, setMode } = useTheme();
+  const { mode, resolvedTheme, setMode } = useTheme();
   const [saved, setSaved] = useState(false);
   const { showToast } = useToast();
 
@@ -26,6 +26,7 @@ export function AppearanceContent() {
   };
 
   const options = [
+    { value: "system", label: "System" },
     { value: "light", label: "Light" },
     { value: "dim", label: "Dim" },
     { value: "dark", label: "Dark" },
@@ -40,6 +41,7 @@ export function AppearanceContent() {
               key={option.value}
               type="button"
               onClick={() => handleModeChange(option.value as ThemeMode)}
+              aria-pressed={mode === option.value}
               className={`w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors
                 ${mode === option.value
                   ? "border-safecrib-green bg-safecrib-green/10 text-safecrib-green"
@@ -55,8 +57,8 @@ export function AppearanceContent() {
 
       <SettingsSection title="System" description="System-level preferences.">
         <SettingsRow
-          label="System theme"
-          description={mode === "light" ? "Light" : mode === "dim" ? "Dim" : "Dark"}
+          label="Current appearance"
+          description={mode === "system" ? `Following device preference (${resolvedTheme}).` : `Using the manually selected ${mode} appearance.`}
         />
       </SettingsSection>
     </>

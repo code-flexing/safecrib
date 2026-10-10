@@ -12,16 +12,25 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 function readThemeMode(): ThemeMode {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return value === "light" || value === "dim" || value === "dark" ? value : "light";
+    return value === "light" || value === "dim" || value === "dark" || value === "system" ? value : "system";
   } catch {
-    return "light";
+    return "system";
   }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("light");
+  const [mode, setMode] = useState<ThemeMode>("system");
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>("light");
   const [ready, setReady] = useState(false);
-  const resolvedTheme: ResolvedTheme = mode === "system" ? "light" : mode;
+  const resolvedTheme: ResolvedTheme = mode === "system" ? systemTheme : mode;
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = () => setSystemTheme(media.matches ? "dark" : "light");
+    syncSystemTheme();
+    media.addEventListener("change", syncSystemTheme);
+    return () => media.removeEventListener("change", syncSystemTheme);
+  }, []);
 
   useEffect(() => {
     setMode(readThemeMode());
