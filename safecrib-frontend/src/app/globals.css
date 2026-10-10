@@ -39,6 +39,10 @@
   --badge-gold-glyph: #3b2a00;
   --badge-ring: rgba(255, 255, 255, 0.40);
 
+  /* Account-type badge colours (overrides stage colours when account type is known) */
+  --badge-admin: #2f6fed;
+  --badge-agent: #f28c28;
+
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -626,6 +630,9 @@ html[data-theme="dim"] {
   --badge-gold: #ffd86b;
   --badge-gold-glyph: #3b2a00;
   --badge-ring: rgba(0, 0, 0, 0.40);
+
+  --badge-admin: #5b9cff;
+  --badge-agent: #ff9f4d;
 }
 
 html[data-theme="dark"] {
@@ -660,6 +667,9 @@ html[data-theme="dark"] {
   --badge-gold: #ffd86b;
   --badge-gold-glyph: #3b2a00;
   --badge-ring: rgba(0, 0, 0, 0.45);
+
+  --badge-admin: #7fb0ff;
+  --badge-agent: #ffb366;
 }
 
 .verification-badge--green {

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { VerificationBadge, type VerificationStageResult, normalizeVerificationStage } from "@/components/verification/VerificationBadge";
+import { VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 
 export type UserNameSize = "sm" | "md" | "lg" | "xl";
 
@@ -49,7 +49,8 @@ export function seedVerificationCache(user: UserLike) {
   if (!user?.id) return;
   // Don't cache staff as a normal verification stage - staff is determined from role at render time
   if (isStaff(user)) return;
-  const stage = user.verification ?? (user.isVerified ? { eligible: true, stage: "PROFILE_VERIFIED" as const, badge: "GREEN_CHECK" as const, badgeColor: "green" as const, riskBlocked: false, nextMilestone: null, criteria: [], userId: user.id, role: user.role } : null);
+  const { badgeColor, colorToken } = getAccountTypeColorToken(user);
+  const stage = user.verification ?? (user.isVerified ? { eligible: true, stage: "PROFILE_VERIFIED" as const, badge: "GREEN_CHECK" as const, badgeColor, colorToken, riskBlocked: false, nextMilestone: null, criteria: [], userId: user.id, role: user.role } : null);
   if (stage) {
     stageCache.set(user.id, stage);
     window.dispatchEvent(new Event("verification-stage-update"));
@@ -62,6 +63,7 @@ export function clearVerificationCache() {
 }
 
 const STAFF_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "MODERATOR", "SUPPORT"]);
+const PROVIDER_ROLES = new Set(["AGENT", "LANDLORD"]);
 
 function isStaff(user: UserLike): boolean {
   if (!user) return false;
@@ -69,8 +71,22 @@ function isStaff(user: UserLike): boolean {
   return STAFF_ROLES.has(role);
 }
 
+function isProvider(user: UserLike): boolean {
+  if (!user) return false;
+  const role = typeof user.role === "string" ? user.role.toUpperCase() : "";
+  return PROVIDER_ROLES.has(role);
+}
+
+function getAccountTypeColorToken(user: UserLike): { badgeColor: VerificationStageResult["badgeColor"]; colorToken: string } {
+  if (isStaff(user)) return { badgeColor: "admin", colorToken: "--badge-admin" };
+  if (isProvider(user)) return { badgeColor: "agent", colorToken: "--badge-agent" };
+  return { badgeColor: "green", colorToken: "--badge-green" };
+}
+
 export function getVerificationStage(user: UserLike): VerificationStageResult | null {
   if (!user) return null;
+
+  const { badgeColor, colorToken } = getAccountTypeColorToken(user);
 
   // Staff badge wins over any trust stage - check this FIRST
   if (isStaff(user)) {
@@ -78,7 +94,8 @@ export function getVerificationStage(user: UserLike): VerificationStageResult | 
       eligible: true,
       stage: "STAFF",
       badge: "STAFF_STAR",
-      badgeColor: "purple",
+      badgeColor,
+      colorToken,
       riskBlocked: false,
       nextMilestone: null,
       criteria: [],
@@ -87,17 +104,21 @@ export function getVerificationStage(user: UserLike): VerificationStageResult | 
     };
   }
 
-  if (user.verification?.eligible) return user.verification;
+  if (user.verification?.eligible) {
+    const v = user.verification;
+    return { ...v, badgeColor, colorToken };
+  }
   if (user.id) {
     const cached = stageCache.get(user.id);
-    if (cached) return cached;
+    if (cached) return { ...cached, badgeColor, colorToken };
   }
   if (user.isVerified) {
     return {
       eligible: true,
       stage: "PROFILE_VERIFIED",
       badge: "GREEN_CHECK",
-      badgeColor: "green",
+      badgeColor,
+      colorToken,
       riskBlocked: false,
       nextMilestone: null,
       criteria: [],

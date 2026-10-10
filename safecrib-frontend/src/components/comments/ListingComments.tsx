@@ -88,7 +88,7 @@ export function ListingComments({
   const [mentionCandidates, setMentionCandidates] = useState<MentionCandidate[]>([]);
   const [taggedUsers, setTaggedUsers] = useState<MentionCandidate[]>([]);
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [newReplyParentId, setNewReplyParentId] = useState<string | null>(null);
   const [commentError, setCommentError] = useState(initialError ?? "");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const inputId = `home-comment-${listingId}`;
@@ -136,6 +136,8 @@ export function ListingComments({
         }),
       });
       const newComment = unwrapData<ListingComment>(response);
+      const parentId = replyParentId ?? newComment.id;
+      setNewReplyParentId(parentId);
       setComments((current) => {
         const nextComments = [newComment, ...current];
         onCountChange(nextComments.length);
@@ -194,7 +196,7 @@ export function ListingComments({
     setMentionCandidates([]);
   };
 
-  const startReply = (item: ListingComment) => {
+const startReply = (item: ListingComment) => {
     const handle = item.user.username;
     setReplyParentId(item.id);
     setCommentError("");
@@ -212,6 +214,12 @@ export function ListingComments({
       setCommentMentionIds([]);
     }
   };
+
+  useEffect(() => {
+    if (newReplyParentId !== null) {
+      setNewReplyParentId(null);
+    }
+  }, [newReplyParentId]);
 
   const replyingTo = replyParentId ? comments.find((comment) => comment.id === replyParentId) : undefined;
 
@@ -251,43 +259,35 @@ export function ListingComments({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3 sm:px-6">
-        {loading ? (
-          <div className="space-y-4 py-4" aria-hidden="true">
-            <Skeleton className="h-4 w-40 rounded-full" />
-            <Skeleton className="h-12 w-full rounded-2xl" />
-            <Skeleton className="h-12 w-4/5 rounded-2xl" />
-          </div>
-        ) : (
-          <ul className="divide-y divide-theme-border/70">
-            {rootComments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                isAuthor={Boolean(ownerId && comment.user.id === ownerId)}
-                replies={comments.filter((c) => c.parentId === comment.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())}
-                expanded={expandedThreads.has(comment.id)}
-                onReply={startReply}
-                onExpandClick={() =>
-                  setExpandedThreads((current) => {
-                    const next = new Set(current);
-                    if (next.has(comment.id)) next.delete(comment.id);
-                    else next.add(comment.id);
-                    return next;
-                  })
-                }
-                renderBody={renderBody}
-              />
-            ))}
-            {!comments.length && !commentError && (
-              <li className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-theme-border text-theme-text-muted">
-                  <Icon name="message-circle" className="h-6 w-6" />
-                </div>
-                <p className="text-sm font-medium text-theme-text-primary">No comments yet. Start the conversation.</p>
-              </li>
-            )}
-          </ul>
-        )}
+{loading ? (
+            <div className="space-y-4 py-4" aria-hidden="true">
+              <Skeleton className="h-4 w-40 rounded-full" />
+              <Skeleton className="h-12 w-full rounded-2xl" />
+              <Skeleton className="h-12 w-4/5 rounded-2xl" />
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {rootComments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  isAuthor={Boolean(ownerId && comment.user.id === ownerId)}
+                  replies={comments.filter((c) => c.parentId === comment.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())}
+                  onReply={startReply}
+                  renderBody={renderBody}
+                  autoExpand={newReplyParentId === comment.id}
+                />
+              ))}
+              {!comments.length && !commentError && (
+                <li className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-theme-border text-theme-text-muted">
+                    <Icon name="message-circle" className="h-6 w-6" />
+                  </div>
+                  <p className="text-sm font-medium text-theme-text-primary">No comments yet. Start the conversation.</p>
+                </li>
+              )}
+            </ul>
+          )}
       </div>
 
       <CommentComposer

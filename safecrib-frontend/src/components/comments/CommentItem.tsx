@@ -1,12 +1,9 @@
 "use client";
 
-import { useId } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-import { Icon } from "@/components/ui/Icon";
 import { UserName } from "@/components/common/UserName";
 import { CommentAvatar } from "./CommentAvatar";
-import { UserVerificationBadge } from "./UserVerificationBadge";
 
 export interface ListingComment {
   id: string;
@@ -40,10 +37,9 @@ interface CommentItemProps {
   depth?: number;
   isAuthor?: boolean;
   replies?: ListingComment[];
-  expanded?: boolean;
   onReply?: (comment: ListingComment) => void;
-  onExpandClick?: () => void;
   renderBody?: (comment: ListingComment) => React.ReactNode;
+  autoExpand?: boolean;
 }
 
 function formatCommentTime(iso: string) {
@@ -58,36 +54,59 @@ function formatCommentTime(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
+const REPLY_NAME_SIZE = "text-[12px]";
+const REPLY_TEXT_SIZE = "text-[13px] leading-tight";
+const REPLY_TIME_SIZE = "text-[11px]";
+const CONNECTOR_LEFT_OFFSET = 15;
+const REPLY_INDENT = 12;
+const GAP_COMMENT_REPLIES = 8;
+const GAP_REPLIES = 8;
+const ACTION_GAP = 12;
+
 export function CommentItem({
   comment,
   depth = 0,
   isAuthor = false,
   replies = [],
-  expanded = false,
   onReply,
-  onExpandClick,
   renderBody,
+  autoExpand = false,
 }: CommentItemProps) {
   const commentTime = formatCommentTime(comment.createdAt);
-  const showRepliesToggle = replies.length > 1;
-  const showFirstReplyOnly = replies.length > 1 && !expanded;
-  const visibleReplies = showFirstReplyOnly ? replies.slice(0, 1) : replies;
-  const remainingRepliesCount = replies.length - visibleReplies.length;
+  const hasReplies = replies.length > 0;
+  const [expanded, setExpanded] = useState(autoExpand || false);
+
+  const isReply = depth > 0;
+  const nameSize = isReply ? REPLY_NAME_SIZE : "text-xs";
+  const textSize = isReply ? REPLY_TEXT_SIZE : "text-sm leading-6";
+  const timeSize = isReply ? REPLY_TIME_SIZE : "text-xs";
+  const showVerification = isReply;
+  const actionGap = isReply ? "gap-[3px]" : `gap-[${ACTION_GAP}px]`;
+  const marginLeft = isReply ? `${CONNECTOR_LEFT_OFFSET + REPLY_INDENT}px` : `${Math.min(depth, 4) * 16}px`;
+
+  const toggleReplies = () => setExpanded((prev) => !prev);
 
   return (
-    <li key={comment.id} className="py-3 first:pt-2 last:pb-2" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
+    <li
+      key={comment.id}
+      className={`py-2 first:pt-1 last:pb-1 ${isReply ? "mt-1" : ""}`}
+      style={{ marginLeft }}
+    >
       <div className="group relative">
-        <div className="flex gap-3">
-          <CommentAvatar user={comment.user} small={depth > 0} />
+        <div className="flex gap-2">
+          <CommentAvatar
+            user={comment.user}
+            small={isReply}
+            showVerification={showVerification}
+          />
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <Link
                 href={`/profile/${encodeURIComponent(comment.user.id)}`}
-                className="font-semibold text-theme-text-primary transition hover:text-theme-text-link"
+                className={`font-semibold text-theme-text-primary transition hover:text-theme-text-link ${nameSize}`}
               >
-                <UserName user={comment.user} size="sm" showHandle={true} showVerificationBadge={false} />
+                <UserName user={comment.user} size={isReply ? "sm" : "sm"} showHandle={true} showVerificationBadge={false} />
               </Link>
-              <UserVerificationBadge userId={comment.user.id} />
               {isAuthor && (
                 <span
                   className="rounded-full bg-safecrib-green/15 px-2 py-0.5 text-[10px] font-bold text-safecrib-green"
@@ -96,12 +115,12 @@ export function CommentItem({
                   Author
                 </span>
               )}
-              <time dateTime={comment.createdAt} className="font-normal text-theme-text-muted">
+              <time dateTime={comment.createdAt} className={`font-normal text-theme-text-muted ${timeSize}`}>
                 {commentTime}
               </time>
             </div>
             {comment.body && (
-              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-theme-text-primary">
+              <p className={`mt-1 whitespace-pre-wrap ${textSize} text-theme-text-primary`}>
                 {renderBody ? renderBody(comment) : comment.body}
               </p>
             )}
@@ -118,49 +137,54 @@ export function CommentItem({
                 ))}
               </p>
             )}
-            <div className="mt-2">
+            <div className={`mt-1.5 flex items-center ${actionGap}`}>
+              {hasReplies && (
+                <button
+                  type="button"
+                  onClick={toggleReplies}
+                  aria-expanded={expanded}
+                  aria-controls={`${comment.id}-replies`}
+                  className="text-[12px] font-semibold text-safecrib-green transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green py-2 px-1 -ml-1"
+                >
+                  {expanded ? "Hide replies" : `View replies (${replies.length})`}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onReply?.(comment)}
-                className="rounded-full px-2.5 py-1 text-xs font-semibold text-theme-text-muted transition hover:bg-safecrib-green/10 hover:text-safecrib-green"
+                className="text-[12px] font-semibold text-theme-text-muted transition hover:text-safecrib-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green py-2 px-1"
               >
                 Reply
               </button>
             </div>
           </div>
         </div>
-        {replies.length > 0 && (
+        {hasReplies && expanded && (
           <ul
-            className={`mt-2 space-y-2 border-l border-black/10 pl-4 ${
-              depth === 0 ? "ml-[18px]" : "ml-4"
-            }`}
+            id={`${comment.id}-replies`}
+            className="relative"
             role="group"
             aria-label="Replies"
+            style={{ paddingLeft: isReply ? 0 : CONNECTOR_LEFT_OFFSET }}
           >
-            {visibleReplies.map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                depth={depth + 1}
-                isAuthor={isAuthor}
-                renderBody={renderBody}
-                onReply={onReply}
-              />
-            ))}
-            {showRepliesToggle && (
-              <li className="mt-1">
-                <button
-                  type="button"
-                  onClick={onExpandClick}
-                  aria-expanded={expanded}
-                  aria-controls={`${comment.id}-replies`}
-                  className="flex items-center gap-2 text-xs font-semibold text-safecrib-green transition hover:underline"
-                >
-                  <span aria-hidden="true" className="h-px w-6 bg-safecrib-green/40" />
-                  {expanded ? "Hide replies" : `View ${remainingRepliesCount} more ${remainingRepliesCount === 1 ? "reply" : "replies"}`}
-                </button>
-              </li>
-            )}
+            <div
+              className="absolute top-0 bottom-0 w-px bg-black/10"
+              style={{ left: isReply ? REPLY_INDENT / 2 : CONNECTOR_LEFT_OFFSET }}
+              aria-hidden="true"
+            />
+            <div className={`space-y-[${GAP_REPLIES}px] mt-[${GAP_COMMENT_REPLIES}px] pl-[${REPLY_INDENT}px]`}>
+              {replies.map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  comment={reply}
+                  depth={depth + 1}
+                  isAuthor={isAuthor}
+                  replies={[]}
+                  renderBody={renderBody}
+                  onReply={onReply}
+                />
+              ))}
+            </div>
           </ul>
         )}
       </div>
