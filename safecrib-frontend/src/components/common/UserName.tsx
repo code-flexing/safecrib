@@ -234,7 +234,7 @@ export function UserName({
   );
 
   return (
-    <span className={`inline-flex items-center ${className ?? ""}`}>
+    <span className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
       {nameContent}
       {showBadge && stage && <VerificationBadgeWithPopover verification={stage} size={size} />}
       {showHandle && handle && <span className={`ml-1.5 ${SIZE_CLASSES[size].name} ${handleClassName} shrink-0`}>@{handle}</span>}

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import type { VerificationStageResult } from "@/components/verification/VerificationBadge";
@@ -12,9 +12,9 @@ import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionMo
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { Button } from "@/components/ui/Button";
+
 import { Icon } from "@/components/ui/Icon";
-import { Modal } from "@/components/ui/Modal";
+
 import { normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 import { useNotify } from "@/components/ui/Toast";
 import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
@@ -178,32 +178,6 @@ const FEED_CSS = `
   stroke: var(--feed-on-accent) !important;
 }
 
-/* Glass pill button (View crib) - simplified without backdrop */
-.safecrib-feed .feed-btn--glass {
-  --btn-glass-tint: rgba(16, 185, 129, 0.9);
-  --btn-glass-border: rgba(255, 255, 255, 0.2);
-  background: var(--btn-glass-tint) !important;
-  border: 1px solid var(--btn-glass-border) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  border-radius: 9999px !important;
-  transition: transform 0.1s ease, background 0.15s ease !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.safecrib-feed .feed-btn--glass:hover {
-  --btn-glass-tint: rgba(16, 185, 129, 1);
-  background: var(--btn-glass-tint) !important;
-}
-.safecrib-feed .feed-btn--glass:active {
-  transform: scale(0.98);
-}
-.safecrib-feed .feed-btn--glass:focus-visible {
-  outline: 2px solid var(--feed-accent);
-  outline-offset: 2px;
-}
-
 /* Counts under the rail sit on the photo, so they get a strong shadow */
 .safecrib-feed .feed-count {
   color: #ffffff !important;
@@ -347,6 +321,11 @@ function formatEngagementCount(count: number) {
   return String(count);
 }
 
+function toBadgeColor(color?: string | null): VerificationStageResult["badgeColor"] {
+  if (color === "gold") return "gold";
+  if (color === "blue" || color === "charcoal") return "charcoal";
+  return "green";
+}
 /* ---------- Price ---------- */
 function ListingPriceTag({ listing }: { listing: Listing }) {
   const priced = typeof listing.price === "number";
@@ -605,7 +584,6 @@ function ListingActionTray({
   onCloseMenu,
 }: ListingActionTrayProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -624,18 +602,6 @@ function ListingActionTray({
       document.removeEventListener("keydown", closeOnEsc);
     };
   }, [menuOpen, onCloseMenu]);
-
-  const copyListingLink = async () => {
-    try {
-      const url = `${window.location.origin}/dashboard/listings/${listing.id}`;
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-      onCloseMenu();
-    } catch {
-      // ignore
-    }
-  };
 
   return (
     <div
@@ -666,9 +632,21 @@ function ListingActionTray({
           aria-label={`Open comments, ${commentCount} total`}
           className={railBtn}
         >
-          <Icon name="message-circle" className="h-5 w-5" />
+          <Icon name="message-square" className="h-5 w-5" />
         </button>
         <span className={railCount}>{formatEngagementCount(commentCount)}</span>
+      </div>
+
+      {/* View listing */}
+      <div className="flex flex-col items-center gap-1">
+        <Link
+          href={`/dashboard/listings/${listing.id}`}
+          aria-label="View listing"
+          className={railBtn}
+        >
+          <Icon name="eye" className="h-5 w-5" />
+        </Link>
+        <span className={railCount}>View</span>
       </div>
 
       {/* Recommend (trust) */}
@@ -706,14 +684,6 @@ function ListingActionTray({
         </div>
       )}
 
-      {/* Share = copy link */}
-      <div className="flex flex-col items-center gap-1">
-        <button type="button" onClick={() => void copyListingLink()} aria-label="Copy link" className={railBtn}>
-          <Icon name="share-2" className="h-5 w-5" />
-        </button>
-        <span className={railCount}>{copied ? "Copied" : "Share"}</span>
-      </div>
-
       {/* More */}
       <div className="relative">
         <button
@@ -732,15 +702,6 @@ function ListingActionTray({
             role="menu"
             className="feed-surface absolute bottom-0 right-11 z-50 w-44 overflow-hidden rounded-xl p-1 animate-in fade-in zoom-in-95 duration-150"
           >
-            <Link
-              role="menuitem"
-              href={`/dashboard/listings/${listing.id}`}
-              onClick={onCloseMenu}
-              className="feed-text flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
-            >
-              <Icon name="external-link" className="h-4 w-4" />
-              Open post
-            </Link>
             {listing.ownerId && (
               <Link
                 role="menuitem"
@@ -1513,7 +1474,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
         {/* Empty state when no listings exist */}
         {listings.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-neutral-950 px-6 pb-12 pt-28 text-center" aria-label="No listings available">
@@ -1568,25 +1528,28 @@ export default function DashboardPage() {
             const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
             const hasMedia = Boolean(image || listing.video);
 
+            // Build the owner's verification object once and reuse it below
+            const ownerVerificationRaw = listing.owner?.verification;
+            const ownerVerification: VerificationStageResult | null = ownerVerificationRaw
+              ? {
+                  eligible: ownerVerificationRaw.eligible ?? true,
+                  stage: (ownerVerificationRaw.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED",
+                  badge: (ownerVerificationRaw.badge as VerificationStageResult["badge"]) || "GREEN_CHECK",
+                  badgeColor: toBadgeColor(ownerVerificationRaw.badgeColor),
+                  riskBlocked: ownerVerificationRaw.riskBlocked ?? false,
+                  nextMilestone: null,
+                  criteria: [],
+                }
+              : null;
+
             // Seed verification cache for provider
             if (listing.ownerId && listing.owner) {
-              const verification = listing.owner.verification;
-              const stage = (verification?.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED";
-              const badge = (verification?.badge as VerificationStageResult["badge"]) || "GREEN_CHECK";
               seedVerificationCache({
                 id: listing.ownerId,
                 displayName: listing.owner.displayName,
                 username: listing.owner.username,
-                verification: verification ? {
-                  eligible: verification.eligible ?? true,
-                  stage,
-                  badge,
-                  badgeColor: verification.badgeColor || "green",
-                  riskBlocked: verification.riskBlocked ?? false,
-                  nextMilestone: null,
-                  criteria: [],
-                } : null,
-                isVerified: verification?.eligible ?? false,
+                verification: ownerVerification,
+                isVerified: ownerVerificationRaw?.eligible ?? false,
                 role: "AGENT",
               });
             }
@@ -1681,40 +1644,39 @@ export default function DashboardPage() {
                           </button>
                         </div>
                       ) : null}
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <UserName user={{ id: listing.ownerId, displayName: listing.owner?.displayName, username: listing.owner?.username, verification: listing.owner?.verification ? { eligible: listing.owner.verification.eligible ?? true, stage: (listing.owner.verification.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED", badge: (listing.owner.verification.badge as VerificationStageResult["badge"]) || "GREEN_CHECK", badgeColor: listing.owner.verification.badgeColor || "green", riskBlocked: listing.owner.verification.riskBlocked ?? false, nextMilestone: null, criteria: [] } : null, isVerified: listing.owner?.verification?.eligible ?? false, role: "AGENT" }} size="sm" showHandle={false} nameClassName="text-white truncate text-[14px] font-bold" />
+                      <div className="flex min-w-0 items-center gap-1.5 leading-none">
+                        <UserName
+                          user={{
+                            id: listing.ownerId,
+                            displayName: listing.owner?.displayName,
+                            username: listing.owner?.username,
+                            verification: ownerVerification,
+                            isVerified: ownerVerificationRaw?.eligible ?? false,
+                            role: "AGENT",
+                          }}
+                          size="sm"
+                          showHandle={false}
+                          nameClassName="text-white truncate text-[14px] font-bold leading-5"
+                        />
                       </div>
                     </div>
 
-                    {/* Row 2: title + description underneath, same left edge as the avatar */}
-                    <Link href={`/dashboard/listings/${listing.id}`} className="mt-1.5 block">
-                      <h2 className="feed-text line-clamp-1 text-left text-[14px] font-semibold leading-snug">
-                        {listing.title ?? "Verified Campus Home"}
-                      </h2>
-                    </Link>
-                    {listing.description && (
-                      <p className="feed-muted mt-0.5 text-left text-xs leading-snug line-clamp-1">
-                        {listing.description}
-                      </p>
-                    )}
+                    {/* Row 2: title */}
+                    <h2 className="feed-text mt-2 line-clamp-1 text-left text-[14px] font-semibold leading-5">
+                      {listing.title ?? "Verified Campus Home"}
+                    </h2>
 
                     {/* Location */}
                     {location && (
-                      <p className="feed-muted mt-1.5 flex items-center justify-start gap-1.5 text-xs font-medium">
+                      <p className="feed-muted mt-2 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
                         <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{location}</span>
                       </p>
                     )}
 
-                    {/* Price + one clear action */}
+                    {/* Price */}
                     <div className="mt-2 flex items-center justify-between gap-3">
                       <ListingPriceTag listing={listing} />
-                      <Link
-                        href={`/dashboard/listings/${listing.id}`}
-                        className="feed-btn--glass inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white active:scale-95"
-                      >
-                        View crib
-                      </Link>
                     </div>
                   </div>
 

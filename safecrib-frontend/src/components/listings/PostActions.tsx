@@ -13,7 +13,6 @@ type PostActionsProps = {
   likeCount: number;
   isLiked: boolean;
   commentCount: number;
-  shareCount: number;
   viewCount: number;
   isBookmarked: boolean;
   agentPhone?: string;
@@ -26,7 +25,7 @@ type PostActionsProps = {
   onLike: (listingId: string, liked: boolean) => Promise<void>;
   onComment: (listingId: string) => void;
   onCommentPrefetch?: (listingId: string) => void;
-  onShare: (listingId: string) => Promise<void>;
+  onView?: (listingId: string) => void;
   onBookmark: (listingId: string) => Promise<void>;
   onRecommend?: (providerId: string, recommended: boolean) => Promise<void>;
   onCall?: () => void;
@@ -40,7 +39,6 @@ export function PostActions({
   likeCount,
   isLiked,
   commentCount,
-  shareCount,
   viewCount,
   isBookmarked,
   agentPhone,
@@ -53,7 +51,7 @@ export function PostActions({
   onLike,
   onComment,
   onCommentPrefetch,
-  onShare,
+  onView,
   onBookmark,
   onRecommend,
   onCall,
@@ -108,14 +106,15 @@ export function PostActions({
           <Icon name="message-circle" className="h-4 w-4" />
           <span>{commentCount.toLocaleString()}</span>
         </button>
-        <span className="flex items-center gap-2 rounded-full px-2.5 py-1.5" aria-label={`${shareCount} shares`}>
-          <Icon name="share-2" className="h-4 w-4" />
-          <span>{shareCount.toLocaleString()}</span>
-        </span>
-        <span className="flex items-center gap-2 rounded-full px-2.5 py-1.5" aria-label={`${viewCount} views`}>
+        <button
+          type="button"
+          onClick={() => onView?.(listingId)}
+          aria-label={`View crib`}
+          className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm transition-colors hover:bg-black/[0.03]"
+        >
           <Icon name="eye" className="h-4 w-4" />
           <span>{viewCount.toLocaleString()}</span>
-        </span>
+        </button>
         {providerId && onRecommend && (
           <RecommendButton
             providerId={providerId}

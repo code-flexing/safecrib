@@ -40,6 +40,7 @@ function makeService() {
   };
   const prisma = {
     user: {
+      findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn().mockResolvedValue({
         displayName: 'Student',
         profilePicture: 'student-photo',
@@ -54,6 +55,7 @@ function makeService() {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    providerActivityDay: { groupBy: vi.fn().mockResolvedValue([]) },
     listingPhoto: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
     listingVideo: { findUnique: vi.fn(), create: vi.fn(), delete: vi.fn() },
     listingLike: {
@@ -94,6 +96,40 @@ function makeService() {
 }
 
 describe('ListingsService listing media and pricing rules', () => {
+  it('includes the provider-page profile picture in listing responses', async () => {
+    const { service, prisma } = makeService();
+    prisma.listing.findUnique.mockResolvedValueOnce(makeListing({
+      owner: {
+        id: 'agent_1',
+        displayName: 'Agent',
+        profilePicture: null,
+        studentProfile: null,
+        providerPage: { profilePicture: 'owner-page-photo' },
+        verification: null,
+      },
+      providerPage: { profilePicture: 'listing-page-photo' },
+      _count: { likes: 0, views: 0, comments: 0, bookmarks: 0 },
+    }) as never);
+
+    const result = await service.getListing('listing_1');
+
+    expect(result.owner?.profilePicture).toBe('listing-page-photo');
+    expect(prisma.listing.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        owner: expect.objectContaining({
+          select: expect.objectContaining({
+            providerPage: expect.objectContaining({
+              select: expect.objectContaining({ profilePicture: true }),
+            }),
+          }),
+        }),
+        providerPage: expect.objectContaining({
+          select: expect.objectContaining({ profilePicture: true }),
+        }),
+      }),
+    }));
+  });
+
   it('allows listing owners to like their own home without notifying themselves', async () => {
     const { service, prisma, notifications } = makeService();
     prisma.listing.findUnique.mockResolvedValueOnce({ id: 'listing_1', ownerId: 'agent_1', status: 'VERIFIED' });
