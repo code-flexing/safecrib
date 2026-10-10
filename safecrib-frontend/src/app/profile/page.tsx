@@ -348,7 +348,7 @@ export default function ProfilePage() {
               <span className="font-mono text-[0.6rem] tracking-[0.16em] text-white/40">{user?.id ? `ID ${user.id.slice(0, 8).toUpperCase()}` : "ID RECORD"}</span>
             </div>
             <div className="mt-7 flex flex-col gap-6 sm:flex-row sm:items-center">
-              <ProfileAvatar src={avatarUrl} seed={user?.id ?? user?.email ?? "safecrib-member-avatar"} alt={`${name} profile`} size="large" className="border-8 border-[#123b2f] ring-1 ring-[#a8e7cb]/40" />
+              <ProfileAvatar src={avatarUrl} seed={user?.id ?? user?.email ?? "safecrib-member-avatar"} alt={`${name} profile`} size="large" className="border-8 border-[#123b2f]" />
               <div className="min-w-0 flex-1">
                 <UserName user={toUserLike(user)} size="xl" showHandle={true} fallback="Your profile" nameClassName="break-words font-display text-3xl font-bold tracking-tight text-white sm:text-5xl" handleClassName="font-normal text-white/60" />
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/60"><span className="text-[#a8e7cb]">{accountLabel}</span><span aria-hidden="true">/</span>{dateLabel(user?.createdAt) && <span>Member since {dateLabel(user?.createdAt)}</span>}</div>
