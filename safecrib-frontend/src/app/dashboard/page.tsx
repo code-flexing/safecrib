@@ -1082,7 +1082,9 @@ export default function DashboardPage() {
       if (/^(https?:|data:|blob:)/i.test(reference) || (reference.startsWith("/") && !reference.startsWith("/api/"))) {
         return reference;
       }
-      return getCachedMediaUrl(reference, "avatar_sm") ?? await resolveMediaUrl(reference, "avatar_sm");
+      // Avoid the broken production avatar_sm transformation (Cloudinary receives it as t_c_fill).
+      // The original AVATAR delivery URL is valid and needs no transformation to render.
+      return getCachedMediaUrl(reference) ?? await resolveMediaUrl(reference);
     };
 
     const publicProfileRequests = new Map<string, Promise<{ profilePicture?: string | null; providerPageProfilePicture?: string | null } | null>>();
