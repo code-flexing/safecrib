@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { getCachedMediaUrl, resolveMediaUrl } from "@/lib/api";
+import { UserVerificationBadge } from "./UserVerificationBadge";
 
 const AVATAR_TONES = [
   "bg-safecrib-green/15 text-safecrib-green",
@@ -23,11 +24,13 @@ interface CommentAvatarProps {
     providerPage?: { profilePicture?: string | null } | null;
   };
   small?: boolean;
+  showVerification?: boolean;
 }
 
 export function CommentAvatar({
   user,
   small = false,
+  showVerification = false,
 }: CommentAvatarProps) {
   const [avatarSources, setAvatarSources] = useState<{ src: string | null; fallbackSrc: string | null }>({ src: null, fallbackSrc: null });
   const [resolving, setResolving] = useState(true);
@@ -71,13 +74,13 @@ export function CommentAvatar({
   }
   const tone = AVATAR_TONES[hash % AVATAR_TONES.length];
 
-  const sizeClass = small ? "h-8 w-8" : "h-10 w-10";
+  const sizeClass = small ? "h-8 w-8" : "w-9 h-9";
   const initialClass = small ? "text-xs" : "text-sm";
 
   const fallback = (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${sizeClass} ${initialClass} ${tone}`}
+      className={`flex shrink-0 items-center justify-center aspect-square rounded-full font-semibold ${sizeClass} ${initialClass} ${tone}`}
     >
       {letter}
     </span>
@@ -85,14 +88,24 @@ export function CommentAvatar({
 
   return (
     <span className="relative inline-flex" aria-hidden={!avatarSources.src && !avatarSources.fallbackSrc && !resolving}>
-      {avatarSources.src || avatarSources.fallbackSrc || resolving ? <ProfileAvatar
-        src={avatarSources.src}
-        fallbackSrc={avatarSources.fallbackSrc}
-        alt={`${user.displayName ?? user.username ?? "Member"} profile`}
-        size={small ? "small" : "medium"}
-        loading={resolving}
-        className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
-      /> : fallback}
+      {avatarSources.src || avatarSources.fallbackSrc || resolving ? (
+        <>
+          <ProfileAvatar
+            src={avatarSources.src}
+            fallbackSrc={avatarSources.fallbackSrc}
+            alt={`${user.displayName ?? user.username ?? "Member"} profile`}
+            size={small ? "small" : "medium"}
+            loading={resolving}
+            className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
+          />
+          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} />}
+        </>
+      ) : (
+        <>
+          {fallback}
+          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} />}
+        </>
+      )}
     </span>
   );
 }

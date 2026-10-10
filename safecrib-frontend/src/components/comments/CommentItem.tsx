@@ -75,7 +75,7 @@ export function CommentItem({
   const remainingRepliesCount = replies.length - visibleReplies.length;
 
   return (
-    <li key={comment.id} className="py-4 first:pt-2 last:pb-2" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
+    <li key={comment.id} className="py-3 first:pt-2 last:pb-2" style={{ marginLeft: `${Math.min(depth, 4) * 16}px` }}>
       <div className="group relative">
         <div className="flex gap-3">
           <CommentAvatar user={comment.user} small={depth > 0} />
@@ -130,7 +130,13 @@ export function CommentItem({
           </div>
         </div>
         {replies.length > 0 && (
-          <ul className="mt-2 space-y-2 border-l-2 border-theme-border pl-3" role="group" aria-label="Replies">
+          <ul
+            className={`mt-2 space-y-2 border-l border-black/10 pl-4 ${
+              depth === 0 ? "ml-[18px]" : "ml-4"
+            }`}
+            role="group"
+            aria-label="Replies"
+          >
             {visibleReplies.map((reply) => (
               <CommentItem
                 key={reply.id}

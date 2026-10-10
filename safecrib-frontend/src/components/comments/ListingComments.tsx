@@ -7,11 +7,17 @@ import { Icon } from "@/components/ui/Icon";
 import Link from "next/link";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { cachedApiFetch, unwrapData, apiFetch } from "@/lib/api";
+import { cachedApiFetch, unwrapData, apiFetch, getCachedApi, seedListingDetailCache } from "@/lib/api";
 import { CommentItem, type ListingComment } from "./CommentItem";
 import { CommentComposer } from "./CommentComposer";
 import { UserName } from "@/components/common/UserName";
 import { CommentAvatar } from "./CommentAvatar";
+
+type CachedListingDetail = {
+  id: string;
+  commentCount?: number;
+  [key: string]: unknown;
+};
 
 interface MentionCandidate {
   id: string;
@@ -135,6 +141,15 @@ export function ListingComments({
         onCountChange(nextComments.length);
         return nextComments;
       });
+      // Patch listing detail cache with updated comment count
+      const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(listingId)}`);
+      if (cachedDetail) {
+        const updated = {
+          ...cachedDetail,
+          commentCount: (cachedDetail.commentCount ?? 0) + 1,
+        };
+        seedListingDetailCache(updated);
+      }
       setCommentBody("");
       setReplyParentId(null);
       setCommentMentionIds([]);

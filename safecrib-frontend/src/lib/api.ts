@@ -264,6 +264,20 @@ export function getCachedApi<T>(path: string): T | null {
   return readClientCache<T>(path);
 }
 
+export function getCachedListingDetail<T>(id: string): T | null {
+  return readClientCache<T>(`/api/v1/listings/${encodeURIComponent(id)}`);
+}
+
+export function seedListingDetailCache(value: unknown) {
+  if (typeof window === "undefined") return;
+  try {
+    const listing = value as { id?: string };
+    if (listing?.id) {
+      writeClientCache(`/api/v1/listings/${encodeURIComponent(listing.id)}`, value);
+    }
+  } catch { /* ignore */ }
+}
+
 function writeClientCache(path: string, value: unknown) {
   if (typeof window === "undefined") return;
   const cachePayload = JSON.stringify(value);

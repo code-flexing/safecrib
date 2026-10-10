@@ -37,6 +37,7 @@ import {
   primeCurrentUserCache,
   refreshCachedApi,
   resolveMediaUrl,
+  seedListingDetailCache,
   setPersistedVerification,
   subscribeClientCacheUpdates,
   unwrapData,
@@ -77,6 +78,8 @@ export type Listing = {
   providerActiveDays?: number;
   recommendationScore?: number;
 };
+
+type CachedListingDetail = Listing & { likedByCurrentUser?: boolean; likeCount?: number; providerRecommendationCount?: number; commentCount?: number };
 
 export type Profile = {
   id?: string;
@@ -839,7 +842,9 @@ export default function DashboardPage() {
       }
 
       if (path === "/api/v1/listings") {
-        setListings(extractListings(value));
+        const listings = extractListings(value);
+        setListings(listings);
+        listings.forEach(seedListingDetailCache);
         return;
       }
 
@@ -897,10 +902,14 @@ export default function DashboardPage() {
 
     const cachedListings = getCachedApi<unknown>("/api/v1/listings");
     if (cachedListings) {
-      setListings(extractListings(cachedListings));
+      const listings = extractListings(cachedListings);
+      setListings(listings);
+      listings.forEach(seedListingDetailCache);
       void refreshCachedApi<unknown>("/api/v1/listings")
         .then((response) => {
-          setListings(extractListings(response));
+          const fresh = extractListings(response);
+          setListings(fresh);
+          fresh.forEach(seedListingDetailCache);
         })
         .catch(() => undefined);
     }
@@ -1020,7 +1029,11 @@ export default function DashboardPage() {
         }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));
-      if (homes) setListings(extractListings(homes));
+      if (homes) {
+        const listings = extractListings(homes);
+        setListings(listings);
+        listings.forEach(seedListingDetailCache);
+      }
       setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
       setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
       const conversationList = Array.isArray(conversations) ? conversations : [];
@@ -1238,6 +1251,138 @@ export default function DashboardPage() {
     };
   }, [listings]);
 
+  // Prefetch logic for active card and interactions
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (conn?.saveData || conn?.effectiveType === "2g" || conn?.effectiveType === "slow-2g") return;
+
+    const prefetchQueue = new Set<string>();
+    let inFlight = 0;
+    const MAX_IN_FLIGHT = 2;
+    const activeCardRef = { current: null as string | null };
+    const hoverTimerRef = { current: null as ReturnType<typeof setTimeout> | null };
+    const ioRef = { current: null as IntersectionObserver | null };
+
+    const runPrefetch = (listingId: string) => {
+      if (prefetchQueue.has(listingId)) return;
+      prefetchQueue.add(listingId);
+      const doPrefetch = () => {
+        inFlight++;
+        Promise.allSettled([
+          cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(listingId)}`),
+          cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(listingId)}/comments`).catch(() => null),
+          listingId ? cachedApiFetch<unknown>(`/api/v1/trust/users/${encodeURIComponent(listingId)}/verification-stage`).catch(() => null) : Promise.resolve(null),
+        ]).then(([homeRes, _commentsRes, verificationRes]) => {
+          if (homeRes.status === "fulfilled") {
+            try {
+              const home = unwrapData<CachedListingDetail>(homeRes.value);
+              if (home?.id) seedListingDetailCache(home);
+              if (home?.video?.mediaId) resolveMediaUrl(home.video.mediaId).catch(() => undefined);
+            } catch {}
+          }
+          if (verificationRes.status === "fulfilled" && verificationRes.value) {
+            try {
+              const home = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(listingId)}`);
+              if (home?.ownerId) {
+                const stage = normalizeVerificationStage(verificationRes.value);
+                if (stage) setPersistedVerification(home.ownerId, verificationRes.value);
+              }
+            } catch {}
+          }
+        }).finally(() => {
+          inFlight--;
+          prefetchQueue.delete(listingId);
+        });
+      };
+      const schedule = () => {
+        if (inFlight >= MAX_IN_FLIGHT) {
+          setTimeout(schedule, 100);
+          return;
+        }
+        if ("requestIdleCallback" in window) {
+          (window as Window & { requestIdleCallback: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number }).requestIdleCallback(doPrefetch, { timeout: 2000 });
+        } else {
+          setTimeout(doPrefetch, 0);
+        }
+      };
+      schedule();
+    };
+
+    const prefetchRoute = (listingId: string) => {
+      try { router.prefetch(`/dashboard/listings/${listingId}`); } catch {}
+    };
+
+    // IntersectionObserver for active card (60% visible for ~300ms)
+    ioRef.current = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const id = entry.target.getAttribute("data-listing-id");
+        if (!id) continue;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (activeCardRef.current !== id) {
+            activeCardRef.current = id;
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = setTimeout(() => {
+              runPrefetch(id);
+              prefetchRoute(id);
+            }, 300);
+          }
+        } else if (!entry.isIntersecting && activeCardRef.current === id) {
+          if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+          activeCardRef.current = null;
+        }
+      }
+    }, { threshold: [0, 0.3, 0.6, 1.0] });
+
+    const observeCards = () => {
+      if (!feedRef.current) return;
+      feedRef.current.querySelectorAll("[data-listing-id]").forEach((el) => {
+        if (ioRef.current) ioRef.current.observe(el);
+      });
+    };
+    observeCards();
+
+    // Hover/focus/pointerdown on interactive elements
+    const handleInteraction = (event: Event) => {
+      const target = event.target as HTMLElement;
+      const card = target.closest("[data-listing-id]");
+      if (!card) return;
+      const id = card.getAttribute("data-listing-id");
+      if (!id) return;
+      runPrefetch(id);
+      prefetchRoute(id);
+    };
+
+    const interactiveSelectors = [
+      'a[href^="/dashboard/listings/"]', // View crib link
+      'button[aria-label*="comment" i]', // Comment button
+      'button[aria-label*="Comment" i]',
+      '[data-action-tray-trigger]', // Action tray trigger
+    ];
+
+    const handleDelegated = (event: Event) => {
+      for (const sel of interactiveSelectors) {
+        const match = (event.target as Element).closest(sel);
+        if (match) {
+          handleInteraction(event);
+          break;
+        }
+      }
+    };
+
+    document.addEventListener("pointerdown", handleDelegated, { passive: true });
+    document.addEventListener("focusin", handleDelegated, { passive: true });
+    document.addEventListener("mouseover", handleDelegated, { passive: true });
+
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      if (ioRef.current) ioRef.current.disconnect();
+      document.removeEventListener("pointerdown", handleDelegated);
+      document.removeEventListener("focusin", handleDelegated);
+      document.removeEventListener("mouseover", handleDelegated);
+    };
+  }, [listings, router]);
+
   const refreshFeed = async () => {
     setNewPostsAvailable(false);
     clearClientCache("/api/v1/listings");
@@ -1245,7 +1390,9 @@ export default function DashboardPage() {
     feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     try {
       const result = await apiFetch<unknown>("/api/v1/listings");
-      setListings(extractListings(result));
+      const listings = extractListings(result);
+      setListings(listings);
+      listings.forEach(seedListingDetailCache);
     } catch {
       // Keep feed
     }
@@ -1261,6 +1408,11 @@ export default function DashboardPage() {
     try {
       await apiFetch(`/api/v1/listings/${listingId}/bookmark`, { method: isSaved ? "DELETE" : "POST" });
       setBookmarkedIds((current) => isSaved ? current.filter((id) => id !== listingId) : [...current, listingId]);
+      // Patch listing detail cache
+      const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(listingId)}`);
+      if (cachedDetail) {
+        // The listing detail doesn't have a bookmarked field, but we could add it if needed
+      }
       notifySuccess("Saved!");
     } catch {
       notifyError("Couldn't save that. Try again?", { action: { label: "Try again", onClick: () => toggleBookmark(listingId) } });
@@ -1321,6 +1473,22 @@ export default function DashboardPage() {
           recommendationScore: Math.round(trust * 0.45 + activeDays / 30 * 25 + recommendationSignal * 0.3),
         };
       }).sort((a, b) => (b.recommendationScore ?? 0) - (a.recommendationScore ?? 0)));
+      // Patch listing detail cache for all listings by this provider
+      const allCachedKeys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+        .filter((key): key is string => Boolean(key?.startsWith("safecrib_cache:/api/v1/listings/")));
+      for (const key of allCachedKeys) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(key) ?? "null");
+          if (cached?.ownerId === providerId) {
+            const updated = {
+              ...cached,
+              providerRecommendationCount: Math.max(0, (cached.providerRecommendationCount ?? 0) + (recommended ? -1 : 1)),
+            };
+            localStorage.setItem(key, JSON.stringify(updated));
+            localStorage.setItem(`${key}:updatedAt`, String(Date.now()));
+          }
+        } catch {}
+      }
       notifySuccess("Recommendation saved!");
     } catch (error) {
       const { key } = resolveNotificationKey(error, "recommend");
@@ -1564,6 +1732,7 @@ export default function DashboardPage() {
             return (
               <article
                 key={listing.id}
+                data-listing-id={listing.id}
                 className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-[var(--feed-text)] ${
                   hasMedia ? "bg-[var(--theme-bg)]" : "bg-[var(--theme-surface-raised)]"
                 }`}
@@ -1720,6 +1889,16 @@ export default function DashboardPage() {
                                 : item,
                             ),
                           );
+                          // Patch listing detail cache
+                          const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
+                          if (cachedDetail) {
+                            const updated = {
+                              ...cachedDetail,
+                              likedByCurrentUser: liked,
+                              likeCount: Math.max(0, (cachedDetail.likeCount ?? 0) + (liked ? 1 : -1)),
+                            };
+                            seedListingDetailCache(updated);
+                          }
                           if (liked) notifySuccess("Liked! 👍");
                         } catch (error) {
                           const { key } = resolveNotificationKey(error, "like");

@@ -1,6 +1,24 @@
 import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
 
-export type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN";
+function StaffStar({ size, ...props }: { size: number; [key: string]: unknown }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polygon points="12,1 15.2,5.6 19.4,6 16.2,9.7 17.7,14.5 12,11.4 6.3,14.5 7.8,9.7 4.6,6 8.8,5.6" />
+    </svg>
+  );
+}
+
+export type VerificationStage = "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN" | "STAFF";
 
 export type VerificationCriterion = {
   key: string;
@@ -14,8 +32,8 @@ export type VerificationStageResult = {
   role?: string;
   eligible: boolean;
   stage: VerificationStage;
-  badge: "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN";
-  badgeColor: "green" | "charcoal" | "gold";
+  badge: "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN" | "STAFF_STAR";
+  badgeColor: "green" | "charcoal" | "gold" | "purple";
   riskBlocked: boolean;
   nextMilestone: string | null;
   criteria: VerificationCriterion[];
@@ -38,6 +56,11 @@ const stageConfig = {
     color: "gold",
     label: "Trusted provider",
   },
+  STAFF: {
+    badge: "STAFF_STAR",
+    color: "purple",
+    label: "SafeCribs Team",
+  },
 } as const;
 
 const criterionLabels: Record<string, string> = {
@@ -56,16 +79,16 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
   const outer = recordValue(value);
   const response = recordValue(outer.data ?? value);
   const originalStage = response.stage;
-  if (originalStage !== "PROFILE_VERIFIED" && originalStage !== "AGENT_VERIFIED" && originalStage !== "TRUST_CROWN") return null;
+  if (originalStage !== "PROFILE_VERIFIED" && originalStage !== "AGENT_VERIFIED" && originalStage !== "TRUST_CROWN" && originalStage !== "STAFF") return null;
 
   const riskBlocked = response.riskBlocked === true;
   const stage: VerificationStage = riskBlocked ? "PROFILE_VERIFIED" : originalStage;
   const config = stageConfig[stage];
-  const badgeColor = typeof response.badgeColor === "string" && ["green", "charcoal", "gold"].includes(response.badgeColor)
-    ? response.badgeColor as "green" | "charcoal" | "gold"
+  const badgeColor = typeof response.badgeColor === "string" && ["green", "charcoal", "gold", "purple"].includes(response.badgeColor)
+    ? response.badgeColor as "green" | "charcoal" | "gold" | "purple"
     : config.color;
-  const badge = typeof response.badge === "string" && ["GREEN_CHECK", "BLUE_SHIELD", "GOLD_CROWN"].includes(response.badge)
-    ? response.badge as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN"
+  const badge = typeof response.badge === "string" && ["GREEN_CHECK", "BLUE_SHIELD", "GOLD_CROWN", "STAFF_STAR"].includes(response.badge)
+    ? response.badge as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN" | "STAFF_STAR"
     : config.badge;
   const criteria = Array.isArray(response.criteria)
     ? response.criteria.flatMap((item): VerificationCriterion[] => {
@@ -125,20 +148,22 @@ export function VerificationBadge({
 
   const badge = verification?.badge ?? "GREEN_CHECK";
   const role = verification?.role ?? "STUDENT";
-  const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "charcoal" : "green");
+  const badgeColor = verification?.badgeColor ?? (badge === "GOLD_CROWN" ? "gold" : badge === "BLUE_SHIELD" ? "charcoal" : badge === "STAFF_STAR" ? "purple" : "green");
   const riskBlocked = verification?.riskBlocked === true;
   const label = badge === "GOLD_CROWN"
     ? "Trust crown"
     : badge === "BLUE_SHIELD"
     ? (role === "STUDENT" ? "Verified student" : "Verified provider")
+    : badge === "STAFF_STAR"
+    ? "SafeCribs team"
     : (role === "STUDENT" ? "Verified student" : "Verified");
 
   const resolvedSize = size ?? (iconOnly ? 20 : compact ? 16 : 20);
   const pixelSize = resolveSize(resolvedSize);
   const fullDetail = pixelSize >= 24; 
   const glyphAriaLabel = `${label}${riskBlocked ? ", advanced badge upgrade blocked for review" : ""}`;
-  const BadgeIcon = badge === "GOLD_CROWN" ? Crown : badge === "BLUE_SHIELD" ? ShieldCheck : BadgeCheck;
-  const badgeTextColor = badgeColor === "gold" ? "#d4a017" : badgeColor === "charcoal" ? "#111827" : "#16a34a";
+  const BadgeIcon = badge === "GOLD_CROWN" ? Crown : badge === "BLUE_SHIELD" ? ShieldCheck : badge === "STAFF_STAR" ? StaffStar : BadgeCheck;
+  const badgeTextColor = badgeColor === "gold" ? "#d4a017" : badgeColor === "charcoal" ? "#111827" : badgeColor === "purple" ? "#6D4AE0" : "#16a34a";
 
   return (
     <span

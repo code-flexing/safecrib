@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { VerificationBadge, type VerificationStageResult, normalizeVerificationStage } from "@/components/verification/VerificationBadge";
 
 export type UserNameSize = "sm" | "md" | "lg" | "xl";
 
@@ -47,6 +47,8 @@ function useCachedStage(userId: string | undefined): VerificationStageResult | u
 
 export function seedVerificationCache(user: UserLike) {
   if (!user?.id) return;
+  // Don't cache staff as a normal verification stage - staff is determined from role at render time
+  if (isStaff(user)) return;
   const stage = user.verification ?? (user.isVerified ? { eligible: true, stage: "PROFILE_VERIFIED" as const, badge: "GREEN_CHECK" as const, badgeColor: "green" as const, riskBlocked: false, nextMilestone: null, criteria: [], userId: user.id, role: user.role } : null);
   if (stage) {
     stageCache.set(user.id, stage);
@@ -59,8 +61,32 @@ export function clearVerificationCache() {
   window.dispatchEvent(new Event("verification-stage-update"));
 }
 
+const STAFF_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "MODERATOR", "SUPPORT"]);
+
+function isStaff(user: UserLike): boolean {
+  if (!user) return false;
+  const role = typeof user.role === "string" ? user.role.toUpperCase() : "";
+  return STAFF_ROLES.has(role);
+}
+
 export function getVerificationStage(user: UserLike): VerificationStageResult | null {
   if (!user) return null;
+
+  // Staff badge wins over any trust stage - check this FIRST
+  if (isStaff(user)) {
+    return {
+      eligible: true,
+      stage: "STAFF",
+      badge: "STAFF_STAR",
+      badgeColor: "purple",
+      riskBlocked: false,
+      nextMilestone: null,
+      criteria: [],
+      userId: user.id,
+      role: user.role,
+    };
+  }
+
   if (user.verification?.eligible) return user.verification;
   if (user.id) {
     const cached = stageCache.get(user.id);
@@ -105,6 +131,7 @@ const POPOVER_MESSAGES: Record<string, string> = {
   PROFILE_VERIFIED: "Verified ✨ This profile's identity was checked by SafeCribs.",
   AGENT_VERIFIED: "Verified agent 🏠 This agent is verified and has a trusted provider page.",
   TRUST_CROWN: "Trust crown 👑 One of the most trusted accounts on SafeCribs.",
+  STAFF: "SafeCribs Team 💜 This account belongs to the SafeCribs team.",
 };
 
 function VerificationBadgeWithPopover({

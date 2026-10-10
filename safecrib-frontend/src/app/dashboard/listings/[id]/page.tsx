@@ -10,13 +10,14 @@ import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionMo
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { apiFetch, cachedApiFetch, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
+import { apiFetch, cachedApiFetch, getCachedApi, getCachedCurrentUser, getCachedListingDetail, seedListingDetailCache, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 import { ListingComments } from "@/components/comments";
 
 type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; username?: string | null; email?: string } };
 type Profile = { id?: string; role?: string; studentProfileStatus?: unknown };
 type ProviderPage = { status?: string } | null;
 type ReportType = "FAKE_LISTING" | "MISREPRESENTED" | "DOUBLE_BOOKING" | "SCAM_AGENT" | "OTHER";
+type CachedListingDetail = Listing & { likedByCurrentUser?: boolean; likeCount?: number; providerRecommendationCount?: number; commentCount?: number };
 type ListingComment = {
   id: string;
   body: string;
@@ -213,69 +214,128 @@ export default function ListingDetailPage() {
   const [reportDescription, setReportDescription] = useState("");
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const hasLoadedInitial = useRef(false);
 
   useEffect(() => {
     if (!localStorage.getItem("safecrib_access_token")) { router.replace("/login"); return; }
-    void Promise.all([
-      cachedApiFetch<unknown>(`/api/v1/listings/${id}`),
-      apiFetch<Profile>("/api/v1/users/me"),
-      cachedApiFetch<unknown>("/api/v1/provider-pages/me").catch(() => null),
-      cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(id)}/comments`).catch(() => null),
-    ]).then(async ([homeResponse, userResponse, pageResponse, commentsResponse]) => {
-      const home = unwrapData<Listing>(homeResponse);
-      const user = unwrapData<Profile>(userResponse);
-      const page = unwrapData<ProviderPage>(pageResponse);
+
+    // Sync: read cached listing detail immediately
+    const cached = getCachedListingDetail<Listing>(id);
+    if (cached) {
+      const home = unwrapData<Listing>(cached);
       setListing(home);
       setLiked(home.likedByCurrentUser === true);
       setLikeCount(home.likeCount ?? 0);
       setRecommendationCount(home.providerRecommendationCount ?? 0);
-      if (commentsResponse) {
-        const list = unwrapData<ListingComment[]>(commentsResponse);
-        setComments(list);
-        setCommentCount(list.length);
-      } else {
-        setCommentError("We could not load home comments. Please refresh to retry.");
+      hasLoadedInitial.current = true;
+    }
+
+    // Async: revalidate listing, fetch user, provider page, comments in parallel
+    const loadData = async () => {
+      const results = await Promise.allSettled([
+        cachedApiFetch<unknown>(`/api/v1/listings/${id}`),
+        (async () => { const u = await getCachedCurrentUser<Profile>(); return u ?? ({} as Profile); })(),
+        cachedApiFetch<unknown>("/api/v1/provider-pages/me").catch(() => null),
+        cachedApiFetch<unknown>(`/api/v1/listings/${encodeURIComponent(id)}/comments`).catch(() => null),
+      ]);
+      const [homeResponse, userResponse, pageResponse, commentsResponse] = results as [
+        PromiseSettledResult<unknown>,
+        PromiseSettledResult<Profile>,
+        PromiseSettledResult<unknown>,
+        PromiseSettledResult<unknown>,
+      ];
+
+      // Listing (revalidate)
+      if (homeResponse.status === "fulfilled") {
+        const home = unwrapData<Listing>(homeResponse.value);
+        setListing(home);
+        seedListingDetailCache(home);
+        setLiked(home.likedByCurrentUser === true);
+        setLikeCount(home.likeCount ?? 0);
+        setRecommendationCount(home.providerRecommendationCount ?? 0);
       }
-      if (home.ownerId) {
-        const verificationPath = `/api/v1/trust/users/${encodeURIComponent(home.ownerId)}/verification-stage`;
-        setProviderVerification(normalizeVerificationStage(getPersistedVerification(home.ownerId)));
-        void cachedApiFetch<unknown>(verificationPath)
-          .then((response) => {
-            const stage = normalizeVerificationStage(response);
-            if (stage) setPersistedVerification(home.ownerId, response);
-            if (stage) setProviderVerification(stage);
-          })
-          .catch(() => {
-            if (!getPersistedVerification(home.ownerId)) {
-              setProviderVerification(null);
-              setProviderBadgeUnavailable(true);
-            }
-          });
+
+      // User profile (from cache primarily)
+      let user: Profile = {} as Profile;
+      if (userResponse.status === "fulfilled") {
+        user = userResponse.value;
       }
       const accountRole = String(user.role ?? "").toUpperCase();
       const providerRole = ["AGENT", "LANDLORD"].includes(accountRole);
       setRole(accountRole);
+
+      // Provider page status
+      let page: ProviderPage = null;
+      if (pageResponse.status === "fulfilled") {
+        page = unwrapData<ProviderPage>(pageResponse.value);
+      }
+      setPageStatus(normalizePageStatus(page?.status));
+
+      // Comments
+      if (commentsResponse.status === "fulfilled" && commentsResponse.value) {
+        const list = unwrapData<ListingComment[]>(commentsResponse.value);
+        setComments(list);
+        setCommentCount(list.length);
+      } else if (!cached) {
+        setCommentError("We could not load home comments. Please refresh to retry.");
+      }
+
+      // Verification stage
+      if (homeResponse.status === "fulfilled") {
+        const home = unwrapData<Listing>(homeResponse.value);
+        if (home.ownerId) {
+          const verificationPath = `/api/v1/trust/users/${encodeURIComponent(home.ownerId)}/verification-stage`;
+          setProviderVerification(normalizeVerificationStage(getPersistedVerification(home.ownerId)));
+          void cachedApiFetch<unknown>(verificationPath)
+            .then((response) => {
+              const stage = normalizeVerificationStage(response);
+              if (stage) setPersistedVerification(home.ownerId, response);
+              if (stage) setProviderVerification(stage);
+            })
+            .catch(() => {
+              if (!getPersistedVerification(home.ownerId)) {
+                setProviderVerification(null);
+                setProviderBadgeUnavailable(true);
+              }
+            });
+        }
+      }
+
+      // Student recommendations
       if (accountRole === "STUDENT") {
         void apiFetch<string[]>("/api/v1/trust/me/recommendations")
           .then((response) => {
-            setRecommended(unwrapData<string[]>(response).includes(home.ownerId ?? ""));
+            setRecommended(unwrapData<string[]>(response).includes(homeResponse.status === "fulfilled" ? unwrapData<Listing>(homeResponse.value).ownerId ?? "" : ""));
             setRecommendationStateLoaded(true);
           })
           .catch(() => setMessage("We could not load your provider recommendations."));
       }
-      setPageStatus(normalizePageStatus(page?.status));
-      const [studentStatus, bookmarks] = await Promise.all([
-        accountRole === "STUDENT" ? apiFetch<unknown>("/api/v1/student-profiles/status").catch(() => null) : Promise.resolve(null),
-        accountRole === "STUDENT" ? apiFetch<Listing[]>("/api/v1/listings/bookmarks").catch(() => []) : Promise.resolve([]),
-      ]);
-      const persistedStatus = typeof user.studentProfileStatus === "object" && user.studentProfileStatus !== null && "status" in user.studentProfileStatus
-        ? user.studentProfileStatus.status
-        : studentStatus && typeof studentStatus === "object" && "status" in studentStatus ? studentStatus.status : studentStatus;
-      setAccountStatus(providerRole ? (String(page?.status ?? "").toUpperCase() === "VERIFIED" ? "approved" : "pending") : normalizeAccountStatus(persistedStatus));
-      setBookmarked(Array.isArray(bookmarks) && bookmarks.some((saved) => saved.id === home.id));
-      const mediaUrl = home.video?.url ?? await resolveMediaUrl(home.video?.mediaId);
-      setVideoUrl(mediaUrl ?? "");
-    });
+
+      // Student status & bookmarks (only for students)
+      if (accountRole === "STUDENT") {
+        const [studentStatus, bookmarks] = await Promise.all([
+          apiFetch<unknown>("/api/v1/student-profiles/status").catch(() => null),
+          apiFetch<Listing[]>("/api/v1/listings/bookmarks").catch(() => []),
+        ]);
+        const persistedStatus = typeof user.studentProfileStatus === "object" && user.studentProfileStatus !== null && "status" in user.studentProfileStatus
+          ? user.studentProfileStatus.status
+          : studentStatus && typeof studentStatus === "object" && "status" in studentStatus ? studentStatus.status : studentStatus;
+        setAccountStatus(providerRole ? (String(page?.status ?? "").toUpperCase() === "VERIFIED" ? "approved" : "pending") : normalizeAccountStatus(persistedStatus));
+        setBookmarked(Array.isArray(bookmarks) && bookmarks.some((saved) => saved.id === (homeResponse.status === "fulfilled" ? unwrapData<Listing>(homeResponse.value).id : id)));
+      } else {
+        setAccountStatus(providerRole ? (String(page?.status ?? "").toUpperCase() === "VERIFIED" ? "approved" : "pending") : "approved");
+        setBookmarked(false);
+      }
+
+      // Video URL
+      const homeForVideo = homeResponse.status === "fulfilled" ? unwrapData<Listing>(homeResponse.value) : listing;
+      if (homeForVideo?.video?.mediaId || homeForVideo?.video?.url) {
+        const mediaUrl = homeForVideo.video?.url ?? await resolveMediaUrl(homeForVideo.video?.mediaId);
+        setVideoUrl(mediaUrl ?? "");
+      }
+    };
+
+    void loadData();
   }, [id, router]);
 
   /* ---------- media: video first (if any), then photos ---------- */
@@ -304,6 +364,11 @@ export default function ListingDetailPage() {
     try {
       await apiFetch(`/api/v1/listings/${id}/bookmark`, { method: bookmarked ? "DELETE" : "POST" });
       setBookmarked((current) => !current);
+      // Patch listing detail cache
+      const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
+      if (cachedDetail) {
+        seedListingDetailCache({ ...cachedDetail });
+      }
     } catch { setMessage("We could not update your saved listings. Please try again."); }
   };
   const toggleLike = async () => {
@@ -313,6 +378,16 @@ export default function ListingDetailPage() {
       await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, { method: liked ? "DELETE" : "POST" });
       setLiked((current) => !current);
       setLikeCount((count) => Math.max(0, count + (liked ? -1 : 1)));
+      // Patch listing detail cache
+      const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
+      if (cachedDetail) {
+        const updated = {
+          ...cachedDetail,
+          likedByCurrentUser: !liked,
+          likeCount: Math.max(0, (cachedDetail.likeCount ?? 0) + (liked ? -1 : 1)),
+        };
+        seedListingDetailCache(updated);
+      }
     } catch {
       setMessage("We could not update your like. Please try again.");
     } finally {
@@ -326,6 +401,15 @@ export default function ListingDetailPage() {
       await apiFetch(`/api/v1/trust/users/${encodeURIComponent(listing.ownerId)}/recommendation`, { method: recommended ? "DELETE" : "POST" });
       setRecommended((current) => !current);
       setRecommendationCount((count) => Math.max(0, count + (recommended ? -1 : 1)));
+      // Patch listing detail cache
+      const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
+      if (cachedDetail) {
+        const updated = {
+          ...cachedDetail,
+          providerRecommendationCount: Math.max(0, (cachedDetail.providerRecommendationCount ?? 0) + (recommended ? -1 : 1)),
+        };
+        seedListingDetailCache(updated);
+      }
     } catch {
       setMessage("We could not update your recommendation. Please try again.");
     } finally {
@@ -514,7 +598,29 @@ export default function ListingDetailPage() {
             )}
           </div>
         </aside>
-      </article> : <p className="mt-8 text-sm text-black/60">Loading listing details...</p>}
+      </article> : (
+        <div className="mt-5 grid gap-4 lg:h-[min(48rem,calc(100vh-9rem))] lg:min-h-[34rem] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" aria-busy="true">
+          <div className="relative aspect-square overflow-hidden rounded-xl bg-black/[0.05] lg:aspect-auto lg:h-full animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/5" />
+          </div>
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-black/10 bg-white lg:h-full">
+            <div className="min-h-0 px-5 pb-2 pt-5 lg:flex-1 lg:overflow-y-auto space-y-4">
+              <div className="h-4 w-3/4 bg-black/5 rounded animate-pulse" />
+              <div className="h-8 w-1/2 bg-black/5 rounded animate-pulse" />
+              <div className="h-4 w-full bg-black/5 rounded animate-pulse" />
+              <div className="h-32 w-full bg-black/5 rounded animate-pulse" />
+              <div className="h-52 w-full bg-black/5 rounded-xl animate-pulse" />
+              <div className="h-12 w-full bg-black/5 rounded animate-pulse" />
+              <div className="space-y-3">
+                <div className="h-10 w-full bg-black/5 rounded-full animate-pulse" />
+                <div className="h-10 w-3/4 bg-black/5 rounded-full animate-pulse" />
+                <div className="h-10 w-1/2 bg-black/5 rounded-full animate-pulse" />
+                <div className="h-10 w-1/3 bg-black/5 rounded-full animate-pulse" />
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </section>
     <RestrictedActionModal message={message} onClose={() => setMessage(null)} />
     <Modal open={modal === "contact"} onClose={() => setModal(null)} titleId="contact-provider-title">

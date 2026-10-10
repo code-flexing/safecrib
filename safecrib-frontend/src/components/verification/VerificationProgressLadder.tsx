@@ -12,6 +12,7 @@ const STAGE_LABELS: Record<VerificationStage, string> = {
   PROFILE_VERIFIED: "Profile verified",
   AGENT_VERIFIED: "Agent verified",
   TRUST_CROWN: "Trust crown",
+  STAFF: "SafeCribs team",
 };
 
 interface VerificationProgressLadderProps {
