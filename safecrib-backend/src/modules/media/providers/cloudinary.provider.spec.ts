@@ -132,7 +132,7 @@ describe('CloudinaryStorageProvider', () => {
         transformation: 'c_fill,w_64,h_64,f_auto,q_auto',
       });
 
-      expect(url).toContain('/image/upload/c_fill,w_64,h_64,f_auto,q_auto/prod/users/avatar/user_1/media_1');
+      expect(url).toContain('/image/upload/c_fill,w_64,h_64,f_auto,q_auto/v1/prod/users/avatar/user_1/media_1');
       expect(url).not.toContain('/t_c_fill');
     });
 
