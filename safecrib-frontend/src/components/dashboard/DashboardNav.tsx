@@ -266,12 +266,11 @@ export function DashboardNav({ onCreatePage, pageStatus, canManagePage = true, s
           </Link>
         </div>
       </header>
-      <div
-        className={`fixed inset-x-0 top-0 z-40 border-b px-4 pb-2 pt-3 md:hidden ${darkMode ? "border-white/10 bg-[#09090B]" : "border-black/10 bg-white/90 backdrop-blur-md"}`}
-        style={darkMode ? { height: "calc(env(safe-area-inset-top, 0px) + 1.25rem)", padding: 0 } : undefined}
-      />
       <nav aria-label="Mobile dashboard navigation" className="fixed inset-x-3 bottom-3 z-50 md:hidden">
-        <div className={`mx-auto flex max-w-md items-center gap-1 rounded-full border p-1.5 shadow-none ${darkMode ? "border-white/10 bg-transparent" : "border-black/10 bg-transparent"}`}>
+        <div
+          className="mx-auto flex max-w-md items-center gap-1 rounded-full border p-1.5 shadow-lg"
+          style={{ backgroundColor: "var(--theme-surface)", borderColor: "var(--theme-border)" }}
+        >
           <Link href="/dashboard" aria-label="Home" title="Home" aria-current={isRouteActive(pathname, "/dashboard") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/dashboard"), darkMode)}><Icon name="home" className="h-5 w-5" /></Link>
           <Link href="/support" aria-label="Support" title="Support" aria-current={isRouteActive(pathname, "/support") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/support"), darkMode)}><Icon name="support" className="h-5 w-5" /><SupportCount count={supportCount} /></Link>
           <Link href="/notifications" aria-label="Notifications" title="Notifications" aria-current={isRouteActive(pathname, "/notifications") ? "page" : undefined} className={mobileIconLinkClass(isRouteActive(pathname, "/notifications"), darkMode)}><Icon name="notifications" className="h-5 w-5" /><NotificationCount count={unreadNotifications} /></Link>
