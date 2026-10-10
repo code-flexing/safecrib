@@ -228,6 +228,8 @@ export interface ListingResponse {
     id: string;
     displayName: string | null;
     profilePicture: string | null;
+    /** Provider Page image, separate from the account image for provider listings. */
+    providerPageProfilePicture: string | null;
     /** Resolved from ProviderPage.phone — null when no provider page */
     phone: string | null;
     /** WhatsApp number from provider page additional contacts */

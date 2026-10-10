@@ -54,7 +54,7 @@ export type ListingPhotoValue =
 export type Listing = {
   id: string;
   ownerId?: string;
-  owner?: { displayName?: string | null; profilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
+  owner?: { displayName?: string | null; profilePicture?: string | null; providerPageProfilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
   title?: string;
   description?: string;
   price?: number;
@@ -1100,15 +1100,17 @@ export default function DashboardPage() {
     };
 
     listings.forEach((listing) => {
-      if (!listing.ownerId) return;
-      if (listing.owner?.profilePicture) {
-        resolveProviderAvatar(listing.id, listing.owner.profilePicture);
-        return;
-      }
-      void apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(listing.ownerId)}/public-profile`)
-        .then((response) => unwrapData<{ profilePicture?: string | null } | null>(response))
-        .then((publicProfile) => resolveProviderAvatar(listing.id, publicProfile?.profilePicture))
-        .catch(() => undefined);
+      const ownerId = listing.ownerId;
+      if (!ownerId) return;
+      const resolveListingAvatar = async () => {
+        let picture = listing.owner?.providerPageProfilePicture ?? listing.owner?.profilePicture;
+        if (!picture) {
+          const response = await apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`).catch(() => null);
+          picture = unwrapData<{ profilePicture?: string | null } | null>(response)?.profilePicture;
+        }
+        resolveProviderAvatar(listing.id, picture);
+      };
+      void resolveListingAvatar().catch(() => undefined);
     });
     return () => { active = false; };
   }, [listings]);

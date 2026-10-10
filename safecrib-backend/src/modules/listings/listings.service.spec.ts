@@ -96,13 +96,13 @@ function makeService() {
 }
 
 describe('ListingsService listing media and pricing rules', () => {
-  it('includes the provider-page profile picture in listing responses', async () => {
+  it('returns account and provider-page profile pictures separately', async () => {
     const { service, prisma } = makeService();
     prisma.listing.findUnique.mockResolvedValueOnce(makeListing({
       owner: {
         id: 'agent_1',
         displayName: 'Agent',
-        profilePicture: null,
+        profilePicture: 'account-photo',
         studentProfile: null,
         providerPage: { profilePicture: 'owner-page-photo' },
         verification: null,
@@ -113,7 +113,8 @@ describe('ListingsService listing media and pricing rules', () => {
 
     const result = await service.getListing('listing_1');
 
-    expect(result.owner?.profilePicture).toBe('listing-page-photo');
+    expect(result.owner?.profilePicture).toBe('account-photo');
+    expect(result.owner?.providerPageProfilePicture).toBe('listing-page-photo');
     expect(prisma.listing.findUnique).toHaveBeenCalledWith(expect.objectContaining({
       include: expect.objectContaining({
         owner: expect.objectContaining({

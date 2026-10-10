@@ -816,6 +816,7 @@ export class ListingsService {
     
     const ownerDisplayName = owner?.displayName ?? studentProfile?.displayName ?? providerPage?.displayName ?? null;
     const ownerProfilePicture = owner?.profilePicture ?? studentProfile?.profilePicture ?? providerPage?.profilePicture ?? null;
+    const providerPageProfilePicture = providerPage?.profilePicture ?? owner?.providerPage?.profilePicture ?? null;
     const ownerPhone = providerPage?.phone ?? null;
     const additionalContacts = providerPage?.additionalContacts as Record<string, string> | null;
     const whatsApp = additionalContacts?.['whatsApp'] ?? additionalContacts?.['whatsapp'] ?? null;
@@ -845,6 +846,7 @@ export class ListingsService {
         id: owner?.id ?? listing.ownerId,
         displayName: ownerDisplayName,
         profilePicture: ownerProfilePicture,
+        providerPageProfilePicture,
         phone: ownerPhone,
         whatsApp,
         agencyName,
