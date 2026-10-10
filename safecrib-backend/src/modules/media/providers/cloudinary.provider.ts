@@ -122,9 +122,8 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
 
   getDeliveryUrl(publicId: string, options: DeliveryUrlOptions = {}): string {
     const transformation = options.transformation
-      ? [{ transformation: options.transformation }]
+      ? { raw_transformation: options.transformation }
       : undefined;
-
     const url = cloudinary.url(publicId, {
       resource_type: options.resourceType ?? 'image',
       type: 'upload',
@@ -139,7 +138,7 @@ export class CloudinaryStorageProvider implements StorageProvider, OnModuleInit 
     const ttl = options.ttlSeconds ?? 300;
     const expireAt = Math.floor(Date.now() / 1000) + ttl;
     const transformation = options.transformation
-      ? [{ transformation: options.transformation }]
+      ? { raw_transformation: options.transformation }
       : undefined;
 
     const url = cloudinary.url(publicId, {

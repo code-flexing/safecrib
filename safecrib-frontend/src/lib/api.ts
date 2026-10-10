@@ -875,11 +875,11 @@ export function withMediaCacheBust(url: string, cacheBurst = Date.now()): string
 }
 
 function mediaUrlCacheKey(reference: string, transformation?: string) {
-  return `${reference}::${transformation ?? "default"}`;
+  return `${reference}::${transformation ? `${transformation}:v2` : "default"}`;
 }
 
 function mediaUrlStorageKey(reference: string, transformation?: string) {
-  return `${resolvedMediaUrlPrefix}${encodeURIComponent(reference)}${transformation ? `:${encodeURIComponent(transformation)}` : ":default"}`;
+  return `${resolvedMediaUrlPrefix}${encodeURIComponent(reference)}${transformation ? `:${encodeURIComponent(transformation)}:v2` : ":default"}`;
 }
 
 export function getCachedMediaUrl(reference: unknown, transformation?: string) {

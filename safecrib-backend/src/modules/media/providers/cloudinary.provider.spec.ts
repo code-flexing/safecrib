@@ -128,6 +128,29 @@ describe('CloudinaryStorageProvider', () => {
     });
   });
 
+  describe('transformed delivery URLs', () => {
+    it('adds a raw Cloudinary transformation instead of a named transformation', () => {
+      const url = provider.getDeliveryUrl('prod/users/avatar/user_1/media_1', {
+        resourceType: 'image',
+        transformation: 'c_fill,w_64,h_64,f_auto,q_auto',
+      });
+
+      expect(url).toContain('/image/upload/c_fill,w_64,h_64,f_auto,q_auto/prod/users/avatar/user_1/media_1');
+      expect(url).not.toContain('/t_c_fill');
+    });
+
+    it('uses raw transformation syntax for signed delivery URLs too', () => {
+      const url = provider.getSignedUrl('prod/users/avatar/user_1/media_1', {
+        resourceType: 'image',
+        deliveryType: 'authenticated',
+        transformation: 'c_fill,w_64,h_64,f_auto,q_auto',
+      });
+
+      expect(url).toContain('/c_fill,w_64,h_64,f_auto,q_auto/');
+      expect(url).not.toContain('/t_c_fill');
+    });
+  });
+
   describe('verifyWebhook', () => {
     const apiSecret = 'test_secret_abc';
 
