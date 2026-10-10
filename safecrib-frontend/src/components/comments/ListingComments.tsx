@@ -205,6 +205,7 @@ export function ListingComments({
   const content = (
     <div
       id={isModal ? undefined : "listing-comments"}
+      style={isModal ? { backgroundColor: "var(--theme-surface)" } : undefined}
       className={isModal
         ? "flex max-h-[88dvh] min-h-[52dvh] flex-col overflow-hidden rounded-[28px] bg-theme-surface shadow-[0_24px_60px_-12px_rgba(0,0,0,0.45)] ring-1 ring-black/5"
         : "mt-6 overflow-hidden rounded-xl border border-black/10 bg-[#f7f7f5]"}

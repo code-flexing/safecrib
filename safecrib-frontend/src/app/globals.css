@@ -546,7 +546,7 @@ body {
   padding: 0;
   border: 0;
   border-radius: 1.75rem;
-  background: transparent;
+  background: var(--theme-surface);
 }
 
 @media (max-width: 639px) {
