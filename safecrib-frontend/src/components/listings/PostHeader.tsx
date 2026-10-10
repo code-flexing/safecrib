@@ -5,7 +5,7 @@ import { MediaImage } from "./MediaImage";
 import { PostMenu } from "./PostMenu";
 import { formatDistanceToNow } from "date-fns";
 import { UserName } from "@/components/common/UserName";
-import type { VerificationCriterion } from "@/components/verification/VerificationBadge";
+import type { VerificationCriterion, VerificationStageResult } from "@/components/verification/VerificationBadge";
 
 type AgentInfo = {
   id: string;
@@ -60,9 +60,9 @@ function agentToUser(agent: AgentInfo) {
     blue: "BLUE_SHIELD",
     gold: "GOLD_CROWN",
   };
-  const colorMap: Record<string, "green" | "blue" | "gold"> = {
+  const colorMap: Record<"green" | "blue" | "gold", VerificationStageResult["badgeColor"]> = {
     green: "green",
-    blue: "blue",
+    blue: "charcoal",
     gold: "gold",
   };
   const isBadgeColor = (badge: string): badge is "green" | "blue" | "gold" =>
@@ -76,7 +76,7 @@ function agentToUser(agent: AgentInfo) {
             agent.verificationBadge === "gold" ?"TRUST_CROWN"
               : agent.verificationBadge === "blue" ?"AGENT_VERIFIED" :"PROFILE_VERIFIED" ) as"PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN",
           badge: badgeMap[agent.verificationBadge] as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN",
-          badgeColor: colorMap[agent.verificationBadge] as "green" | "blue" | "gold",
+          badgeColor: colorMap[agent.verificationBadge] as VerificationStageResult["badgeColor"],
           riskBlocked: false,
           nextMilestone: null,
           criteria: [] as VerificationCriterion[],
