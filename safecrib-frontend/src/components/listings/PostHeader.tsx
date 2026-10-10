@@ -65,19 +65,24 @@ function agentToUser(agent: AgentInfo) {
     blue: "blue",
     gold: "gold",
   };
-  const isBadgeColor = (badge: string): badge is "green" | "blue" | "gold" => 
+  const isBadgeColor = (badge: string): badge is "green" | "blue" | "gold" =>
     badge === "green" || badge === "blue" || badge === "gold";
-  
-  const verification = agent.isVerified && agent.verificationBadge && isBadgeColor(agent.verificationBadge) ? {
-    eligible: true as const,
-    stage: (agent.verificationBadge === "gold" ? "TRUST_CROWN" : agent.verificationBadge === "blue" ? "AGENT_VERIFIED" : "PROFILE_VERIFIED") as "PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN",
-    badge: badgeMap[agent.verificationBadge] as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN",
-    badgeColor: colorMap[agent.verificationBadge] as "green" | "blue" | "gold",
-    riskBlocked: false,
-    nextMilestone: null,
-    criteria: [] as VerificationCriterion[],
-  } : null;
-  
+
+  const verification =
+    agent.isVerified && agent.verificationBadge && isBadgeColor(agent.verificationBadge)
+      ? {
+          eligible: true as const,
+          stage: (
+            agent.verificationBadge === "gold" ?"TRUST_CROWN"
+              : agent.verificationBadge === "blue" ?"AGENT_VERIFIED" :"PROFILE_VERIFIED" ) as"PROFILE_VERIFIED" | "AGENT_VERIFIED" | "TRUST_CROWN",
+          badge: badgeMap[agent.verificationBadge] as "GREEN_CHECK" | "BLUE_SHIELD" | "GOLD_CROWN",
+          badgeColor: colorMap[agent.verificationBadge] as "green" | "blue" | "gold",
+          riskBlocked: false,
+          nextMilestone: null,
+          criteria: [] as VerificationCriterion[],
+        }
+      : null;
+
   return {
     id: agent.id,
     displayName: agent.displayName,
@@ -140,7 +145,11 @@ export function PostHeader({
 
   return (
     <div className="flex items-start gap-3 px-4 pt-4">
-      <Link href={`/profile/${agent.id}`} aria-label={`View ${agent.displayName}'s profile`} className="shrink-0">
+      <Link
+        href={`/profile/${agent.id}`}
+        aria-label={`View ${agent.displayName}'s profile`}
+        className="shrink-0"
+      >
         <div className="h-10 w-10 overflow-hidden rounded-full border border-black/10">
           <MediaImage
             mediaId={effectiveMediaId}
