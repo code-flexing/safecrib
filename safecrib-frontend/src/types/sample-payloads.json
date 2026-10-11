@@ -1,0 +1,121 @@
+{
+  "comment": {
+    "id": "comment-001",
+    "body": "What's the neighborhood like near campus?",
+    "parentId": null,
+    "createdAt": "2026-09-15T10:30:00Z",
+    "user": {
+      "id": "user-abc123",
+      "displayName": "Amina Okafor",
+      "username": "amina_12345",
+      "role": "STUDENT",
+      "profilePicture": "media-abc123",
+      "studentProfile": { "profilePicture": null },
+      "providerPage": null,
+      "verification": { "kind": "student" }
+    },
+    "mentions": [
+      {
+        "user": {
+          "id": "user-def456",
+          "displayName": "David Mensah",
+          "username": "david_m",
+          "role": "AGENT",
+          "profilePicture": "media-def456",
+          "verification": { "kind": "agent" }
+        }
+      }
+    ]
+  },
+  "feedItem": {
+    "id": "listing-001",
+    "title": "Cozy room near campus",
+    "description": "Air-conditioned room in a shared flat...",
+    "price": 50000,
+    "discountAmount": null,
+    "discountedPrice": 50000,
+    "lat": 6.5244,
+    "lng": 3.3792,
+    "campus": "University of Lagos",
+    "address": "123 Campus Road, Akoka",
+    "locationReference": null,
+    "status": "VERIFIED",
+    "availabilityStatus": "AVAILABLE",
+    "ownerId": "owner-001",
+    "owner": {
+      "id": "owner-001",
+      "displayName": "SafeCribs Properties",
+      "profilePicture": "media-owner001",
+      "providerPageProfilePicture": "media-page001",
+      "phone": "+2348012345678",
+      "whatsApp": "+2348012345678",
+      "agencyName": "SafeCribs Properties",
+      "verification": { "stage": "AGENT_VERIFIED", "badgeColor": "blue", "kind": "agent" },
+      "publicVerification": { "kind": "agent" }
+    },
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "propertyType": "room",
+    "likeCount": 42,
+    "likedByCurrentUser": false,
+    "commentCount": 8,
+    "shareCount": 5,
+    "isBookmarked": false,
+    "providerTrustScore": 4.8,
+    "providerActiveDays": 120,
+    "providerRecommendationCount": 15,
+    "recommendationScore": 0.87,
+    "viewCount": 256,
+    "followedPage": false,
+      "photos": [{ "id": "photo-001", "mediaId": "media-001", "url": "photo-url-001", "phash": "abc123", "width": 720, "height": 440 }],
+    "video": null,
+    "createdAt": "2026-09-10T08:00:00Z",
+    "updatedAt": "2026-09-12T14:00:00Z"
+  },
+  "me": {
+    "id": "user-abc123",
+    "email": "amina@example.com",
+    "displayName": "Amina Okafor",
+    "role": "STUDENT",
+    "username": "amina_12345",
+    "profilePicture": "media-abc123",
+    "emailVerified": true,
+    "identityVerified": true,
+    "trustScore": 85,
+    "trustScoreUpdatedAt": "2026-09-15T00:00:00Z",
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-09-15T12:00:00Z",
+    "verification": {
+      "isVerified": true,
+      "stage": "PROFILE_VERIFIED",
+      "badge": "GREEN_CHECK",
+      "badgeColor": "green",
+      "riskBlocked": false,
+      "eligible": true,
+      "kind": "student"
+    },
+    "verificationStage": {
+      "eligible": true,
+      "stage": "PROFILE_VERIFIED",
+      "badge": "GREEN_CHECK",
+      "badgeColor": "green",
+      "colorToken": "--badge-green",
+      "riskBlocked": false,
+      "nextMilestone": null,
+      "criteria": [{ "key": "identity", "label": "Identity verified", "met": true }, { "key": "student", "label": "Student verification", "met": true }],
+      "userId": "user-abc123",
+      "role": "STUDENT",
+      "kind": "student"
+    },
+    "studentProfileStatus": "APPROVED",
+    "followerCount": 5,
+    "studentProfile": {
+      "id": "profile-001",
+      "status": "APPROVED",
+      "schoolOfStudy": "Computer Science",
+      "profilePicture": null,
+      "displayName": "Amina Okafor"
+    },
+    "providerPage": null
+  }
+}

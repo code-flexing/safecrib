@@ -34,7 +34,7 @@ export const VERIFICATION_KINDS: Record<VerificationKind, VerificationKindConfig
     label: "Verified agent",
     ariaLabel: "Verified agent",
     tooltipTitle: "Verified agent",
-    popoverText: "Verified agent \U0001f3e1 This agent's identity and provider page were checked by SafeCribs.",
+    popoverText: "Verified agent 🏡 This agent's identity and provider page were checked by SafeCribs.",
     className: "text-orange-500",
   },
   landlord: {
@@ -45,7 +45,7 @@ export const VERIFICATION_KINDS: Record<VerificationKind, VerificationKindConfig
     label: "Verified landlord",
     ariaLabel: "Verified landlord",
     tooltipTitle: "Verified landlord",
-    popoverText: "Verified landlord \U0001f3e1 This landlord's identity and provider page were checked by SafeCribs.",
+    popoverText: "Verified landlord 🏡 This landlord's identity and provider page were checked by SafeCribs.",
     className: "text-orange-500",
   },
   staff: {
@@ -56,7 +56,7 @@ export const VERIFICATION_KINDS: Record<VerificationKind, VerificationKindConfig
     label: "SafeCribs team",
     ariaLabel: "SafeCribs team",
     tooltipTitle: "SafeCribs team",
-    popoverText: "SafeCribs team \U0001f49c This account belongs to the SafeCribs team.",
+    popoverText: "SafeCribs team 💜 This account belongs to the SafeCribs team.",
     className: "text-blue-500",
   },
 } as const;

@@ -55,7 +55,7 @@ export type ListingPhotoValue =
 export type Listing = {
   id: string;
   ownerId?: string;
-  owner?: { displayName?: string | null; profilePicture?: string | null; providerPageProfilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null };
+  owner?: { displayName?: string | null; profilePicture?: string | null; providerPageProfilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean; kind?: string | null } | null };
   title?: string;
   description?: string;
   price?: number;
@@ -90,7 +90,7 @@ export type Profile = {
   username?: string | null;
   studentProfileStatus?: unknown;
   studentProfile?: { profilePicture?: string };
-  verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean } | null;
+  verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean; kind?: string | null } | null;
   verificationStage?: unknown;
 };
 
@@ -99,11 +99,11 @@ export type ListingComment = {
   body: string;
   parentId?: string | null;
   createdAt: string;
-  user: { id: string; displayName?: string | null; username?: string | null; role?: string };
-  mentions?: Array<{ user: { id: string; displayName?: string | null; username?: string | null } }>;
+  user: { id: string; displayName?: string | null; username?: string | null; role?: string; verification?: { kind?: string | null } | null };
+  mentions?: Array<{ user: { id: string; displayName?: string | null; username?: string | null; role?: string; verification?: { kind?: string | null } | null } }>;
 };
 
-export type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string };
+export type MentionCandidate = { id: string; displayName?: string | null; username?: string | null; role?: string; verification?: { kind?: string | null } | null };
 export type StudentProfile = { profilePicture?: string } | null;
 export type ProviderPage = { id?: string; status?: string; profilePicture?: string; rejectionReason?: string; reason?: string } | null;
 

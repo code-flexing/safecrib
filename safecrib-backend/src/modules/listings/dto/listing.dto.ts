@@ -239,6 +239,7 @@ export interface ListingResponse {
     verification: {
       stage: string;
       badgeColor: 'green' | 'blue' | 'gold';
+      kind: 'student' | 'agent' | 'landlord' | 'staff' | null;
     } | null;
     /** Canonical public verification badge kind, or null */
     publicVerification: {

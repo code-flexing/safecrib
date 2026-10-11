@@ -29,6 +29,7 @@ export interface AuthenticatedRequest extends Request {
       badgeColor: 'green' | 'blue' | 'gold';
       riskBlocked: boolean;
       eligible: boolean;
+      kind?: 'student' | 'agent' | 'landlord' | 'staff' | null;
     } | null;
     emailVerified: boolean;
   };

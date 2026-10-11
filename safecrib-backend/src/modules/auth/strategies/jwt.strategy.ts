@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Role } from '../../../common/roles.decorator.js';
 import { PrismaService } from '../../../infra/prisma/prisma.service.js';
+import { getPublicVerification } from '../../../common/verification/public-verification.js';
 
 export interface JwtPayload {
   sub: string;
@@ -24,6 +25,7 @@ export type AuthenticatedUser = {
     badgeColor: 'green' | 'blue' | 'gold';
     riskBlocked: boolean;
     eligible: boolean;
+    kind?: 'student' | 'agent' | 'landlord' | 'staff' | null;
   } | null;
   emailVerified: boolean;
 };
@@ -55,12 +57,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         username: true,
         profilePicture: true,
         emailVerified: true,
+        identityVerified: true,
         verification: {
           select: {
             stage: true,
             badge: true,
             badgeColor: true,
             riskBlocked: true,
+          },
+        },
+        providerPage: {
+          select: {
+            verificationState: true,
+          },
+        },
+        studentProfile: {
+          select: {
+            status: true,
           },
         },
       },
@@ -70,16 +83,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       id: user.id,
       email: user.email,
       role: user.role as Role,
-      displayName: user.displayName ?? null,
-      username: user.username ?? null,
-      profilePicture: user.profilePicture ?? null,
-      verification: user.verification
+        displayName: user.displayName ?? null,
+        username: user.username ?? null,
+        profilePicture: user.profilePicture ?? null,
+        verification: user.verification
         ? {
             stage: user.verification.stage,
             badge: user.verification.badge,
             badgeColor: user.verification.badgeColor,
             riskBlocked: user.verification.riskBlocked,
             eligible: Boolean(user.verification.badge || user.verification.stage),
+            kind: getPublicVerification({
+              role: user.role as Role,
+              identityVerified: user.identityVerified,
+              studentProfileApproved: user.studentProfile?.status === 'APPROVED',
+              providerPageVerified: user.providerPage?.verificationState === 'VERIFIED',
+              riskBlocked: user.verification?.riskBlocked ?? false,
+            }).kind,
           }
         : null,
       emailVerified: user.emailVerified,

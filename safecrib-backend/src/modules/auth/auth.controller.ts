@@ -124,7 +124,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user info' })
   @ApiResponse({ status: 200, description: 'Current user info' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  me(@CurrentUser() user: { id: string; email: string; role: string; displayName?: string | null; username?: string | null; profilePicture?: string | null; verification?: { stage: string; badge: string; badgeColor: 'green' | 'blue' | 'gold'; riskBlocked: boolean; eligible: boolean } | null }) {
+  me(@CurrentUser() user: { id: string; email: string; role: string; displayName?: string | null; username?: string | null; profilePicture?: string | null; verification?: { stage: string; badge: string; badgeColor: 'green' | 'blue' | 'gold'; riskBlocked: boolean; eligible: boolean; kind?: 'student' | 'agent' | 'landlord' | 'staff' | null } | null; emailVerified: boolean }) {
     return {
       id: user.id,
       email: user.email,
@@ -133,6 +133,7 @@ export class AuthController {
       username: user.username ?? null,
       profilePicture: user.profilePicture ?? null,
       verification: user.verification ?? null,
+      emailVerified: user.emailVerified ?? false,
     };
   }
 }

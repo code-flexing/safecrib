@@ -184,7 +184,6 @@ export function VerificationBadge({
 
   const resolvedSize = size ?? (iconOnly ? 20 : compact ? 16 : 20);
   const pixelSize = resolveSize(resolvedSize);
-  const fullDetail = pixelSize >= 24; 
   const glyphAriaLabel = `${label}${riskBlocked ? ", advanced badge upgrade blocked for review" : ""}`;
   const BadgeIcon = badge === "GOLD_CROWN" ? Crown : badge === "BLUE_SHIELD" ? ShieldCheck : badge === "STAFF_STAR" ? StaffStar : BadgeCheck;
 

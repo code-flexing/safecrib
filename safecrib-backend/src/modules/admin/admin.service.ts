@@ -410,7 +410,7 @@ export class AdminService {
           where: {
             data: {
               path: ['senderAdminId'],
-              not: null,
+              not: {},
             },
           },
           select: {

@@ -903,6 +903,15 @@ export class ListingsService {
         verification: {
           stage: verificationStage,
           badgeColor,
+          kind: owner && owner.role && ['ADMIN', 'STUDENT', 'AGENT', 'LANDLORD'].includes(owner.role)
+            ? getPublicVerification({
+                role: owner.role as Role,
+                identityVerified: owner.identityVerified,
+                studentProfileApproved: owner.studentProfile?.status === 'APPROVED',
+                providerPageVerified: owner.providerPage?.verificationState === 'VERIFIED',
+                riskBlocked: owner.verification?.riskBlocked ?? false,
+              }).kind
+            : null,
         },
         publicVerification: (owner && owner.role && ['ADMIN', 'STUDENT', 'AGENT', 'LANDLORD'].includes(owner.role))
           ? getPublicVerification({
