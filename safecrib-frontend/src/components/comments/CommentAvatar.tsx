@@ -22,6 +22,7 @@ interface CommentAvatarProps {
     profilePicture?: string | null;
     studentProfile?: { profilePicture?: string | null } | null;
     providerPage?: { profilePicture?: string | null } | null;
+    verification?: { kind?: string | null } | null;
   };
   small?: boolean;
   showVerification?: boolean;
@@ -98,12 +99,12 @@ export function CommentAvatar({
             loading={resolving}
             className={`rounded-full ring-2 ring-white dark:ring-slate-900 ${sizeClass}`}
           />
-          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} />}
+          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} verification={user.verification} />}
         </>
       ) : (
         <>
           {fallback}
-          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} />}
+          {showVerification && <UserVerificationBadge userId={user.id} role={user.role} verification={user.verification} />}
         </>
       )}
     </span>

@@ -16,6 +16,7 @@ import type { Role } from '../../common/roles.decorator.js';
 import { ProviderPagesService } from '../provider-pages/provider-pages.service.js';
 import { MediaService } from '../media/services/media.service.js';
 import { computeProviderRecommendationScore } from '../trust/trust.service.js';
+import { getPublicVerification } from '../../common/verification/public-verification.js';
 import type { MediaPurpose, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service.js';
 
@@ -384,13 +385,38 @@ export class ListingsService {
     return { liked: false };
   }
 
+  private withPublicVerification<T extends { role: Role | null; identityVerified: boolean; studentProfile?: { status: string | null } | null; providerPage?: { verificationState: string } | null; verification?: { riskBlocked: boolean; stage?: string; badge?: string; badgeColor?: string; identityVerified?: boolean; providerVerified?: boolean; studentProfileApproved?: boolean } | null }>(
+    user: T,
+  ): T & { verification: { kind: string | null } } {
+    const pub = getPublicVerification({
+      role: user.role,
+      identityVerified: user.identityVerified,
+      studentProfileApproved: user.studentProfile?.status === 'APPROVED',
+      providerPageVerified: user.providerPage?.verificationState === 'VERIFIED',
+    });
+    const existing = user.verification;
+    if (existing && existing.stage && existing.badge && existing.badgeColor) {
+      return {
+        ...user,
+        verification: {
+          stage: existing.stage,
+          badge: existing.badge,
+          badgeColor: existing.badgeColor,
+          riskBlocked: existing.riskBlocked,
+          kind: pub.kind,
+        },
+      } as any;
+    }
+    return { ...user, verification: { kind: pub.kind } } as any;
+  }
+
   async getListingComments(listingId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       select: { id: true, status: true },
     });
     if (!listing || listing.status !== 'VERIFIED') throw new NotFoundException('Home not found');
-    return this.prisma.listingComment.findMany({
+    const comments = await this.prisma.listingComment.findMany({
       where: { listingId },
       orderBy: { createdAt: 'asc' },
       take: 500,
@@ -406,13 +432,24 @@ export class ListingsService {
             username: true,
             role: true,
             profilePicture: true,
-            studentProfile: { select: { profilePicture: true } },
-            providerPage: { select: { profilePicture: true } },
+            identityVerified: true,
+            studentProfile: { select: { status: true, profilePicture: true } },
+            providerPage: { select: { verificationState: true, profilePicture: true } },
+            verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
+            _count: { select: { followers: true } },
           },
         },
-        mentions: { select: { user: { select: { id: true, displayName: true, username: true, profilePicture: true, studentProfile: { select: { profilePicture: true } }, providerPage: { select: { profilePicture: true } } } } } },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
+    return comments.map((comment) => ({
+      ...comment,
+      user: this.withPublicVerification(comment.user),
+      mentions: comment.mentions.map((m: any) => ({
+        ...m,
+        user: this.withPublicVerification(m.user),
+      })),
+    }));
   }
 
   async addListingComment(listingId: string, userId: string, input: CreateListingCommentDto) {
@@ -463,13 +500,17 @@ export class ListingsService {
           select: {
             id: true,
             displayName: true,
+            username: true,
             role: true,
             profilePicture: true,
-            studentProfile: { select: { profilePicture: true } },
-            providerPage: { select: { profilePicture: true } },
+            identityVerified: true,
+            studentProfile: { select: { status: true, profilePicture: true } },
+            providerPage: { select: { verificationState: true, profilePicture: true } },
+            verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
+            _count: { select: { followers: true } },
           },
         },
-        mentions: { select: { user: { select: { id: true, displayName: true } } } },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
     if (listing.ownerId !== userId) {
@@ -505,7 +546,14 @@ export class ListingsService {
       },
       dedupeKey: `listing-comment:${comment.id}:mention:${mentionedUserId}`,
     })));
-    return comment;
+    return {
+      ...comment,
+      user: this.withPublicVerification(comment.user),
+      mentions: comment.mentions.map((m: any) => ({
+        ...m,
+        user: this.withPublicVerification(m.user),
+      })),
+    };
   }
 
   async uploadPhoto(
@@ -779,9 +827,11 @@ export class ListingsService {
           username: true,
           profilePicture: true,
           email: true,
-          studentProfile: { select: { displayName: true, profilePicture: true } },
-          providerPage: { select: { displayName: true, phone: true, additionalContacts: true, profilePicture: true } },
-          verification: { select: { badgeColor: true } },
+          role: true,
+          identityVerified: true,
+          studentProfile: { select: { displayName: true, profilePicture: true, status: true } },
+          providerPage: { select: { displayName: true, phone: true, additionalContacts: true, profilePicture: true, verificationState: true } },
+          verification: { select: { badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
         },
       },
       providerPage: {
@@ -854,6 +904,15 @@ export class ListingsService {
           stage: verificationStage,
           badgeColor,
         },
+        publicVerification: (owner && owner.role && ['ADMIN', 'STUDENT', 'AGENT', 'LANDLORD'].includes(owner.role))
+          ? getPublicVerification({
+              role: owner.role as Role,
+              identityVerified: owner.identityVerified,
+              studentProfileApproved: owner.studentProfile?.status === 'APPROVED',
+              providerPageVerified: owner.providerPage?.verificationState === 'VERIFIED',
+              riskBlocked: owner.verification?.riskBlocked ?? false,
+            })
+          : null,
       },
       bedrooms: listing.bedrooms ?? null,
       bathrooms: listing.bathrooms ?? null,

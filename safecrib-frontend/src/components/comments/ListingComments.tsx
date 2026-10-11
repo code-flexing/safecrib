@@ -27,6 +27,7 @@ interface MentionCandidate {
   profilePicture?: string | null;
   studentProfile?: { profilePicture?: string | null } | null;
   providerPage?: { profilePicture?: string | null } | null;
+  verification?: { kind?: string | null } | null;
 }
 
 interface ListingCommentsProps {

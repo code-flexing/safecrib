@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { resolveVerificationKind, type VerificationKind, VERIFICATION_KINDS } from "@/components/verification/verification-kinds";
+import { userSessionClearedEvent } from "@/lib/api";
 
 export type UserNameSize = "sm" | "md" | "lg" | "xl";
 
@@ -10,7 +12,7 @@ interface UserLike {
   id?: string;
   displayName?: string | null;
   username?: string | null;
-  verification?: VerificationStageResult | null;
+  verification?: VerificationStageResult | { kind?: string | null } | null;
   isVerified?: boolean;
   role?: string;
 }
@@ -50,7 +52,42 @@ export function seedVerificationCache(user: UserLike) {
   // Don't cache staff as a normal verification stage - staff is determined from role at render time
   if (isStaff(user)) return;
   const { badgeColor, colorToken } = getAccountTypeColorToken(user);
-  const stage = user.verification ?? (user.isVerified ? { eligible: true, stage: "PROFILE_VERIFIED" as const, badge: "GREEN_CHECK" as const, badgeColor, colorToken, riskBlocked: false, nextMilestone: null, criteria: [], userId: user.id, role: user.role } : null);
+  const existingVerification = user.verification;
+  let stage: VerificationStageResult | null = null;
+
+  if (existingVerification && "eligible" in existingVerification) {
+    stage = existingVerification as VerificationStageResult;
+  } else if (existingVerification && "kind" in existingVerification) {
+    const kind = existingVerification.kind;
+    if (kind && Object.keys(VERIFICATION_KINDS).includes(kind)) {
+      stage = {
+        eligible: true,
+        stage: kind === "staff" ? "STAFF" : kind === "agent" || kind === "landlord" ? "AGENT_VERIFIED" : "PROFILE_VERIFIED",
+        badge: kind === "staff" ? "STAFF_STAR" : kind === "agent" || kind === "landlord" ? "BLUE_SHIELD" : "GREEN_CHECK",
+        badgeColor: kind === "staff" ? "admin" : kind === "agent" || kind === "landlord" ? "agent" : "green",
+        colorToken,
+        riskBlocked: false,
+        nextMilestone: null,
+        criteria: [],
+        userId: user.id,
+        role: user.role,
+        kind: kind as VerificationKind,
+      };
+    }
+  } else if (user.isVerified) {
+    stage = {
+      eligible: true,
+      stage: "PROFILE_VERIFIED" as const,
+      badge: "GREEN_CHECK" as const,
+      badgeColor,
+      colorToken,
+      riskBlocked: false,
+      nextMilestone: null,
+      criteria: [],
+      userId: user.id,
+      role: user.role,
+    };
+  }
   if (stage) {
     stageCache.set(user.id, stage);
     window.dispatchEvent(new Event("verification-stage-update"));
@@ -60,6 +97,10 @@ export function seedVerificationCache(user: UserLike) {
 export function clearVerificationCache() {
   stageCache.clear();
   window.dispatchEvent(new Event("verification-stage-update"));
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(userSessionClearedEvent, () => clearVerificationCache());
 }
 
 const STAFF_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "MODERATOR", "SUPPORT"]);
@@ -86,6 +127,25 @@ function getAccountTypeColorToken(user: UserLike): { badgeColor: VerificationSta
 export function getVerificationStage(user: UserLike): VerificationStageResult | null {
   if (!user) return null;
 
+  if (user.verification && !("eligible" in user.verification)) {
+    const kind = (user.verification as { kind?: string | null }).kind;
+    if (kind && Object.keys(VERIFICATION_KINDS).includes(kind)) {
+      return {
+        eligible: true,
+        stage: kind === "staff" ? "STAFF" : kind === "agent" || kind === "landlord" ? "AGENT_VERIFIED" : "PROFILE_VERIFIED",
+        badge: kind === "staff" ? "STAFF_STAR" : kind === "agent" || kind === "landlord" ? "BLUE_SHIELD" : "GREEN_CHECK",
+        badgeColor: kind === "staff" ? "admin" : kind === "agent" || kind === "landlord" ? "agent" : "green",
+        riskBlocked: false,
+        nextMilestone: null,
+        criteria: [],
+        userId: user.id,
+        role: user.role,
+        kind: kind as VerificationKind,
+      };
+    }
+    if (kind === null) return null;
+  }
+
   const { badgeColor, colorToken } = getAccountTypeColorToken(user);
 
   // Staff badge wins over any trust stage - check this FIRST
@@ -101,16 +161,17 @@ export function getVerificationStage(user: UserLike): VerificationStageResult | 
       criteria: [],
       userId: user.id,
       role: user.role,
+      kind: "staff",
     };
   }
 
-  if (user.verification?.eligible) {
-    const v = user.verification;
+  if (user.verification && "eligible" in user.verification && user.verification.eligible) {
+    const v = user.verification as VerificationStageResult;
     return { ...v, badgeColor, colorToken };
   }
   if (user.id) {
     const cached = stageCache.get(user.id);
-    if (cached) return { ...cached, badgeColor, colorToken };
+    if (cached)      return { ...cached, badgeColor, colorToken };
   }
   if (user.isVerified) {
     return {
@@ -124,6 +185,7 @@ export function getVerificationStage(user: UserLike): VerificationStageResult | 
       criteria: [],
       userId: user.id,
       role: user.role,
+      kind: "student",
     };
   }
   return null;
@@ -182,6 +244,8 @@ function VerificationBadgeWithPopover({
   };
 
   const stage = verification.stage;
+  const kindConfig = resolveVerificationKind(verification);
+  const popoverMessage = kindConfig?.popoverText ?? POPOVER_MESSAGES[stage] ?? "";
 
   const popover = isOpen && triggerRef.current ? createPortal(
     <div
@@ -192,15 +256,14 @@ function VerificationBadgeWithPopover({
         transform: "translateX(-50%)",
       }}
       role="tooltip"
-      aria-label={POPOVER_MESSAGES[stage]}
-    >
-      <div className="pointer-events-auto relative">
+      aria-label={popoverMessage}
+    >      <div className="pointer-events-auto relative">
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-3 h-3 rotate-45 bg-white/95 border-l border-t border-black/10 shadow-[0_-4px_8px_rgba(11,12,14,0.08)]" />
         <div
           className="rounded-2xl bg-white/95 backdrop-blur-sm border border-black/10 shadow-[0_12px_32px_rgba(11,12,14,0.18)] px-4 py-3 max-w-xs text-sm leading-6 text-black/80 whitespace-nowrap"
           style={{ animation: "popover-in 180ms ease-out" }}
         >
-          {POPOVER_MESSAGES[stage]}
+          {popoverMessage}
         </div>
       </div>
     </div>,
@@ -258,6 +321,9 @@ export function UserName({
   const cachedStage = useCachedStage(user?.id);
   const stage = useMemo(() => {
     if (!user) return null;
+    if (user.verification === undefined && process.env.NODE_ENV === "development") {
+      if (user?.id) console.warn(`[UserName] Missing verification field for user ${user.id}. Badge will not render.`);
+    }
     return getVerificationStage({ ...user, verification: cachedStage });
   }, [user, cachedStage]);
 

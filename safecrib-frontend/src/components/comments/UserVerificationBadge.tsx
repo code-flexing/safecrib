@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { VerificationBadge, normalizeVerificationStage, type VerificationStageResult } from "@/components/verification/VerificationBadge";
+import { resolveVerificationKind } from "@/components/verification/verification-kinds";
 import { cachedApiFetch, getPersistedVerification, setPersistedVerification } from "@/lib/api";
 
 const STAFF_ROLES = new Set(["ADMIN", "SUPER_ADMIN", "MODERATOR", "SUPPORT"]);
@@ -28,6 +29,7 @@ interface UserVerificationBadgeProps {
   role?: string;
   compact?: boolean;
   iconOnly?: boolean;
+  verification?: { kind?: string | null } | VerificationStageResult | null;
 }
 
 export function UserVerificationBadge({
@@ -35,8 +37,9 @@ export function UserVerificationBadge({
   role,
   compact = false,
   iconOnly = false,
+  verification,
 }: UserVerificationBadgeProps) {
-  const [verification, setVerification] = useState<VerificationStageResult | null>(null);
+  const [cachedStage, setCachedStage] = useState<VerificationStageResult | null>(null);
 
   const isStaff = isStaffRole(role);
   const isProvider = isProviderRole(role);
@@ -55,35 +58,41 @@ export function UserVerificationBadge({
       criteria: [],
       userId,
       role,
+      kind: "staff",
     };
   }, [isStaff, userId, role, badgeColor, colorToken]);
 
+  const kindConfig = resolveVerificationKind(verification);
+
   useEffect(() => {
-    // If staff, don't fetch from API - we already have the badge
     if (isStaff) {
-      setVerification(staffVerification);
       return;
     }
 
     let active = true;
     const cached = normalizeVerificationStage(getPersistedVerification(userId));
     if (cached) {
-      setVerification({ ...cached, badgeColor, colorToken });
+      setCachedStage({ ...cached, badgeColor, colorToken });
     }
     void cachedApiFetch<unknown>(`/api/v1/trust/users/${encodeURIComponent(userId)}/verification-stage`)
       .then((response) => {
         const stage = normalizeVerificationStage(response);
         if (!stage || !active) return;
         setPersistedVerification(userId, response);
-        setVerification({ ...stage, badgeColor, colorToken });
+        setCachedStage({ ...stage, badgeColor, colorToken });
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [userId, isStaff, staffVerification, badgeColor, colorToken]);
+  }, [userId, isStaff, badgeColor, colorToken]);
 
-  return verification ? (
-    <VerificationBadge verification={verification} compact={compact} iconOnly={iconOnly} />
+  if (kindConfig) {
+    return <VerificationBadge verification={{ kind: kindConfig.kind, eligible: true, stage: "PROFILE_VERIFIED", badge: "GREEN_CHECK", badgeColor: "green", riskBlocked: false, nextMilestone: null, criteria: [] }} compact={compact} iconOnly={iconOnly} />;
+  }
+
+  const fallbackStage = staffVerification ?? cachedStage;
+  return fallbackStage ? (
+    <VerificationBadge verification={fallbackStage} compact={compact} iconOnly={iconOnly} />
   ) : null;
 }

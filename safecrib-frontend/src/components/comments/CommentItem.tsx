@@ -18,6 +18,7 @@ export interface ListingComment {
     profilePicture?: string | null;
     studentProfile?: { profilePicture?: string | null } | null;
     providerPage?: { profilePicture?: string | null } | null;
+    verification?: { kind?: string | null } | null;
   };
   mentions?: Array<{
     user: {
@@ -28,6 +29,7 @@ export interface ListingComment {
       profilePicture?: string | null;
       studentProfile?: { profilePicture?: string | null } | null;
       providerPage?: { profilePicture?: string | null } | null;
+      verification?: { kind?: string | null } | null;
     };
   }>;
 }

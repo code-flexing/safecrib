@@ -1,4 +1,5 @@
 import { BadgeCheck, Crown, ShieldCheck } from "lucide-react";
+import { VERIFICATION_KINDS, type VerificationKind, resolveVerificationKind } from "./verification-kinds";
 
 function StaffStar({ size, ...props }: { size: number; [key: string]: unknown }) {
   return (
@@ -39,6 +40,7 @@ export type VerificationStageResult = {
   nextMilestone: string | null;
   criteria: VerificationCriterion[];
   generatedAt?: string;
+  kind?: VerificationKind | null;
 };
 
 const stageConfig = {
@@ -104,6 +106,8 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
       })
     : [];
 
+  const kind = typeof response.kind === "string" ? response.kind : undefined;
+
   return {
     userId: typeof response.userId === "string" ? response.userId : undefined,
     role: typeof response.role === "string" ? response.role : undefined,
@@ -115,6 +119,7 @@ export function normalizeVerificationStage(value: unknown): VerificationStageRes
     nextMilestone: typeof response.nextMilestone === "string" ? response.nextMilestone : null,
     criteria,
     generatedAt: typeof response.generatedAt === "string" ? response.generatedAt : undefined,
+    kind: kind && Object.keys(VERIFICATION_KINDS).includes(kind) ? (kind as VerificationKind) : null,
   };
 }
 
@@ -145,6 +150,23 @@ export function VerificationBadge({
   iconOnly?: boolean;
   size?: BadgeSize;
 }) {
+  const kindConfig = resolveVerificationKind(verification);
+  if (kindConfig) {
+    const pixelSize = size ? resolveSize(size) : (iconOnly ? 20 : compact ? 16 : (typeof kindConfig.size === "number" ? kindConfig.size : SIZE_MAP[kindConfig.size] ?? 16));
+    const BadgeIcon = kindConfig.glyph === "star" ? StaffStar : BadgeCheck;
+    return (
+      <span
+        title={kindConfig.tooltipTitle}
+        aria-label={kindConfig.ariaLabel}
+        className="inline-flex shrink-0 items-center justify-center align-middle bg-transparent p-0"
+        style={{ width: pixelSize, height: pixelSize, flexShrink: 0, color: `var(${kindConfig.colorToken})` }}
+      >
+        <BadgeIcon size={pixelSize} strokeWidth={2.25} aria-hidden="true" />
+        {iconOnly ? null : <span className="sr-only">{kindConfig.ariaLabel}</span>}
+      </span>
+    );
+  }
+
   if (!verification?.eligible && !verified) return null;
 
   const badge = verification?.badge ?? "GREEN_CHECK";

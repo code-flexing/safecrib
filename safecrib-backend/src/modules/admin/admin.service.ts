@@ -17,6 +17,19 @@ import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { generateUniqueUsername } from '../../common/username.utils.js';
+import { getPublicVerification } from '../../common/verification/public-verification.js';
+import type { Role } from '../../common/roles.decorator.js';
+
+const NON_ADMIN_ROLES = ['STUDENT', 'AGENT', 'LANDLORD', 'UNVERIFIED'] as const;
+type NonAdminRole = (typeof NON_ADMIN_ROLES)[number];
+
+const USER_LIST_SEARCH_FIELDS = ['email', 'displayName', 'username'] as const;
+const VALID_SORT_FIELDS = ['createdAt', 'email', 'displayName', 'username'] as const;
+type SortField = (typeof VALID_SORT_FIELDS)[number];
+
+function isValidSortField(field: string): field is SortField {
+  return VALID_SORT_FIELDS.includes(field as SortField);
+}
 
 @Injectable()
 export class AdminService {
@@ -182,45 +195,245 @@ export class AdminService {
     return { message: 'Listing flagged', listingId };
   }
 
-  async getAllUsers(skip = 0, take = 50, role?: string) {
-    const where: any = {};
-    if (role) where.role = role;
+  async getAllUsers(params: {
+    skip?: number;
+    take?: number;
+    role?: string;
+    search?: string;
+    verification?: string;
+    status?: string;
+    flagged?: boolean;
+    from?: string;
+    to?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
+  } = {}) {
+    const {
+      skip = 0,
+      take = 20,
+      role,
+      search,
+      verification,
+      status,
+      flagged,
+      from,
+      to,
+      sort = 'createdAt',
+      order = 'desc',
+    } = params;
 
-    return this.prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        username: true,
-        role: true,
-        emailVerified: true,
-        identityVerified: true,
-        trustScore: true,
-        createdAt: true,
-      },
-      skip,
-      take,
-      orderBy: { createdAt: 'desc' },
-    });
+    const where: any = {
+      role: { in: NON_ADMIN_ROLES },
+    };
+
+    if (role && NON_ADMIN_ROLES.includes(role as NonAdminRole)) {
+      where.role = role;
+    }
+
+    if (search && search.length >= 2) {
+      where.OR = USER_LIST_SEARCH_FIELDS.map((field) => ({
+        [field]: { contains: search, mode: 'insensitive' },
+      }));
+    }
+
+    if (verification) {
+      switch (verification) {
+        case 'VERIFIED':
+          where.identityVerified = true;
+          break;
+        case 'PENDING':
+          where.identityVerified = false;
+          where.emailVerified = true;
+          break;
+        case 'REJECTED':
+          where.identityVerified = false;
+          where.emailVerified = false;
+          break;
+        case 'NOT_SUBMITTED':
+          where.emailVerified = false;
+          break;
+      }
+    }
+
+    if (status === 'ACTIVE') {
+      where.emailVerified = true;
+    } else if (status === 'SUSPENDED') {
+      where.emailVerified = false;
+    }
+
+    if (from || to) {
+      where.createdAt = {};
+      if (from) where.createdAt.gte = new Date(from);
+      if (to) where.createdAt.lte = new Date(to);
+    }
+
+    const orderByField = isValidSortField(sort) ? sort : 'createdAt';
+
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          username: true,
+          role: true,
+          emailVerified: true,
+          identityVerified: true,
+          trustScore: true,
+          createdAt: true,
+          profilePicture: true,
+          studentProfile: {
+            select: {
+              id: true,
+              status: true,
+              schoolOfStudy: true,
+              profilePicture: true,
+            },
+          },
+          providerPage: {
+            select: {
+              id: true,
+              verificationState: true,
+              displayName: true,
+              profilePicture: true,
+            },
+          },
+          verification: {
+            select: {
+              stage: true,
+              badge: true,
+              badgeColor: true,
+              riskBlocked: true,
+            },
+          },
+          _count: {
+            select: {
+              fraudReportsFiled: true,
+              fraudReportsAssigned: true,
+            },
+          },
+        },
+        skip,
+        take,
+        orderBy: { [orderByField]: order },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items: items.map((u) => ({
+        ...u,
+        verification: u.verification
+          ? { ...u.verification, kind: getPublicVerification({ role: u.role as Role, identityVerified: u.identityVerified, studentProfileApproved: u.studentProfile?.status === 'APPROVED', providerPageVerified: u.providerPage?.verificationState === 'VERIFIED', riskBlocked: u.verification.riskBlocked }).kind }
+          : { kind: getPublicVerification({ role: u.role as Role, identityVerified: u.identityVerified, studentProfileApproved: u.studentProfile?.status === 'APPROVED', providerPageVerified: u.providerPage?.verificationState === 'VERIFIED' }).kind },
+      })),
+      total,
+      nextCursor: items.length === take ? skip + take : null,
+    };
   }
 
-  async getUserDetail(userId: string) {
+  async getUserDetail(userId: string, adminId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
+        studentProfile: true,
+        providerPage: true,
+        verification: true,
         listings: {
-          select: { id: true, title: true, price: true, status: true, createdAt: true },
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            discountAmount: true,
+            status: true,
+            campus: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+        bookings: {
+          select: {
+            id: true,
+            listingId: true,
+            status: true,
+            depositAmount: true,
+            holdExpiresAt: true,
+            bookedAt: true,
+            completedAt: true,
+            cancelledAt: true,
+            createdAt: true,
+            listing: {
+              select: { id: true, title: true, price: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
         },
         trustEvents: {
           select: { id: true, eventType: true, weight: true, occurredAt: true },
           orderBy: { occurredAt: 'desc' },
+          take: 20,
+        },
+        fraudReportsFiled: {
+          select: {
+            id: true,
+            type: true,
+            description: true,
+            status: true,
+            targetUserId: true,
+            targetListingId: true,
+            createdAt: true,
+            targetListing: { select: { id: true, title: true } },
+            targetUser: { select: { id: true, displayName: true, username: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+        fraudReportsAssigned: {
+          select: {
+            id: true,
+            type: true,
+            description: true,
+            status: true,
+            reporterId: true,
+            targetListingId: true,
+            createdAt: true,
+            reporter: { select: { id: true, displayName: true, username: true } },
+            targetListing: { select: { id: true, title: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+        notifications: {
+          where: {
+            data: {
+              path: ['senderAdminId'],
+              not: null,
+            },
+          },
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            body: true,
+            href: true,
+            readAt: true,
+            createdAt: true,
+            data: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
         },
         _count: {
           select: {
             listings: true,
             bookings: true,
             trustEvents: true,
+            fraudReportsFiled: true,
+            fraudReportsAssigned: true,
+            notifications: true,
           },
         },
       },
@@ -230,7 +443,168 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
+    // Audit log for admin viewing user profile
+    if (adminId) {
+      await this.prisma.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: 'USER_PROFILE_VIEWED',
+          entityType: 'user',
+          entityId: userId,
+          metadata: { viewedAt: new Date().toISOString() },
+        },
+      });
+    }
+
     return user;
+  }
+
+  async sendAdminNotification(
+    adminId: string,
+    targetUserId: string,
+    data: {
+      title: string;
+      message: string;
+      link?: string;
+      templateKey?: string;
+    },
+    idempotencyKey?: string,
+  ) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, role: true, email: true },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('Recipient user not found');
+    }
+
+    if (targetUser.role === 'ADMIN') {
+      throw new BadRequestException('Cannot send admin notifications to other admins');
+    }
+
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: { id: true, displayName: true, profilePicture: true, username: true },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin user not found');
+    }
+
+    const title = data.title.trim().slice(0, 80);
+    const message = data.message.trim().slice(0, 500);
+
+    if (!title || !message) {
+      throw new BadRequestException('Title and message are required');
+    }
+
+    let link = data.link?.trim() || null;
+    if (link) {
+      if (!link.startsWith('/') || link.startsWith('//')) {
+        throw new BadRequestException('Link must be an internal path');
+      }
+      const allowedPrefixes = ['/profile', '/dashboard', '/page', '/admin'];
+      const isAllowed = allowedPrefixes.some((prefix) => link.startsWith(prefix));
+      if (!isAllowed) {
+        throw new BadRequestException('Link must be to an allowed internal destination');
+      }
+    }
+
+    // Check idempotency
+    if (idempotencyKey) {
+      const existing = await this.prisma.notification.findFirst({
+        where: { dedupeKey: `admin_message:${idempotencyKey}` },
+        select: { id: true },
+      });
+      if (existing) {
+        return { id: existing.id, duplicate: true };
+      }
+    }
+
+    const notification = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.notification.create({
+        data: {
+          userId: targetUserId,
+          type: 'ADMIN_MESSAGE',
+          title,
+          body: message,
+          href: link,
+          data: {
+            senderAdminId: adminId,
+            senderNameSnapshot: admin.displayName ?? admin.username ?? 'SafeCribs Team',
+            senderAvatarSnapshot: admin.profilePicture,
+            templateKey: data.templateKey,
+          },
+          dedupeKey: idempotencyKey ? `admin_message:${idempotencyKey}` : `admin_message:${adminId}:${targetUserId}:${Date.now()}`,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: 'ADMIN_NOTIFICATION_SENT',
+          entityType: 'notification',
+          entityId: created.id,
+          metadata: {
+            targetUserId,
+            title,
+            templateKey: data.templateKey ?? null,
+            link: link ?? null,
+          },
+        },
+      });
+
+      return created;
+    });
+
+    // Send real-time notification via the notifications service
+    await this.notifications.enqueue(targetUserId, {
+      type: 'ADMIN_MESSAGE' as any,
+      title,
+      body: message,
+      href: link ?? undefined,
+      data: {
+        senderAdminId: adminId,
+        senderNameSnapshot: admin.displayName ?? admin.username ?? 'SafeCribs Team',
+        senderAvatarSnapshot: admin.profilePicture,
+        templateKey: data.templateKey,
+      },
+      dedupeKey: notification.dedupeKey,
+    });
+
+    return { id: notification.id, duplicate: false };
+  }
+
+  async getAdminNotificationsSent(targetUserId: string, skip = 0, take = 20) {
+    const [items, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: {
+          userId: targetUserId,
+          type: 'ADMIN_MESSAGE',
+        },
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          href: true,
+          readAt: true,
+          createdAt: true,
+          data: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.notification.count({
+        where: {
+          userId: targetUserId,
+          type: 'ADMIN_MESSAGE',
+        },
+      }),
+    ]);
+
+    return { items, total };
   }
 
   async reviewSubmission(submissionId: string, adminId: string, dto: ReviewSubmissionDto) {

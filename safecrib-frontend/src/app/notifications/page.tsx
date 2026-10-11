@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon } from "@/components/ui/Icon";
@@ -36,6 +36,65 @@ function formatNotificationDate(value: string) {
   return Number.isNaN(date.getTime())
     ? "Recently"
     : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+function isAdminMessage(notification: NotificationItem): boolean {
+  return notification.type === "ADMIN_MESSAGE";
+}
+
+function getAdminSender(notification: NotificationItem): { name: string; avatarRef: string | null; id?: string } {
+  const data = notification.data ?? {};
+  const name = typeof data.senderNameSnapshot === "string" && data.senderNameSnapshot
+    ? data.senderNameSnapshot
+    : "SafeCribs Team";
+  const avatarRef = typeof data.senderAvatarSnapshot === "string" && data.senderAvatarSnapshot
+    ? data.senderAvatarSnapshot
+    : null;
+  const id = typeof data.senderAdminId === "string" ? data.senderAdminId : undefined;
+  return { name, avatarRef, id };
+}
+
+function AdminProfilePopover({
+  adminName,
+  adminAvatar,
+  onClose,
+}: {
+  adminName: string;
+  adminAvatar: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Admin profile"
+    >
+      <div
+        className="w-64 rounded-2xl border border-black/10 bg-white p-6 text-center shadow-[0_12px_32px_rgba(11,12,14,0.18)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ProfileAvatar
+          src={adminAvatar}
+          alt={`${adminName} profile`}
+          size="large"
+          className="mx-auto h-20 w-20"
+        />
+        <div className="mt-3">
+          <div className="flex items-center justify-center gap-1.5">
+            <UserName
+              user={{ displayName: adminName, username: null, role: "ADMIN" }}
+              size="md"
+              showHandle={false}
+              nameClassName="text-lg font-semibold text-safecrib-black"
+            />
+          </div>
+          <p className="mt-1 text-xs text-black/50">SafeCribs Team</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function NotificationActor({ notification }: { notification: NotificationItem }) {
@@ -80,6 +139,58 @@ function NotificationActor({ notification }: { notification: NotificationItem })
         />
       )}
     </span>
+  );
+}
+
+function AdminMessageActor({ notification }: { notification: NotificationItem }) {
+  const { name, avatarRef, id } = useMemo(() => getAdminSender(notification), [notification]);
+  const [photo, setPhoto] = useState<string | null>(() => getCachedMediaUrl(avatarRef));
+  const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    const cached = getCachedMediaUrl(avatarRef);
+    if (cached) {
+      setPhoto(cached);
+      return;
+    }
+    setPhoto(null);
+    if (!avatarRef) return;
+    let active = true;
+    void resolveMediaUrl(avatarRef)
+      .then((url) => { if (active) setPhoto(url); })
+      .catch((error: unknown) => {
+        if (active) console.error("Could not load the admin sender's profile picture.", error);
+      });
+    return () => { active = false; };
+  }, [avatarRef]);
+
+  return (
+    <>
+      <span className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowProfile(true)}
+          className="relative h-11 w-11 shrink-0 rounded-full border border-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-safecrib-green"
+          aria-label={`View ${name} profile`}
+        >
+          <ProfileAvatar src={photo} alt={`${name} profile`} size="small" className="h-11 w-11" />
+        </button>
+        <UserName
+          user={{ id, displayName: name, username: null, role: "ADMIN" }}
+          size="sm"
+          showHandle={false}
+          nameClassName="text-sm font-semibold text-safecrib-black truncate max-w-[120px]"
+        />
+      </span>
+      <span className="text-xs text-black/45">from SafeCribs</span>
+      {showProfile && (
+        <AdminProfilePopover
+          adminName={name}
+          adminAvatar={photo}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -406,25 +517,45 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <ul className="space-y-3">
-            {items.map((notification) => (
-              <li key={notification.id} className={`rounded-2xl border p-4 transition ${notification.readAt ? "border-black/5 bg-white" : "border-safecrib-green/25 bg-safecrib-green/[0.06]"}`}>
-                  <div className="flex items-start gap-3">
-                    <NotificationActor notification={notification} />
-                    <button type="button" onClick={() => void openNotification(notification)} className="min-w-0 flex-1 text-left">
-                      <span className="flex items-center gap-2 font-semibold">
-                        {!notification.readAt && <span aria-label="Unread" className="h-2 w-2 shrink-0 rounded-full bg-safecrib-green" />}
-                        {notification.title}
+            {items.map((notification) => {
+              const adminMsg = isAdminMessage(notification);
+              return (
+                <li key={notification.id} className={`rounded-2xl border p-4 transition ${notification.readAt ? "border-black/5 bg-white" : "border-safecrib-green/25 bg-safecrib-green/[0.06]"}`}>
+                  {adminMsg ? (
+                    <div className="flex items-start gap-3">
+                      <span className="flex shrink-0 flex-col items-start gap-1">
+                        <AdminMessageActor notification={notification} />
                       </span>
-                      <span className="mt-1 block text-sm text-black/70">{notification.body}</span>
-                      <span className="mt-2 block text-xs text-black/50">{formatNotificationDate(notification.createdAt)}</span>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => void openNotification(notification)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p className="text-sm font-semibold text-safecrib-black">{notification.title}</p>
+                        <p className="mt-1 text-sm text-black/70">{notification.body}</p>
+                        <span className="mt-2 block text-xs text-black/50">{formatNotificationDate(notification.createdAt)}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <NotificationActor notification={notification} />
+                      <button type="button" onClick={() => void openNotification(notification)} className="min-w-0 flex-1 text-left">
+                        <span className="flex items-center gap-2 font-semibold">
+                          {!notification.readAt && <span aria-label="Unread" className="h-2 w-2 shrink-0 rounded-full bg-safecrib-green" />}
+                          {notification.title}
+                        </span>
+                        <span className="mt-1 block text-sm text-black/70">{notification.body}</span>
+                        <span className="mt-2 block text-xs text-black/50">{formatNotificationDate(notification.createdAt)}</span>
+                      </button>
+                    </div>
+                  )}
                   <div className="mt-3 flex justify-end gap-3 border-t border-black/5 pt-3">
                     {!notification.readAt && <button type="button" onClick={() => void markRead(notification)} className="text-xs font-semibold text-safecrib-green hover:underline">Mark as read</button>}
                     <button type="button" onClick={() => void deleteNotification(notification)} className="text-xs font-semibold text-red-700 hover:underline">Delete</button>
                   </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
         {nextCursor && !loading && (

@@ -240,6 +240,10 @@ export interface ListingResponse {
       stage: string;
       badgeColor: 'green' | 'blue' | 'gold';
     } | null;
+    /** Canonical public verification badge kind, or null */
+    publicVerification: {
+      kind: 'student' | 'agent' | 'landlord' | 'staff' | null;
+    } | null;
   };
   /** Optional property details — null when provider has not filled them in */
   bedrooms: number | null;

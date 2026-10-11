@@ -16,7 +16,8 @@ export type NotificationType =
   | 'LISTING_LIKED'
   | 'LISTING_COMMENT'
   | 'COMMENT_MENTION'
-  | 'SUPPORT_REPLY';
+  | 'SUPPORT_REPLY'
+  | 'ADMIN_MESSAGE';
 
 export type NotificationInput = {
   type: NotificationType;

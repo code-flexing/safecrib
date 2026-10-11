@@ -12,6 +12,7 @@ import type { UpdateUserDto } from './dto/user.dto.js';
 import type { ChangePasswordDto } from './dto/user.dto.js';
 import type { Role } from '../../common/roles.decorator.js';
 import { normaliseDisplayName, isBlockedDisplayName } from '../../common/username.utils.js';
+import { getPublicVerification } from '../../common/verification/public-verification.js';
 
 @Injectable()
 export class UserService {
@@ -97,6 +98,13 @@ export class UserService {
         badgeColor: normalizedVerification.badgeColor,
         riskBlocked: normalizedVerification.riskBlocked,
         eligible: adminApproved && verificationStage.eligible,
+        kind: getPublicVerification({
+          role: user.role as Role,
+          identityVerified: user.identityVerified,
+          studentProfileApproved: studentProfile?.status === 'APPROVED',
+          providerPageVerified: user.providerPage?.verificationState === 'VERIFIED',
+          riskBlocked: normalizedVerification.riskBlocked,
+        }).kind,
       },
       verificationStage,
     };
@@ -268,7 +276,21 @@ export class UserService {
       id: user.id,
       username: user.username,
       isVerified: verification.isVerified,
-      verification,
+      verification: {
+        isVerified: true,
+        stage: verification.stage,
+        badge: verification.badge,
+        badgeColor: verification.badgeColor,
+        riskBlocked: verification.riskBlocked,
+        eligible: true,
+        kind: getPublicVerification({
+          role: user.role as Role,
+          identityVerified: user.identityVerified,
+          studentProfileApproved: studentVerified,
+          providerPageVerified: providerVerified,
+          riskBlocked: user.verification?.riskBlocked ?? computedVerification.riskBlocked,
+        }).kind,
+      },
       displayName: providerPage?.displayName ?? user.displayName,
       role: user.role,
       createdAt: user.createdAt,
@@ -339,8 +361,10 @@ export class UserService {
         username: true,
         profilePicture: true,
         role: true,
-        studentProfile: { select: { schoolOfStudy: true, shortBio: true } },
-        providerPage: { select: { shortBio: true } },
+        identityVerified: true,
+        studentProfile: { select: { status: true, schoolOfStudy: true, shortBio: true } },
+        providerPage: { select: { verificationState: true, shortBio: true } },
+        verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
         _count: { select: { followers: true } },
         followers: { where: { followerId: currentUserId }, select: { followerId: true }, take: 1 },
       },
@@ -365,13 +389,23 @@ export class UserService {
       },
     });
     return {
-      users: users.map(({ _count, followers, studentProfile, providerPage, ...user }) => ({
+  users: users.map(({ _count, followers, studentProfile, providerPage, verification, identityVerified, ...user }) => ({
         ...user,
         isVerified: true,
+        identityVerified,
         school: studentProfile?.schoolOfStudy ?? null,
         shortBio: providerPage?.shortBio ?? studentProfile?.shortBio ?? null,
         followerCount: _count.followers,
         isFollowing: followers.length > 0,
+        verification: {
+          kind: getPublicVerification({
+            role: user.role as Role,
+            identityVerified: identityVerified ?? false,
+            studentProfileApproved: studentProfile?.status === 'APPROVED',
+            providerPageVerified: providerPage?.verificationState === 'VERIFIED',
+            riskBlocked: verification?.riskBlocked ?? false,
+          }).kind,
+        },
       })),
       pages: pages.map(({ _count, followers, ...page }) => ({
         ...page,
@@ -422,6 +456,13 @@ export class UserService {
       createdAt: user.createdAt,
       identityVerified: user.identityVerified,
       followerCount: user._count.followers,
+      verification: getPublicVerification({
+        role: user.role as Role,
+        identityVerified: user.identityVerified,
+        studentProfileApproved: user.studentProfile?.status === 'APPROVED',
+        providerPageVerified: user.providerPage?.verificationState === 'VERIFIED',
+        riskBlocked: user.verification?.riskBlocked ?? false,
+      }),
     };
   }
 

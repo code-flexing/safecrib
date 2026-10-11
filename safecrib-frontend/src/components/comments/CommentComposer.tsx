@@ -15,6 +15,7 @@ interface MentionCandidate {
   profilePicture?: string | null;
   studentProfile?: { profilePicture?: string | null } | null;
   providerPage?: { profilePicture?: string | null } | null;
+  verification?: { kind?: string | null } | null;
 }
 
 interface CommentComposerProps {
@@ -136,7 +137,7 @@ export function CommentComposer({
               >
                 <CommentAvatar user={person} small />
                 <UserName user={person} size="sm" showHandle={true} showVerificationBadge={false} />
-                <UserVerificationBadge userId={person.id} />
+                <UserVerificationBadge userId={person.id} role={person.role} verification={person.verification} />
                 <span className="text-xs text-theme-text-muted">{person.role?.toLowerCase()}</span>
               </button>
             </li>
