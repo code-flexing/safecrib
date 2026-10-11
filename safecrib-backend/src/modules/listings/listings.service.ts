@@ -442,13 +442,13 @@ export class ListingsService {
         mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
-    return comments.map((comment) => ({
+     return comments.map((comment) => ({
       ...comment,
       user: this.withPublicVerification(comment.user),
-      mentions: comment.mentions.map((m: any) => ({
+      mentions: Array.isArray(comment.mentions) ? comment.mentions.map((m: any) => ({
         ...m,
         user: this.withPublicVerification(m.user),
-      })),
+      })) : [],
     }));
   }
 
@@ -546,13 +546,13 @@ export class ListingsService {
       },
       dedupeKey: `listing-comment:${comment.id}:mention:${mentionedUserId}`,
     })));
-    return {
+     return {
       ...comment,
       user: this.withPublicVerification(comment.user),
-      mentions: comment.mentions.map((m: any) => ({
+      mentions: Array.isArray(comment.mentions) ? comment.mentions.map((m: any) => ({
         ...m,
         user: this.withPublicVerification(m.user),
-      })),
+      })) : comment.mentions ?? [],
     };
   }
 
