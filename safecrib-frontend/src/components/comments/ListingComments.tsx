@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Icon } from "@/components/ui/Icon";
@@ -37,6 +37,7 @@ interface ListingCommentsProps {
   initialComments?: ListingComment[];
   initialError?: string;
   isModal?: boolean;
+  commentId?: string | null;
 }
 
 function formatCommentTime(iso: string) {
@@ -80,6 +81,7 @@ export function ListingComments({
   initialComments = [],
   initialError,
   isModal = true,
+  commentId = null,
 }: ListingCommentsProps) {
   const [comments, setComments] = useState<ListingComment[]>(initialComments);
   const [loading, setLoading] = useState(!initialComments.length && !initialError);
@@ -94,6 +96,59 @@ export function ListingComments({
   const inputId = `home-comment-${listingId}`;
   const titleId = useId();
   const closeDiscussion = useCallback(() => onClose(listingId), [listingId, onClose]);
+
+  // Build a map of comments by ID for quick lookup
+  const commentMapRef = useRef<Map<string, ListingComment>>(new Map());
+  useEffect(() => {
+    const map = new Map<string, ListingComment>();
+    comments.forEach((c) => map.set(c.id, c));
+    commentMapRef.current = map;
+  }, [comments]);
+
+  // Compute which comments should be auto-expanded (ancestors of target comment)
+  const expandedIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!commentId) {
+      expandedIdsRef.current.clear();
+      return;
+    }
+    const expanded = new Set<string>();
+    let current: ListingComment | undefined = commentMapRef.current.get(commentId);
+    while (current?.parentId) {
+      expanded.add(current.parentId);
+      current = commentMapRef.current.get(current.parentId);
+    }
+    expandedIdsRef.current = expanded;
+  }, [commentId, comments]);
+
+  // Handle scrolling to and highlighting target comment after render
+  const targetCommentRef = useRef<HTMLLIElement | null>(null);
+  const hasScrolledRef = useRef(false);
+  useEffect(() => {
+    if (!commentId || hasScrolledRef.current) return;
+    const target = document.getElementById(`comment-${commentId}`) as HTMLLIElement | null;
+    if (target) {
+      targetCommentRef.current = target;
+      hasScrolledRef.current = true;
+      // Small delay to ensure layout is settled
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Add highlight class for animation
+        target.classList.add("comment-highlight");
+        // Announce to screen readers
+        target.setAttribute("aria-live", "polite");
+        target.setAttribute("aria-atomic", "true");
+        // Focus for accessibility
+        target.focus({ preventScroll: true });
+        // Remove highlight after 2 seconds
+        setTimeout(() => {
+          target.classList.remove("comment-highlight");
+          target.removeAttribute("aria-live");
+          target.removeAttribute("aria-atomic");
+        }, 2000);
+      });
+    }
+  }, [commentId, comments]);
 
   useEffect(() => {
     if (initialComments.length || initialError) return;
@@ -275,7 +330,8 @@ const startReply = (item: ListingComment) => {
                   replies={comments.filter((c) => c.parentId === comment.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())}
                   onReply={startReply}
                   renderBody={renderBody}
-                  autoExpand={newReplyParentId === comment.id}
+                  autoExpand={newReplyParentId === comment.id || expandedIdsRef.current.has(comment.id)}
+                  targetCommentId={commentId}
                 />
               ))}
               {!comments.length && !commentError && (

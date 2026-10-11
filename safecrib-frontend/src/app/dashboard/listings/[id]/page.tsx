@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { UserName } from "@/components/common/UserName";
@@ -185,6 +185,7 @@ function VideoPlayer({ src, reserveBottom }: { src: string; reserveBottom: boole
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [listing, setListing] = useState<Listing | null>(null);
   const [providerVerification, setProviderVerification] = useState<VerificationStageResult | null>(null);
   const [providerBadgeUnavailable, setProviderBadgeUnavailable] = useState(false);
@@ -215,6 +216,22 @@ export default function ListingDetailPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const hasLoadedInitial = useRef(false);
+
+  // Comment ID from URL for deep-linking from notifications
+  const commentIdFromUrl = searchParams?.get("comment") ?? null;
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(commentIdFromUrl);
+
+  // Clear comment param from URL after use (once)
+  const urlCleanedRef = useRef(false);
+  useEffect(() => {
+    if (targetCommentId && !urlCleanedRef.current) {
+      urlCleanedRef.current = true;
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      params.delete("comment");
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}${window.location.hash}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [targetCommentId, searchParams]);
 
   useEffect(() => {
     if (!localStorage.getItem("safecrib_access_token")) { router.replace("/login"); return; }
@@ -594,6 +611,7 @@ export default function ListingDetailPage() {
                 isModal
                 onCountChange={setCommentCount}
                 onClose={() => setCommentsOpen(false)}
+                commentId={targetCommentId}
               />
             )}
           </div>

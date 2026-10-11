@@ -915,3 +915,42 @@ html[data-theme="dark"] .safecrib-back-home:hover {
     animation: none;
   }
 }
+
+/* Comment highlight for deep-linked notifications */
+.comment-highlight {
+  animation: comment-highlight-fade 2s ease-out forwards;
+  scroll-margin-top: 100px;
+}
+
+@keyframes comment-highlight-fade {
+  0% {
+    background-color: rgba(12, 115, 85, 0.15);
+    box-shadow: 0 0 0 2px rgba(12, 115, 85, 0.3);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-highlight {
+    animation: none;
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+html[data-theme="dim"] .comment-highlight,
+html[data-theme="dark"] .comment-highlight {
+  @keyframes comment-highlight-fade {
+    0% {
+      background-color: rgba(109, 224, 181, 0.2);
+      box-shadow: 0 0 0 2px rgba(109, 224, 181, 0.4);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+}

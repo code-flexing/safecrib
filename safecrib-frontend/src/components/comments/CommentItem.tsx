@@ -40,6 +40,7 @@ interface CommentItemProps {
   onReply?: (comment: ListingComment) => void;
   renderBody?: (comment: ListingComment) => React.ReactNode;
   autoExpand?: boolean;
+  targetCommentId?: string | null;
 }
 
 function formatCommentTime(iso: string) {
@@ -71,6 +72,7 @@ export function CommentItem({
   onReply,
   renderBody,
   autoExpand = false,
+  targetCommentId = null,
 }: CommentItemProps) {
   const commentTime = formatCommentTime(comment.createdAt);
   const hasReplies = replies.length > 0;
@@ -80,24 +82,27 @@ export function CommentItem({
   const nameSize = isReply ? REPLY_NAME_SIZE : "text-xs";
   const textSize = isReply ? REPLY_TEXT_SIZE : "text-sm leading-6";
   const timeSize = isReply ? REPLY_TIME_SIZE : "text-xs";
-  const showVerification = isReply;
   const actionGap = isReply ? "gap-[3px]" : `gap-[${ACTION_GAP}px]`;
   const marginLeft = isReply ? `${CONNECTOR_LEFT_OFFSET + REPLY_INDENT}px` : `${Math.min(depth, 4) * 16}px`;
+
+  const isTarget = targetCommentId === comment.id;
+  const liId = isTarget ? `comment-${comment.id}` : undefined;
 
   const toggleReplies = () => setExpanded((prev) => !prev);
 
   return (
     <li
       key={comment.id}
+      id={liId}
       className={`py-2 first:pt-1 last:pb-1 ${isReply ? "mt-1" : ""}`}
       style={{ marginLeft }}
+      tabIndex={isTarget ? -1 : undefined}
     >
       <div className="group relative">
         <div className="flex gap-2">
           <CommentAvatar
             user={comment.user}
             small={isReply}
-            showVerification={showVerification}
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -105,14 +110,14 @@ export function CommentItem({
                 href={`/profile/${encodeURIComponent(comment.user.id)}`}
                 className={`font-semibold text-theme-text-primary transition hover:text-theme-text-link ${nameSize}`}
               >
-                <UserName user={comment.user} size={isReply ? "sm" : "sm"} showHandle={true} showVerificationBadge={false} />
+                <UserName user={comment.user} size={isReply ? "sm" : "sm"} showHandle={true} />
               </Link>
               {isAuthor && (
                 <span
                   className="rounded-full bg-safecrib-green/15 px-2 py-0.5 text-[10px] font-bold text-safecrib-green"
-                  aria-label="Listing author"
+                  aria-label="Listing creator"
                 >
-                  Author
+                  Creator
                 </span>
               )}
               <time dateTime={comment.createdAt} className={`font-normal text-theme-text-muted ${timeSize}`}>
@@ -182,6 +187,7 @@ export function CommentItem({
                   replies={[]}
                   renderBody={renderBody}
                   onReply={onReply}
+                  targetCommentId={targetCommentId}
                 />
               ))}
             </div>
