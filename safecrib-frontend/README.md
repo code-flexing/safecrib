@@ -64,7 +64,7 @@ flowchart LR
 		Browser -->|attach READY media ID| API
 ```
 
-The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to the configured API origin. Login, registration, and Socket.IO use the same origin selection. In development the default is `http://localhost:3001`; in production it is `https://safecrib.onrender.com`. Set `NEXT_PUBLIC_API_URL` to override either value.
+The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to the configured API origin. Login, registration, and Socket.IO use the same origin selection. In development the default is `http://localhost:3001`; in production it is `https://safecrib-y7up.onrender.com`. Set `NEXT_PUBLIC_API_URL` to override either value.
 
 ### Account and review flow
 
@@ -187,8 +187,8 @@ There is currently no automated test script configured in `package.json`. Before
 
 ## API and media integration
 
-- **Live API docs:** [safecrib.onrender.com/api/v1/docs](https://safecrib.onrender.com/api/v1/docs#/)
-- **API origin:** `NEXT_PUBLIC_API_URL` (or `NEXT_PUBLIC_API_ORIGIN` / `NEXT_PUBLIC_BACKEND_URL`) configures the API proxy, login/registration, and notification Socket.IO client. Local development defaults to `http://localhost:3001`; production defaults to `https://safecrib.onrender.com`.
+- **Live API docs:** [safecrib-y7up.onrender.com/api/v1/docs](https://safecrib-y7up.onrender.com/api/v1/docs#/)
+- **API origin:** `NEXT_PUBLIC_API_URL` (or `NEXT_PUBLIC_API_ORIGIN` / `NEXT_PUBLIC_BACKEND_URL`) configures the API proxy, login/registration, and notification Socket.IO client. Local development defaults to `http://localhost:3001`; production defaults to `https://safecrib-y7up.onrender.com`.
 - **Authentication:** access tokens are sent as `Authorization: Bearer <token>`. The client refreshes sessions and keeps current-user data in a best-effort browser cache for fast page transitions.
 - **Errors:** handle `401` as an expired/missing session, `403` as an authorization decision, `404` as a missing resource, and `409` as a state/limit conflict. Do not silently override server decisions in client state.
 - **Uploads:** request a signed upload, upload bytes to Cloudinary, wait for `READY`, then attach the media ID to the listing. Video readiness is webhook-driven.
@@ -237,7 +237,7 @@ Confirm these with the backend team before treating the corresponding flows as e
 - [Provider Page backend handoff](docs/backend-provider-page-implementation.md)
 - [Provider workflow direct testing](docs/provider-workflow-testing.md)
 - [Verification badges and account settings](docs/verification-badge-frontend.md)
-- [Live SafeCrib API reference](https://safecrib.onrender.com/api/v1/docs#/)
+- [Live SafeCrib API reference](https://safecrib-y7up.onrender.com/api/v1/docs#/)
 
 ## Contribution checklist
 
