@@ -10,7 +10,7 @@ describe('NotificationsController', () => {
         count: vi.fn().mockResolvedValue(3),
       },
     };
-    const controller = new NotificationsController(prisma as never);
+    const controller = new NotificationsController(prisma as never, null as never, null as never);
 
     const response = await controller.list({ id: 'user-1' }, undefined, undefined, undefined);
 
@@ -30,7 +30,7 @@ describe('NotificationsController', () => {
         count: vi.fn().mockRejectedValue(Object.assign(new Error('Table does not exist'), { code: 'P2021' })),
       },
     };
-    const controller = new NotificationsController(prisma as never);
+    const controller = new NotificationsController(prisma as never, null as never, null as never);
 
     await expect(controller.list({ id: 'user-1' }, undefined, undefined)).resolves.toEqual({
       notifications: [],
@@ -52,7 +52,7 @@ describe('NotificationsController', () => {
         count: vi.fn().mockResolvedValue(1),
       },
     };
-    const controller = new NotificationsController(prisma as never);
+    const controller = new NotificationsController(prisma as never, null as never, null as never);
     const cursor = Buffer.from(`${new Date('2026-10-06T11:00:00.000Z').toISOString()}|notification-1`).toString('base64url');
 
     const response = await controller.list({ id: 'user-1' }, undefined, '30', cursor);
@@ -78,7 +78,7 @@ describe('NotificationsController', () => {
         findFirst: vi.fn().mockResolvedValue(null),
       },
     };
-    const controller = new NotificationsController(prisma as never);
+    const controller = new NotificationsController(prisma as never, null as never, null as never);
 
     await expect(controller.markRead({ id: 'user-1' }, 'notification-1'))
       .rejects.toBeInstanceOf(NotFoundException);

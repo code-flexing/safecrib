@@ -132,7 +132,7 @@ export class MediaService {
     purpose: MediaPurpose,
     file: Express.Multer.File,
     entityId?: string,
-  ): Promise<{ media: MediaResponse; url: string }> {
+  ): Promise<{ media: MediaResponse; url: string; expiresAt?: number }> {
     if (!file || !file.buffer) {
       throw new BadRequestException('No file provided');
     }

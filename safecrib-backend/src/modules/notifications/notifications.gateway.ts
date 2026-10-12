@@ -51,7 +51,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   ) {}
 
   afterInit(server: Server): void {
-    server.use((client, next) => {
+    server.use((client: any, next: (err?: Error) => void) => {
       void this.authenticate(client).then(
         () => next(),
         (error: unknown) => {

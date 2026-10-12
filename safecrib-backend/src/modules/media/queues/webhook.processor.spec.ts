@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MediaWebhookProcessor } from './webhook.processor.js';
 import type { MediaRepository } from '../media.repository.js';
 import type { StorageProvider } from '../providers/storage-provider.interface.js';
-import type { ConfigService } from '@nestjs/config';
+import type { QueueService } from '../../../infra/queue/queue.service.js';
 import type { Media } from '@prisma/client';
 
 function makeMedia(overrides: Partial<Media> = {}): Media {
@@ -48,10 +48,10 @@ function makeStorage(): StorageProvider {
   } as unknown as StorageProvider;
 }
 
-function makeConfig(): ConfigService {
+function makeQueueService(): QueueService {
   return {
-    get: vi.fn(() => 'redis://localhost:6379'),
-  } as unknown as ConfigService;
+    registerWorker: vi.fn(),
+  } as unknown as QueueService;
 }
 
 describe('MediaWebhookProcessor.process (private method via reflection)', () => {
@@ -60,7 +60,7 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
 
   beforeEach(() => {
     repo = makeRepo(makeMedia());
-    processor = new MediaWebhookProcessor(repo, makeConfig(), makeStorage());
+    processor = new MediaWebhookProcessor(repo, makeQueueService(), makeStorage());
   });
 
   // We test the private `process` method directly via cast
@@ -96,7 +96,7 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
           publicId: 'prod/listings/video/l1/uuid',
         }),
       );
-      const proc = new MediaWebhookProcessor(videoRepo, makeConfig(), storage);
+      const proc = new MediaWebhookProcessor(videoRepo, makeQueueService(), storage);
 
       await (proc as any).process({
         notification_type: 'upload',
@@ -116,7 +116,7 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
       const alreadyReady = makeMedia({ status: 'READY', idempotencyKey: 'asset_abc:1726780800' });
       const idempRepo = makeRepo(makeMedia());
       vi.mocked(idempRepo.findByIdempotencyKey).mockResolvedValue(alreadyReady);
-      const proc = new MediaWebhookProcessor(idempRepo, makeConfig(), makeStorage());
+      const proc = new MediaWebhookProcessor(idempRepo, makeQueueService(), makeStorage());
 
       await (proc as any).process({
         notification_type: 'upload',
@@ -130,7 +130,7 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
 
     it('skips when media record not found (different env or orphan)', async () => {
       const missingRepo = makeRepo(null);
-      const proc = new MediaWebhookProcessor(missingRepo, makeConfig(), makeStorage());
+      const proc = new MediaWebhookProcessor(missingRepo, makeQueueService(), makeStorage());
 
       await expect(
         (proc as any).process({
@@ -146,7 +146,7 @@ describe('MediaWebhookProcessor.process (private method via reflection)', () => 
 
     it('skips when media is already READY (duplicate delivery)', async () => {
       const readyRepo = makeRepo(makeMedia({ status: 'READY' }));
-      const proc = new MediaWebhookProcessor(readyRepo, makeConfig(), makeStorage());
+      const proc = new MediaWebhookProcessor(readyRepo, makeQueueService(), makeStorage());
 
       await (proc as any).process({
         notification_type: 'upload',

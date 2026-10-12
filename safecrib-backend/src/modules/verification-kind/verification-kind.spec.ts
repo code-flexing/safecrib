@@ -359,7 +359,7 @@ describe('verification.kind on user-facing payloads', () => {
 
       const result = await service.getListing('listing-1');
 
-      expect(result.owner?.verification.kind).toBe('staff');
+      expect(result.owner?.verification?.kind).toBe('staff');
     });
 
     it('includes kind="agent" on listing owner for verified agent', async () => {
@@ -406,7 +406,7 @@ describe('verification.kind on user-facing payloads', () => {
 
       const result = await service.getListing('listing-1');
 
-      expect(result.owner?.verification.kind).toBe('agent');
+      expect(result.owner?.verification?.kind).toBe('agent');
     });
   });
 });

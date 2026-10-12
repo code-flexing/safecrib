@@ -3,14 +3,18 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { getRedis } from '../../lib/redis.js';
 import type { INestApplication } from '@nestjs/common';
-import type { ServerOptions, Server } from 'socket.io';
 import { Redis } from 'ioredis';
+
+// Use the same socket.io copy that @nestjs/platform-socket.io bundles to avoid
+// duplicate-type conflicts when the top-level socket.io is a different instance.
+type IoServer = ReturnType<IoAdapter['createIOServer']>;
+type IoServerOptions = Parameters<IoAdapter['createIOServer']>[1];
 
 export class RedisSocketAdapter extends IoAdapter {
   private readonly socketLogger = new Logger(RedisSocketAdapter.name);
   private readonly publisher: Redis;
   private readonly subscriber: Redis;
-  private server: Server | undefined;
+  private server: IoServer | undefined;
   private closed = false;
 
   constructor(app: INestApplication) {
@@ -39,10 +43,10 @@ export class RedisSocketAdapter extends IoAdapter {
 
   override createIOServer(
     port: number,
-    options?: ServerOptions,
-  ): ReturnType<IoAdapter['createIOServer']> {
+    options?: IoServerOptions,
+  ): IoServer {
     // Engine.IO's default heartbeat uses ping/pong every 25s with a 20s timeout.
-    const server = super.createIOServer(port, options) as Server;
+    const server = super.createIOServer(port, options);
     this.server = server;
     this.installAdapter();
     return server;
@@ -80,7 +84,7 @@ export class RedisSocketAdapter extends IoAdapter {
     ) {
       return;
     }
-    this.server.adapter(createAdapter(this.publisher, this.subscriber));
+    (this.server as any).adapter(createAdapter(this.publisher, this.subscriber));
     this.socketLogger.log('Socket.IO Redis adapter enabled');
   }
 }

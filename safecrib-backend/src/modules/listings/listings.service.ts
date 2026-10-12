@@ -393,6 +393,7 @@ export class ListingsService {
       identityVerified: user.identityVerified,
       studentProfileApproved: user.studentProfile?.status === 'APPROVED',
       providerPageVerified: user.providerPage?.verificationState === 'VERIFIED',
+      riskBlocked: user.verification?.riskBlocked ?? false,
     });
     const existing = user.verification;
     if (existing && existing.stage && existing.badge && existing.badgeColor) {
@@ -435,11 +436,11 @@ export class ListingsService {
             identityVerified: true,
             studentProfile: { select: { status: true, profilePicture: true } },
             providerPage: { select: { verificationState: true, profilePicture: true } },
-            verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
+            verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
             _count: { select: { followers: true } },
           },
         },
-        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
      return comments.map((comment) => ({
@@ -506,11 +507,11 @@ export class ListingsService {
             identityVerified: true,
             studentProfile: { select: { status: true, profilePicture: true } },
             providerPage: { select: { verificationState: true, profilePicture: true } },
-            verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
+            verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
             _count: { select: { followers: true } },
           },
         },
-        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
+        mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
     if (listing.ownerId !== userId) {
@@ -831,7 +832,7 @@ export class ListingsService {
           identityVerified: true,
           studentProfile: { select: { displayName: true, profilePicture: true, status: true } },
           providerPage: { select: { displayName: true, phone: true, additionalContacts: true, profilePicture: true, verificationState: true } },
-          verification: { select: { badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
+          verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } },
         },
       },
       providerPage: {

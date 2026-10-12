@@ -140,7 +140,7 @@ function makePathBuilder(): MediaPathBuilder {
   } as unknown as MediaPathBuilder;
 }
 
-function makeQueue(): Queue {
+function makeQueue(): JobQueueClient {
   return { add: vi.fn(async () => {}) } as unknown as JobQueueClient;
 }
 
