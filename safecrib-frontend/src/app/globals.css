@@ -1114,3 +1114,172 @@ html[data-theme="dark"] .comment-highlight {
     }
   }
 }
+
+/* SafeCribs Liquid Glass Design System - shared across landing, login, signup */
+:root {
+  --glass-bg-white: rgba(255, 255, 255, 0.14);
+  --glass-bg-green: rgba(12, 115, 85, 0.42);
+  --glass-border-white: rgba(255, 255, 255, 0.35);
+  --glass-border-green: rgba(255, 255, 255, 0.28);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.glass,
+.glass-liquid {
+  background: var(--glass-bg-white);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border-white);
+  box-shadow: var(--glass-inner-highlight), var(--glass-shadow);
+  position: relative;
+}
+
+.glass::before,
+.glass-liquid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.glass-green,
+.glass-liquid-green {
+  background: var(--glass-bg-green);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border-green);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), var(--glass-shadow);
+  position: relative;
+  color: #ffffff;
+}
+
+.glass-green::before,
+.glass-liquid-green::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.glass-pill,
+.glass-liquid-pill {
+  border-radius: 9999px;
+  min-height: 48px;
+  padding: 0.625rem 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glass-card,
+.glass-liquid-card {
+  border-radius: 1.25rem;
+  padding: 2rem;
+}
+
+.glass-pill:active,
+.glass-liquid-pill:active,
+.glass-pill.glass-green:active,
+.glass-liquid-pill.glass-liquid-green:active {
+  transform: scale(0.98);
+}
+
+.glass-pill:hover,
+.glass-liquid-pill:hover,
+.glass-pill.glass-green:hover,
+.glass-liquid-pill.glass-liquid-green:hover {
+  filter: brightness(1.05);
+}
+
+.glass-pill:focus-visible,
+.glass-liquid-pill:focus-visible,
+.glass-pill.glass-green:focus-visible,
+.glass-liquid-pill.glass-liquid-green:focus-visible {
+  outline: 2px solid var(--safecrib-green);
+  outline-offset: 2px;
+}
+
+.glass-pill:disabled,
+.glass-liquid-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-liquid,
+  .glass-green,
+  .glass-liquid-green {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .glass,
+  .glass-liquid {
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .glass-green,
+  .glass-liquid-green {
+    background: rgba(12, 115, 85, 0.96);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-liquid,
+  .glass-green,
+  .glass-liquid-green {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .glass,
+  .glass-liquid {
+    background: rgba(255, 255, 255, 0.96);
+  }
+  .glass-green,
+  .glass-liquid-green {
+    background: rgba(12, 115, 85, 0.98);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  transition: background-color 5000s ease-in-out 0s;
+  box-shadow: inset 0 0 0px 1000px rgba(255, 255, 255, 0.1);
+}

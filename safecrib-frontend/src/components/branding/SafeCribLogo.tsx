@@ -34,7 +34,7 @@ export function SafeCribLogo({
       width={height * 5}
       style={{ height, width: "auto" }}
       priority={priority}
-      className={className}
+      className={`drop-shadow-[0_2px_8px_rgba(255,255,255,0.15)] ${className || ""}`}
     />
   );
 

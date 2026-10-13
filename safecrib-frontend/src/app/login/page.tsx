@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
@@ -166,91 +167,107 @@ export default function LoginPage() {
   const title = step === 0 ? "What is your email?" : "Enter your password";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(12,115,85,0.12),_transparent_30%),_linear-gradient(180deg,#ffffff_0%,#f3f7f4_100%)] px-4 py-6 sm:py-10">
-      <div className="w-full max-w-md rounded-[22px] border border-black/10 bg-white p-5 shadow-[0_24px_60px_rgba(11,12,14,0.08)] sm:p-8">
-        <div className="flex justify-center">
-          <SafeCribLogo height={32} href={false} />
-        </div>
+    <main className="relative min-h-[100dvh] overflow-hidden px-4 py-6 sm:py-10 flex items-center">
+      <Image
+        src="/images/safecrib-robot.webp"
+        alt=""
+        aria-hidden="true"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-right-top"
+        style={{ animation: "float 8s ease-in-out infinite" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#050a08]/95 via-[#050a08]/70 to-transparent" aria-hidden="true" />
+      <div className="absolute top-4 left-4 z-10">
+        <SafeCribLogo height={24} inverse />
+      </div>
+      <div className="relative z-10 mx-auto max-w-6xl w-full flex justify-start">
+        <div className="glass-card glass w-full max-w-md p-5 sm:p-8">
+          <div className="flex justify-center lg:hidden">
+            <SafeCribLogo height={24} inverse />
+          </div>
 
-        <div className="mt-6 flex items-center justify-between text-[0.7rem] font-medium uppercase tracking-[0.18em] text-black/45">
-          <span>{step === 0 ? "Email" : "Password"}</span>
-          <span>{step + 1}/2</span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
-          <div className="h-full rounded-full bg-safecrib-green transition-all duration-300" style={{ width: `${((step + 1) / 2) * 100}%` }} />
-        </div>
+          <div className="mt-6 flex items-center justify-between text-[0.7rem] font-medium uppercase tracking-[0.18em] text-white/70">
+            <span>{step === 0 ? "Email" : "Password"}</span>
+            <span>{step + 1}/2</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-safecrib-green transition-all duration-300" style={{ width: `${((step + 1) / 2) * 100}%` }} />
+          </div>
 
-        <form onSubmit={handleFormSubmit} className="mt-8" noValidate>
-          <h1 className="text-center text-3xl font-medium text-safecrib-black">{title}</h1>
+          <form onSubmit={handleFormSubmit} className="mt-8" noValidate>
+            <h1 className="text-center text-3xl font-medium text-white">{title}</h1>
 
-          {step === 0 && (
-            <div className="mt-8">
-              <label htmlFor="email" className="mb-2 block text-sm font-medium text-safecrib-black">Email address</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                autoFocus
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="student@university.edu"
-                className="w-full rounded-[8px] border border-black/15 bg-white px-4 py-3 text-base text-safecrib-black placeholder:text-black/35 focus:border-safecrib-green focus:outline-none"
-              />
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="mt-8">
-              <label htmlFor="password" className="mb-2 block text-sm font-medium text-safecrib-black">Password</label>
-              <div className="relative">
+            {step === 0 && (
+              <div className="mt-8">
+                <label htmlFor="email" className="mb-2 block text-sm font-medium text-white">Email address</label>
                 <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
+                  id="email"
+                  type="email"
+                  autoComplete="email"
                   autoFocus
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full rounded-[8px] border border-black/15 bg-white px-4 py-3 pr-20 text-base text-safecrib-black placeholder:text-black/35 focus:border-safecrib-green focus:outline-none"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="student@university.edu"
+                  className="w-full rounded-[12px] border border-white/20 bg-white/10 px-4 py-3 text-base text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-safecrib-green/60 backdrop-blur-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-3 text-sm font-medium text-safecrib-green hover:text-[#0a5f47]"
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
               </div>
-            </div>
-          )}
-
-          {error && <p className="mt-4 text-sm text-red-600" role="alert">{error}</p>}
-
-          <div className="mt-8 flex items-center justify-between gap-3">
-            {step === 0 ? (
-              <BackHomeLink href="/" label="Back home" />
-            ) : (
-              <button type="button" onClick={() => { setError(""); setStep(0); }} className="text-sm font-medium text-black/65 hover:text-safecrib-black">Back</button>
             )}
-            <Button type="button" onClick={goNext} loading={isSubmitting}>
-              {step === 1 ? "Log in" : "Continue"}
-            </Button>
-          </div>
-        </form>
 
-        <div className="mt-6 rounded-[12px] border border-safecrib-green/15 bg-[#f3faf6] p-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-safecrib-black">Use SafeCrib like an app</p>
-              <p className="mt-1 text-xs leading-5 text-black/55">Install it for faster access.</p>
+            {step === 1 && (
+              <div className="mt-8">
+                <label htmlFor="password" className="mb-2 block text-sm font-medium text-white">Password</label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    autoFocus
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full rounded-[12px] border border-white/20 bg-white/10 px-4 py-3 pr-20 text-base text-white placeholder:text-white/50 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-safecrib-green/60 backdrop-blur-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-3 text-sm font-medium text-white hover:text-white/90"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {error && <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>}
+
+            <div className="mt-8 flex items-center justify-between gap-3">
+              {step === 0 ? (
+                <BackHomeLink href="/" label="← Back" />
+              ) : (
+                <button type="button" onClick={() => { setError(""); setStep(0); }} className="text-sm font-medium text-white/75 hover:text-white">← Back</button>
+              )}
+              <Button type="button" onClick={goNext} loading={isSubmitting} className="glass-pill glass-green">
+                {step === 1 ? "Log in" : "Continue"}
+              </Button>
             </div>
-            <InstallButton />
-          </div>
-        </div>
+          </form>
 
-        <div className="mt-5 text-center text-sm text-black/60">
-          Need an account? <Link href="/signup" className="font-medium text-safecrib-green">Create one</Link>
+          <div className="mt-6 rounded-[12px] glass p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Use SafeCrib like an app</p>
+                <p className="mt-1 text-xs leading-5 text-white/70">Install it for faster access.</p>
+              </div>
+              <InstallButton />
+            </div>
+          </div>
+
+          <div className="mt-5 text-center text-sm text-white/70">
+            Need an account? <Link href="/signup" className="font-medium text-white">Create one</Link>
+          </div>
         </div>
       </div>
     </main>

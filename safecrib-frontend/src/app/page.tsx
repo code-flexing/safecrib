@@ -1,54 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { InstallButton } from "@/components/pwa/InstallButton";
-import { apiFetch, getCurrentUser } from "@/lib/api";
-import { ListingPost } from "@/components/listings/ListingPost";
-import { ListingPostSkeleton } from "@/components/listings/ListingPostSkeleton";
-import { fetchPublicListings } from "@/lib/api";
-import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
-
-type PublicListing = {
-  id: string;
-  title?: string;
-  description?: string | null;
-  price?: number;
-  discountAmount?: number | null;
-  campus?: string | null;
-  address?: string | null;
-  photos?: Array<{ id: string; mediaId?: string | null; url: string }>;
-  video?: { mediaId: string; durationSec?: number | null } | null;
-  likeCount?: number;
-  likedByCurrentUser?: boolean;
-  commentCount?: number;
-  shareCount?: number;
-  viewCount?: number;
-  _count?: { comments?: number; shares?: number; views?: number };
-  ownerId?: string;
-  ownerDisplayName?: string;
-  ownerHandle?: string;
-  ownerAvatarMediaId?: string;
-  ownerAvatarUrl?: string;
-  ownerIsVerified?: boolean;
-  ownerVerificationBadge?: "green" | "blue" | "gold";
-  ownerAgencyName?: string;
-  ownerPhone?: string;
-  ownerWhatsApp?: string;
-  owner?: {
-    id: string;
-    displayName?: string;
-    username?: string;
-    profilePicture?: string;
-    phone?: string;
-    whatsApp?: string;
-    verification?: { stage?: string; badgeColor?: "green" | "blue" | "gold" } | null;
-    providerPage?: { displayName?: string } | null;
-  };
-  createdAt?: string | Date;
-};
+import { getCurrentUser } from "@/lib/api";
 
 type Audience = "student" | "provider";
 
@@ -163,11 +121,6 @@ export default function Home() {
   const [audience, setAudience] = useState<Audience>("student");
   const accountHref = isAuthenticated ? "/dashboard" : "/signup";
 
-  // Public listings feed state
-  const [listings, setListings] = useState<PublicListing[]>([]);
-  const [listingsLoading, setListingsLoading] = useState(true);
-  const [listingsError, setListingsError] = useState<string | null>(null);
-
   useEffect(() => {
     const hasSession = Boolean(
       window.localStorage.getItem("safecrib_access_token") ||
@@ -191,34 +144,6 @@ export default function Home() {
 
     return () => { active = false; };
   }, [router]);
-
-  // Fetch public listings for the feed
-  useEffect(() => {
-    let active = true;
-    setListingsLoading(true);
-    fetchPublicListings({ limit: 10 })
-      .then((data: unknown) => {
-        if (active) {
-          const items = Array.isArray(data) ? data : (data as Record<string, unknown>)?.data as PublicListing[] ?? (data as Record<string, unknown>)?.listings as PublicListing[] ?? [];
-          setListings(items);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!active) return;
-        // 401 means the visitor is not logged in — the backend requires auth for listing search.
-        // Treat it as an empty feed, not an error, so the home page doesn't look broken.
-        const status = (err as { status?: number })?.status;
-        if (status === 401 || status === 403) {
-          setListings([]);
-        } else {
-          setListingsError((err as { message?: string })?.message ?? "Failed to load listings");
-        }
-      })
-      .finally(() => {
-        if (active) setListingsLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -259,98 +184,90 @@ export default function Home() {
   const studentMode = audience === "student";
   const handleNavigate = () => setMenuOpen(false);
 
-  const handleLike = async (listingId: string, liked: boolean) => {
-    await apiFetch(`/api/v1/listings/${encodeURIComponent(listingId)}/like`, {
-      method: liked ? "POST" : "DELETE",
-    });
-  };
-
-  const handleComment = (listingId: string) => {
-    router.push(`/dashboard/listings/${listingId}#comments`);
-  };
-
-  const prefetchListing = (listingId: string) => {
-    router.prefetch(`/dashboard/listings/${listingId}`);
-  };
-
-  const handleBookmark = async (listingId: string) => {
-    // TODO: Implement bookmark via API
-    console.log("Bookmark:", listingId);
-  };
 
   return (
     <main id="top" className="min-h-screen bg-white text-safecrib-black">
-      <header className="sticky top-0 z-40 border-b border-white/15 bg-safecrib-green text-white">
+      <header className="fixed top-0 z-40 w-full">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-7">
-          <SafeCribLogo height={21} inverse />
-          <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-medium text-white/80 md:flex">
+          <SafeCribLogo height={27} inverse />
+          <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-medium text-white/85 md:flex">
             <a href="#campus" className="transition-colors hover:text-white">Campus life</a>
             <a href="#how" className="transition-colors hover:text-white">How it works</a>
             <a href="#providers" className="transition-colors hover:text-white">For providers</a>
           </nav>
           <div className="hidden items-center gap-4 sm:flex">
-            {!isAuthenticated && <RouteLink href="/login" className="text-sm font-medium text-white/85 hover:text-white">Log in</RouteLink>}
-            <RouteLink href={accountHref} className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-safecrib-green transition-colors hover:bg-white/90">
+            {!isAuthenticated && <RouteLink href="/login" className="glass-pill glass text-sm font-medium text-white">Log in</RouteLink>}
+            <RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">
               {isAuthenticated ? "Open dashboard" : studentMode ? "Get started" : "Create provider account"}
             </RouteLink>
+            <InstallButton />
           </div>
-          <button type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/35 text-white transition-colors hover:bg-white/10 sm:hidden">
+          <button type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)} className="glass flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors hover:brightness-105 sm:hidden">
             <span className="flex flex-col gap-1.5" aria-hidden="true"><span className={`h-0.5 w-4 bg-current transition-transform ${menuOpen ? "translate-y-2 rotate-45" : ""}`} /><span className={`h-0.5 w-4 bg-current transition-opacity ${menuOpen ? "opacity-0" : ""}`} /><span className={`h-0.5 w-4 bg-current transition-transform ${menuOpen ? "-translate-y-2 -rotate-45" : ""}`} /></span>
           </button>
         </div>
-        {menuOpen && <nav id="mobile-navigation" aria-label="Mobile navigation" className="border-t border-white/15 px-4 py-3 text-white sm:hidden">
+        {menuOpen && <nav id="mobile-navigation" aria-label="Mobile navigation" className="glass border-t border-white/20 px-4 py-3 text-white sm:hidden">
           <a href="#campus" onClick={handleNavigate} className="block py-3 text-sm font-medium">Campus life</a>
           <a href="#how" onClick={handleNavigate} className="block py-3 text-sm font-medium">How it works</a>
           <a href="#providers" onClick={handleNavigate} className="block py-3 text-sm font-medium">For providers</a>
-          <div className="mt-2 flex gap-3 border-t border-white/15 pt-3">
-            {!isAuthenticated && <RouteLink href="/login" className="flex flex-1 items-center justify-center rounded-full border border-white/35 px-3 py-2.5 text-sm font-medium text-white">Log in</RouteLink>}
-            <RouteLink href={accountHref} className="flex flex-1 items-center justify-center rounded-full bg-white px-3 py-2.5 text-sm font-semibold text-safecrib-green">{isAuthenticated ? "Dashboard" : "Get started"}</RouteLink>
+          <div className="mt-2 flex flex-col gap-2 border-t border-white/15 pt-3">
+            {!isAuthenticated && <RouteLink href="/login" className="glass-pill glass text-sm font-medium text-white w-full">Log in</RouteLink>}
+            <RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold w-full">{isAuthenticated ? "Dashboard" : "Get started"}</RouteLink>
+            <InstallButton />
           </div>
         </nav>}
       </header>
 
-      <section className="overflow-hidden bg-[#F1F7F3]">
-        <div className="mx-auto grid min-h-[570px] max-w-6xl items-center gap-4 px-4 pb-7 pt-8 sm:px-7 sm:pb-10 lg:min-h-[610px] lg:grid-cols-[0.92fr_1.08fr] lg:gap-0 lg:py-8">
-          <div className="landing-hero-copy relative z-10 max-w-xl py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Campus living, with more certainty</p>
-            <h1 className="mt-4 max-w-[13ch] font-display text-[2.7rem] font-semibold leading-[1.04] text-safecrib-black sm:text-5xl lg:text-[3.65rem]">
+      <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
+        <Image
+          src="/images/safecrib-robot.webp"
+          alt=""
+          aria-hidden="true"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-right-top"
+          style={{ animation: 'float 8s ease-in-out infinite' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050a08]/95 via-[#050a08]/70 to-transparent" aria-hidden="true" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(12,115,85,0.15)_0%,_transparent_60%)]" aria-hidden="true" />
+        <div className="relative z-10 mx-auto max-w-6xl w-full px-4 sm:px-7 pt-16">
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80">Campus living, with more certainty</p>
+            <h1 className="mt-4 font-display text-[2.7rem] font-semibold leading-[1.04] text-white sm:text-5xl lg:text-[3.65rem]">
               {studentMode ? "Find your place in campus life." : "Good homes deserve a trusted place to be found."}
             </h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-black/65">
+            <p className="mt-5 max-w-md text-base leading-7 text-white/80">
               {studentMode
                 ? "Explore student homes with clearer details, reviewed providers, and the campus essentials close by."
                 : "Meet students where they search. Build a verified provider profile and publish homes with clear, useful details."}
             </p>
 
-            <div className="mt-7 inline-flex rounded-full border border-black/10 bg-white p-1" role="group" aria-label="Choose your SafeCrib experience">
-              <button type="button" aria-pressed={studentMode} onClick={() => setAudience("student")} className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${studentMode ? "bg-safecrib-green text-white" : "text-black/60 hover:text-safecrib-black"}`}>I&apos;m a student</button>
-              <button type="button" aria-pressed={!studentMode} onClick={() => setAudience("provider")} className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${!studentMode ? "bg-safecrib-green text-white" : "text-black/60 hover:text-safecrib-black"}`}>I&apos;m a provider</button>
+            <div className="mt-7 inline-flex glass rounded-full p-1" role="group" aria-label="Choose your SafeCrib experience">
+              <button type="button" aria-pressed={studentMode} onClick={() => setAudience("student")} className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${studentMode ? "glass-green" : "text-white/80 hover:text-white"}`}>I&apos;m a student</button>
+              <button type="button" aria-pressed={!studentMode} onClick={() => setAudience("provider")} className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${!studentMode ? "glass-green" : "text-white/80 hover:text-white"}`}>I&apos;m a provider</button>
             </div>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <RouteLink href={accountHref} className="inline-flex min-h-12 items-center justify-center rounded-full bg-safecrib-green px-5 py-3 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#095E47]">
+              <RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">
                 {isAuthenticated ? "Go to your dashboard" : studentMode ? "Find a home" : "Start a provider profile"}
               </RouteLink>
-              {!studentMode && <a href="#providers" className="px-2 py-2 text-sm font-medium text-safecrib-green underline decoration-black/20 underline-offset-4">See how provider checks work</a>}
+              {!studentMode && <a href="#providers" className="px-2 py-2 text-sm font-medium text-white/80 hover:text-white underline decoration-white/40 underline-offset-4">See how provider checks work</a>}
               {studentMode && <InstallButton />}
             </div>
 
-            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 border-t border-black/10 pt-4 text-xs font-medium text-black/55">
+            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/25 pt-4 text-xs font-medium text-white/70">
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-safecrib-green" /> Reviewed home details</span>
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#D09A59]" /> Campus-aware search</span>
             </div>
           </div>
-          <div className="landing-campus relative -mx-2 mt-1 lg:mx-0 lg:mt-0">
-            <CampusIllustration />
-          
-          </div>
         </div>
       </section>
 
-      <section id="campus" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:px-7 sm:py-16">
+      <section id="campus" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:px-7 sm:py-16 bg-white">
         <div className="grid gap-8 md:grid-cols-[0.85fr_1.15fr] md:items-end">
           <div data-reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-greenpls update profile well ">Made for campus days</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green ">Made for campus days</p>
             <h2 className="mt-3 max-w-md font-display text-3xl font-semibold leading-tight sm:text-4xl">From first lecture to lights out.</h2>
           </div>
           <p className="max-w-xl text-base leading-7 text-black/60" data-reveal>
@@ -393,80 +310,14 @@ export default function Home() {
 
       <section id="providers" className="mx-auto grid max-w-6xl scroll-mt-24 gap-8 px-4 py-14 sm:px-7 sm:py-16 md:grid-cols-[1fr_auto] md:items-center" data-reveal>
         <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">For agents and landlords</p><h2 className="mt-3 max-w-xl font-display text-3xl font-semibold leading-tight sm:text-4xl">Put good homes on the right path.</h2><p className="mt-3 max-w-xl text-base leading-7 text-black/60">Create a provider Page, complete review, then manage homes through a clear submission process.</p></div>
-        <RouteLink href={accountHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-safecrib-green px-5 py-3 text-sm font-semibold text-safecrib-green transition-colors hover:bg-[#EAF7F1]">{isAuthenticated ? "Open dashboard" : "Start as a provider"}</RouteLink>
+        <RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">{isAuthenticated ? "Open dashboard" : "Start as a provider"}</RouteLink>
       </section>
 
       <section className="border-t border-black/10 bg-[#F1F7F3]">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-10 sm:px-7 md:flex-row md:items-center md:justify-between" data-reveal>
           <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Your next chapter starts here</p><h2 className="mt-2 font-display text-2xl font-semibold">Find your place with SafeCrib.</h2></div>
-          <div className="flex flex-wrap items-center gap-3"><InstallButton /><RouteLink href={accountHref} className="inline-flex min-h-11 items-center justify-center rounded-full bg-safecrib-green px-5 py-3 text-sm font-semibold text-white hover:bg-[#095E47]">{isAuthenticated ? "Open dashboard" : "Get started"}</RouteLink></div>
+          <div className="flex flex-wrap items-center gap-3"><InstallButton /><RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">{isAuthenticated ? "Open dashboard" : "Get started"}</RouteLink></div>
         </div>
-      </section>
-
-      {/* Public Listings Feed */}
-      <section id="listings-feed" className="mx-auto max-w-6xl px-4 py-14 sm:px-7" data-reveal>
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Available homes</p>
-          <h2 className="mt-3 font-display text-3xl font-semibold leading-tight sm:text-4xl">Browse verified homes</h2>
-        </div>
-
-        {listingsLoading ? (
-          <div className="space-y-5" role="status" aria-label="Loading listings">
-            {[...Array(3)].map((_, i) => (
-              <ListingPostSkeleton key={i} />
-            ))}
-          </div>
-        ) : listingsError ? (
-          <div className="text-center py-12 text-black/50">
-            <p>{listingsError}</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-4 text-sm font-medium text-safecrib-green hover:underline"
-            >
-              Try again
-            </button>
-          </div>
-        ) : listings.length === 0 ? (
-          <div className="flex min-h-64 items-center justify-center rounded-xl border border-black/10 bg-white px-5 py-8" aria-label="No listings available">
-            <EmptyListingsIllustration />
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {listings.map((listing: PublicListing) => (
-              <ListingPost
-                key={listing.id}
-                listing={{
-                  ...listing,
-                  photos: listing.photos ?? [],
-                  video: listing.video ?? null,
-                  likeCount: listing.likeCount ?? 0,
-                  likedByCurrentUser: listing.likedByCurrentUser ?? false,
-                  ownerId: listing.ownerId ?? listing.owner?.id ?? "unknown",
-                  createdAt: listing.createdAt ?? new Date().toISOString(),
-                  commentCount: listing._count?.comments ?? listing.commentCount ?? 0,
-                  shareCount: listing._count?.shares ?? listing.shareCount ?? 0,
-                  viewCount: listing._count?.views ?? listing.viewCount ?? 0,
-                  isBookmarked: false,
-                  ownerDisplayName: listing.owner?.displayName ?? listing.ownerDisplayName ?? "Agent",
-                  ownerHandle: listing.owner?.username ?? listing.ownerHandle,
-                  ownerAvatarMediaId: listing.owner?.profilePicture ?? listing.ownerAvatarMediaId,
-                  ownerAvatarUrl: listing.owner?.profilePicture ?? listing.ownerAvatarUrl,
-                  ownerIsVerified: (listing.owner?.verification?.stage ?? "PROFILE_VERIFIED") !== "PROFILE_VERIFIED" ? true : (listing.ownerIsVerified ?? false),
-                  ownerVerificationBadge: listing.owner?.verification?.badgeColor ?? listing.ownerVerificationBadge,
-                  ownerAgencyName: listing.owner?.providerPage?.displayName ?? listing.ownerAgencyName,
-                  ownerPhone: listing.owner?.phone ?? listing.ownerPhone,
-                  ownerWhatsApp: listing.owner?.whatsApp ?? listing.ownerWhatsApp,
-                }}
-                onLike={handleLike}
-                onComment={handleComment}
-                onCommentPrefetch={prefetchListing}
-                onView={(listingId) => router.push(`/dashboard/listings/${listingId}`)}
-                onBookmark={handleBookmark}
-              />
-            ))}
-          </div>
-        )}
       </section>
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 text-xs text-black/50 sm:flex-row sm:items-center sm:justify-between sm:px-7">
