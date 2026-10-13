@@ -291,6 +291,12 @@ body {
   animation-name: recommend-glow;
 }
 
+.recommend-pulse {
+  animation-name: recommend-pulse;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
 .recommend-spark {
   animation-name: recommend-spark;
 }
@@ -317,6 +323,12 @@ body {
   100% { transform: scale(1.6); opacity: 0; }
 }
 
+@keyframes recommend-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
 @keyframes recommend-spark {
   0% { transform: translate(0, 0) scale(1); opacity: 1; }
   100% { transform: translate(var(--tx), var(--ty)) scale(0.3); opacity: 0; }
@@ -325,6 +337,118 @@ body {
 @keyframes count-roll {
   0% { opacity: 0; transform: translateY(4px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Like celebration burst (particles) ----------
+   One absolutely-positioned container per burst; every particle is
+   transform + opacity only. Positions come from CSS custom properties
+   set from a pre-defined offset array (no Math.random in render). */
+@keyframes like-balloon-rise {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), 0) scale(0.7); opacity: 0; }
+  12% { opacity: 1; }
+  50% { transform: translate(-50%, -50%) translate(calc(var(--dx) + var(--sway)), calc(var(--dy) * 0.45)) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.55); opacity: 0; }
+}
+
+@keyframes like-confetti-fall {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(calc(var(--dx) + var(--sway)), var(--dy)) rotate(var(--rot)) scale(0.4); opacity: 0; }
+}
+
+@keyframes like-heart-rise {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+
+@keyframes like-sparkle-pop {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+/* Count pop on increase (scale only, layered over .count-roll). */
+@keyframes like-count-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- Recommend lightning strike ---------- */
+@keyframes lightning-flicker {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  42% { opacity: 0.25; }
+  68% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes recommend-spark-fly {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+/* Radial-gradient glow, scaled + faded (never a border/box-shadow). */
+@keyframes recommend-glow-pulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Burst container: portaled to document.body, never clips, never interactive. */
+.safecrib-burst {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  contain: strict;
+  overflow: visible;
+}
+
+/* Animation classes — keyframe + timing in one place */
+.like-balloon {
+  animation-name: like-balloon-rise;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.like-confetti {
+  animation-name: like-confetti-fall;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.like-heart {
+  animation-name: like-heart-rise;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.like-sparkle {
+  animation-name: like-sparkle-pop;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.like-count-pop {
+  animation-name: like-count-pop;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.lightning-bolt {
+  animation-name: lightning-flicker;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.recommend-spark-fly {
+  animation-name: recommend-spark-fly;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.recommend-glow-pulse {
+  animation-name: recommend-glow-pulse;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -357,8 +481,17 @@ body {
   .recommend-flash,
   .recommend-shake,
   .recommend-glow,
+  .recommend-pulse,
   .recommend-spark,
-  .count-roll {
+  .count-roll,
+  .like-balloon,
+  .like-confetti,
+  .like-heart,
+  .like-sparkle,
+  .like-count-pop,
+  .lightning-bolt,
+  .recommend-spark-fly,
+  .recommend-glow-pulse {
     animation: none !important;
   }
 

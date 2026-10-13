@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { useOptimisticToggle } from "@/lib/optimistic";
 import { useNotify } from "@/components/ui/Toast";
 import { resolveNotificationKey, getNotificationMessage } from "@/lib/toast-messages";
+import { acquire, release, canFire } from "@/lib/burst-registry";
+import { areEffectsEnabled } from "@/lib/effects-enabled";
 
 type LikeButtonProps = {
   listingId: string;
@@ -14,6 +17,151 @@ type LikeButtonProps = {
   size?: "sm" | "md" | "lg";
   showLabel?: boolean;
 };
+
+const PARTICLE_OFFSETS = [
+  { type: "balloon", dx: -28, dy: -36, rot: -12, sway: 8, delay: 0, dur: 800 },
+  { type: "balloon", dx: 24, dy: -40, rot: 10, sway: -6, delay: 40, dur: 900 },
+  { type: "balloon", dx: -8, dy: -32, rot: 4, sway: 5, delay: 80, dur: 850 },
+  { type: "confetti", dx: -20, dy: 18, rot: 45, sway: 6, delay: 20, dur: 700 },
+  { type: "confetti", dx: 22, dy: 22, rot: -38, sway: -5, delay: 60, dur: 750 },
+  { type: "confetti", dx: -30, dy: 10, rot: 72, sway: 4, delay: 100, dur: 650 },
+  { type: "confetti", dx: 28, dy: 14, rot: -60, sway: -7, delay: 120, dur: 720 },
+  { type: "heart", dx: -16, dy: -28, rot: -8, sway: 0, delay: 30, dur: 800 },
+  { type: "heart", dx: 18, dy: -24, rot: 6, sway: 0, delay: 70, dur: 850 },
+  { type: "sparkle", dx: -24, dy: -8, rot: 0, sway: 0, delay: 10, dur: 600 },
+  { type: "sparkle", dx: 26, dy: -6, rot: 0, sway: 0, delay: 50, dur: 650 },
+];
+
+function getColorForType(type: string): string {
+  switch (type) {
+    case "balloon":
+      return "#f97316"; // coral
+    case "confetti":
+      return "#eab308"; // yellow
+    case "heart":
+      return "#ec4899"; // pink
+    case "sparkle":
+      return "#38bdf8"; // sky blue
+    default:
+      return "#ef4444";
+  }
+}
+
+function LikeBurst({ burstId, buttonRef }: { burstId: string; buttonRef: React.RefObject<HTMLButtonElement | null> }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const handleAnimationEnd = (e: AnimationEvent) => {
+      if (e.animationName === "like-balloon-rise" || e.animationName === "like-confetti-fall" || e.animationName === "like-heart-rise" || e.animationName === "like-sparkle-pop") {
+        release(`like:${buttonRef.current?.dataset.listingId ?? ""}`, burstId);
+        const timeout = setTimeout(() => {
+          if (container) {
+            container.remove();
+          }
+        }, 1100);
+        return () => clearTimeout(timeout);
+      }
+    };
+    container.addEventListener("animationend", handleAnimationEnd);
+    return () => container.removeEventListener("animationend", handleAnimationEnd);
+  }, [burstId, buttonRef]);
+  const particles = PARTICLE_OFFSETS.map((p, i) => {
+    const baseDelay = p.delay;
+    const duration = p.dur;
+    const style: React.CSSProperties & Record<string, string> = {
+      "--dx": `${p.dx}px`,
+      "--dy": `${p.dy}px`,
+      "--rot": `${p.rot}deg`,
+      "--sway": `${p.sway}px`,
+      animationDelay: `${baseDelay}ms`,
+      animationDuration: `${duration}ms`,
+      left: "50%",
+      top: "50%",
+      transform: "translate(-50%, -50%)",
+    };
+
+    const color = getColorForType(p.type);
+
+    switch (p.type) {
+      case "balloon":
+        return (
+          <span key={`balloon-${i}`} className="like-balloon" style={style} aria-hidden="true">
+            <span
+              style={{
+                display: "block",
+                width: "8px",
+                height: "12px",
+                borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%",
+                background: color,
+                transformOrigin: "center bottom",
+              }}
+            />
+            <span
+              style={{
+                display: "block",
+                marginTop: "2px",
+                width: "1px",
+                height: "10px",
+                background: "rgba(0,0,0,0.25)",
+                transformOrigin: "top center",
+                animation: `like-balloon-rise ${duration}ms ease-out ${baseDelay}ms both`,
+                transform: "translateX(-50%)",
+              }}
+            />
+          </span>
+        );
+      case "confetti":
+        return (
+          <span key={`confetti-${i}`} className="like-confetti" style={style} aria-hidden="true">
+            <span
+              style={{
+                display: "block",
+                width: "6px",
+                height: "3px",
+                borderRadius: "1px",
+                background: color,
+                transformOrigin: "center",
+              }}
+            />
+          </span>
+        );
+      case "heart":
+        return (
+          <span key={`heart-${i}`} className="like-heart" style={style} aria-hidden="true">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill={color} style={{ transform: "scale(0.45)" }}>
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+            </svg>
+          </span>
+        );
+      case "sparkle":
+        return (
+          <span key={`sparkle-${i}`} className="like-sparkle" style={style} aria-hidden="true">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill={color} style={{ transform: "scale(0.35)" }}>
+              <path d="M12 2l1 4 4 1-1 4 1 4-4 1-4-1 1-4-1-4 4-1 1 4Z" />
+            </svg>
+          </span>
+        );
+    }
+  });
+
+  return (
+    <div
+      ref={containerRef}
+      className="safecrib-burst"
+      style={{
+        left: "0",
+        top: "0",
+        width: "1px",
+        height: "1px",
+      }}
+      aria-hidden="true"
+    >
+      {particles}
+    </div>
+  );
+}
 
 export function LikeButton({
   listingId,
@@ -28,6 +176,11 @@ export function LikeButton({
   const [ringAnimation, setRingAnimation] = useState(false);
   const [countKey, setCountKey] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [burstId, setBurstId] = useState<string | null>(null);
+  const [prevLiked, setPrevLiked] = useState(initialIsLiked);
+  const [prevCount, setPrevCount] = useState(initialLikeCount);
+  const [countPop, setCountPop] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -47,7 +200,7 @@ export function LikeButton({
     onToggle: async (next) => {
       await onLike(listingId, next.liked);
     },
-    onError: (error, rollback) => {
+    onError: (error) => {
       const { key } = resolveNotificationKey(error, "like");
       const { message, action } = getNotificationMessage(key);
       notifyError(message, { action: action ? { label: action.label, onClick: () => toggle() } : undefined });
@@ -69,6 +222,38 @@ export function LikeButton({
     }
   }, [likeStatus, isLiked, reducedMotion]);
 
+  useEffect(() => {
+    if (!reducedMotion && prevLiked !== isLiked) {
+      if (!prevLiked && isLiked) {
+        if (areEffectsEnabled() && canFire(`like:${listingId}`)) {
+          const id = acquire(`like:${listingId}`);
+          if (id) {
+            setBurstId(id);
+          }
+        }
+        if (likeCount > prevCount) {
+          setCountPop(true);
+          setTimeout(() => setCountPop(false), 200);
+        }
+      }
+      setPrevLiked(isLiked);
+      setPrevCount(likeCount);
+    }
+  }, [isLiked, likeCount, reducedMotion, listingId, prevLiked, prevCount]);
+
+  const handleClick = useCallback(() => {
+    if (likeStatus === "pending") return;
+    if (!prevLiked && !isLiked) {
+      if (areEffectsEnabled() && canFire(`like:${listingId}`)) {
+        const id = acquire(`like:${listingId}`);
+        if (id) {
+          setBurstId(id);
+        }
+      }
+    }
+    toggle();
+  }, [likeStatus, prevLiked, isLiked, listingId, toggle]);
+
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",
     md: "min-h-9 text-sm gap-1.5 px-3 py-1.5",
@@ -84,47 +269,62 @@ export function LikeButton({
   const buttonSize = sizeClasses[size];
   const iconSize = iconSizeClasses[size];
 
+  const burstPortal = burstId && buttonRef.current ? createPortal(
+    <LikeBurst burstId={burstId} buttonRef={buttonRef} />,
+    document.body
+  ) : null;
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={likeStatus === "pending"}
-      aria-pressed={isLiked}
-      aria-label={isLiked ? "Unlike" : "Like"}
-      className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isLiked ? "text-red-500" : "text-black/50"}`}
-    >
-      <span
-        className={`relative inline-flex items-center justify-center ${popAnimation ? "like-pop" : ""}`}
-        style={{ animationDuration: "300ms", animationFillMode: "both", animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleClick}
+        disabled={likeStatus === "pending"}
+        aria-pressed={isLiked}
+        aria-label={isLiked ? "Unlike" : "Like"}
+        data-listing-id={listingId}
+        className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isLiked ? "text-red-500" : "text-black/50"}`}
       >
-        <span className="relative" aria-hidden="true">
-          {ringAnimation && !reducedMotion && (
-            <span
-              className="absolute inset-0 rounded-full like-ring"
-              style={{
-                animationDuration: "400ms",
-                animationFillMode: "both",
-                animationTimingFunction: "ease-out",
-                border: "2px solid #ef4444",
-                pointerEvents: "none",
-              }}
-            />
-          )}
-          <Icon
-            name={isLiked ? "heart" : "heart"}
-            className={`${iconSize} shrink-0 ${isLiked ? "fill-current" : ""} transition-colors duration-200`}
-          />
-        </span>
-      </span>
-      {showLabel && (
         <span
-          key={countKey}
-          className="count-roll min-w-0 truncate"
-          style={{ animationDuration: "150ms", animationFillMode: "both", animationTimingFunction: "ease-out" }}
+          className={`relative inline-flex items-center justify-center ${popAnimation ? "like-pop" : ""}`}
+          style={{ animationDuration: "300ms", animationFillMode: "both", animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}
         >
-          {likeCount.toLocaleString()}
+          <span className="relative" aria-hidden="true">
+            {ringAnimation && !reducedMotion && (
+              <span
+                className="absolute inset-0 rounded-full like-ring"
+                style={{
+                  animationDuration: "400ms",
+                  animationFillMode: "both",
+                  animationTimingFunction: "ease-out",
+                  border: "2px solid #ef4444",
+                  pointerEvents: "none",
+                }}
+              />
+            )}
+            <Icon
+              name={isLiked ? "heart" : "heart"}
+              className={`${iconSize} shrink-0 ${isLiked ? "fill-current" : ""} transition-colors duration-200`}
+            />
+          </span>
         </span>
-      )}
-    </button>
+        {showLabel && (
+          <span
+            key={countKey}
+            className={`count-roll min-w-0 truncate tabular-nums ${countPop ? "like-count-pop" : ""}`}
+            style={{
+              animationDuration: "150ms",
+              animationFillMode: "both",
+              animationTimingFunction: "ease-out",
+              minWidth: "1.5rem",
+            }}
+          >
+            {likeCount.toLocaleString()}
+          </span>
+        )}
+      </button>
+      {burstPortal}
+    </>
   );
 }
