@@ -476,17 +476,45 @@ export class UserService {
       !(['AGENT', 'LANDLORD'].includes(target.role) && target.providerPage?.verificationState === 'VERIFIED')) {
       throw new NotFoundException('User profile unavailable');
     }
-    await this.prisma.userFollow.upsert({
-      where: { followerId_followedId: { followerId, followedId } },
-      create: { followerId, followedId },
-      update: {},
-    });
-    return { following: true };
+    const [follow] = await this.prisma.$transaction([
+      this.prisma.userFollow.upsert({
+        where: { followerId_followedId: { followerId, followedId } },
+        create: { followerId, followedId },
+        update: {},
+      }),
+      this.prisma.user.update({
+        where: { id: followedId },
+        data: { followerCount: { increment: 1 } },
+      }),
+      this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { increment: 1 } },
+      }),
+    ]);
+    const [followersCount, followingCount] = await Promise.all([
+      this.prisma.userFollow.count({ where: { followedId } }),
+      this.prisma.userFollow.count({ where: { followerId } }),
+    ]);
+    return { following: true, followersCount, followingCount };
   }
 
   async unfollowUser(followerId: string, followedId: string) {
-    await this.prisma.userFollow.deleteMany({ where: { followerId, followedId } });
-    return { following: false };
+    await this.prisma.$transaction([
+      this.prisma.userFollow.deleteMany({ where: { followerId, followedId } }),
+      this.prisma.user.update({
+        where: { id: followedId },
+        data: { followerCount: { decrement: 1 } },
+      }),
+      this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { decrement: 1 } },
+      }),
+    ]);
+    const [followersCount, followingCount] = await Promise.all([
+      this.prisma.userFollow.count({ where: { followedId } }),
+      this.prisma.userFollow.count({ where: { followerId } }),
+    ]);
+    return { following: false, followersCount, followingCount };
   }
 
   async followPage(followerId: string, pageId: string) {
@@ -496,17 +524,47 @@ export class UserService {
     });
     if (!page || page.verificationState !== 'VERIFIED') throw new NotFoundException('Provider page unavailable');
     if (page.ownerId === followerId) throw new BadRequestException('You cannot follow your own page');
-    await this.prisma.pageFollow.upsert({
-      where: { followerId_pageId: { followerId, pageId } },
-      create: { followerId, pageId },
-      update: {},
-    });
-    return { following: true };
+    await this.prisma.$transaction([
+      this.prisma.pageFollow.upsert({
+        where: { followerId_pageId: { followerId, pageId } },
+        create: { followerId, pageId },
+        update: {},
+      }),
+      this.prisma.providerPage.update({
+        where: { id: pageId },
+        data: { followerCount: { increment: 1 } },
+      }),
+      this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { increment: 1 } },
+      }),
+    ]);
+    const [pageFollowersCount, pageFollowingCount, userFollowingCount] = await Promise.all([
+      this.prisma.pageFollow.count({ where: { pageId } }),
+      this.prisma.pageFollow.count({ where: { followerId } }),
+      this.prisma.userFollow.count({ where: { followerId } }),
+    ]);
+    return { following: true, followersCount: pageFollowersCount, followingCount: pageFollowingCount + userFollowingCount };
   }
 
   async unfollowPage(followerId: string, pageId: string) {
-    await this.prisma.pageFollow.deleteMany({ where: { followerId, pageId } });
-    return { following: false };
+    await this.prisma.$transaction([
+      this.prisma.pageFollow.deleteMany({ where: { followerId, pageId } }),
+      this.prisma.providerPage.update({
+        where: { id: pageId },
+        data: { followerCount: { decrement: 1 } },
+      }),
+      this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { decrement: 1 } },
+      }),
+    ]);
+    const [pageFollowersCount, pageFollowingCount, userFollowingCount] = await Promise.all([
+      this.prisma.pageFollow.count({ where: { pageId } }),
+      this.prisma.pageFollow.count({ where: { followerId } }),
+      this.prisma.userFollow.count({ where: { followerId } }),
+    ]);
+    return { following: false, followersCount: pageFollowersCount, followingCount: pageFollowingCount + userFollowingCount };
   }
 
   async getStudentEngagementStats(userId: string) {

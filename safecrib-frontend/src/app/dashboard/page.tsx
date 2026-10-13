@@ -11,6 +11,7 @@ import { UserName, seedVerificationCache } from "@/components/common/UserName";
 import { RestrictedActionModal } from "@/components/dashboard/RestrictedActionModal";
 import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
+import { ProviderFollowButton } from "@/components/listings/ProviderFollowButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 
 import { Icon } from "@/components/ui/Icon";
@@ -1419,37 +1420,6 @@ export default function DashboardPage() {
     }
   };
 
-  const toggleProviderFollow = async (listing: Listing) => {
-    const ownerId = listing.ownerId;
-    if (!ownerId || ownerId === profile?.id) return;
-
-    const actionKey = `follow:${ownerId}`;
-    if (pendingEngagement.has(actionKey)) return;
-    const following = Boolean(listing.followedPage);
-    setPendingEngagement((current) => new Set(current).add(actionKey));
-    try {
-      const publicProfile = unwrapData<{ providerPageId?: string } | null>(
-        await apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(ownerId)}/public-profile`),
-      );
-      if (!publicProfile?.providerPageId) throw new Error("This provider page is unavailable.");
-
-      await apiFetch(`/api/v1/users/pages/${encodeURIComponent(publicProfile.providerPageId)}/follow`, {
-        method: following ? "DELETE" : "POST",
-      });
-      setListings((current) => current.map((item) => (
-        item.ownerId === ownerId ? { ...item, followedPage: !following } : item
-      )));
-    } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : "We could not update your follow. Please try again.");
-    } finally {
-      setPendingEngagement((current) => {
-        const next = new Set(current);
-        next.delete(actionKey);
-        return next;
-      });
-    }
-  };
-
   const toggleRecommendation = async (providerId: string) => {
     const actionKey = `recommend:${providerId}`;
     if (pendingEngagement.has(actionKey)) return;
@@ -1821,16 +1791,17 @@ export default function DashboardPage() {
                           nameClassName="text-white truncate text-[14px] font-bold leading-5"
                         />
                         {listing.ownerId && listing.ownerId !== profile?.id && (
-                          <button
-                            type="button"
-                            onClick={() => void toggleProviderFollow(listing)}
-                            disabled={pendingEngagement.has(`follow:${listing.ownerId}`)}
-                            aria-label={listing.followedPage ? "Unfollow provider" : "Follow provider"}
-                            aria-pressed={Boolean(listing.followedPage)}
-                            className="shrink-0 rounded-full border border-white/25 px-2 py-1 text-[10px] font-semibold text-white/90 transition hover:bg-white/15 hover:text-white disabled:cursor-wait disabled:opacity-60"
-                          >
-                            {listing.followedPage ? "Following" : "Follow"}
-                          </button>
+                          <ProviderFollowButton
+                            ownerId={listing.ownerId}
+                            initialFollowed={Boolean(listing.followedPage)}
+                            onFollowChange={(isFollowing) => {
+                              setListings((current) =>
+                                current.map((item) =>
+                                  item.ownerId === listing.ownerId ? { ...item, followedPage: isFollowing } : item
+                                )
+                              );
+                            }}
+                          />
                         )}
                       </div>
                     </div>

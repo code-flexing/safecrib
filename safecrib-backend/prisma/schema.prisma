@@ -19,6 +19,8 @@ model User {
   emailVerified Boolean   @default(false) @map("email_verified")
   trustScore    Float?    @map("trust_score")
   trustScoreUpdatedAt DateTime? @map("trust_score_updated_at")
+  followerCount Int       @default(0) @map("follower_count")
+  followingCount Int      @default(0) @map("following_count")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -293,6 +295,7 @@ model ProviderPage {
   verifiedAt        DateTime? @map("verified_at")
   verifiedBy        String? @map("verified_by")
   verificationNotes String? @map("verification_notes")
+  followerCount     Int      @default(0) @map("follower_count")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

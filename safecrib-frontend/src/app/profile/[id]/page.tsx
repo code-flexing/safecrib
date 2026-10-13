@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
 import { UserName } from "@/components/common/UserName";
+import { useFollow } from "@/hooks/useFollow";
 import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, getCachedMediaUrl, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
 
 type Listing = {
@@ -86,8 +87,34 @@ export default function PublicProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarMissing, setAvatarMissing] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
-  const [followPending, setFollowPending] = useState(false);
-  const [followError, setFollowError] = useState("");
+
+  const userFollow = useFollow({
+    targetType: "user",
+    targetId: profileId,
+    initialState: { isFollowing: false, followerCount: 0 },
+    onFollowersCountChange: (delta) => setProfile((p) => p ? { ...p, followerCount: Math.max(0, (p.followerCount ?? 0) + delta) } : p),
+    disabled: false,
+  });
+
+  const pageFollow = useFollow({
+    targetType: "page",
+    targetId: profile?.providerPageId ?? "",
+    initialState: { isFollowing: false, followerCount: 0 },
+    onFollowersCountChange: (delta) => setProfile((p) => p && p.providerPageId ? { ...p, providerPageFollowerCount: Math.max(0, (p.providerPageFollowerCount ?? 0) + delta) } : p),
+    disabled: !profile?.providerPageId,
+  });
+
+  // Sync hook state with profile when profile loads
+  useEffect(() => {
+    if (profile) {
+      if (userFollow.buttonRef.current) {
+        userFollow.buttonRef.current.dataset.targetKey = `user:${profileId}`;
+      }
+      if (pageFollow.buttonRef.current && profile.providerPageId) {
+        pageFollow.buttonRef.current.dataset.targetKey = `page:${profile.providerPageId}`;
+      }
+    }
+  }, [profile, profileId]);
 
   useEffect(() => {
     if (!localStorage.getItem("safecrib_access_token")) {
@@ -186,47 +213,29 @@ export default function PublicProfilePage() {
     };
   }, [profileId, router]);
 
-  const toggleFollow = async (target: "user" | "page") => {
-    if (!profile) return;
-    const following = target === "user" ? profile.isFollowingUser === true : profile.isFollowingPage === true;
-    const id = target === "user" ? profile.id : profile.providerPageId;
-    if (!id) return;
-    const updateLocalFollow = (isFollowing: boolean) => {
-      setProfile((current) => {
-        if (!current) return current;
-        if (target === "user") {
-          const wasFollowing = current.isFollowingUser === true;
-          const delta = Number(isFollowing) - Number(wasFollowing);
-          return {
-            ...current,
-            isFollowingUser: isFollowing,
-            followerCount: Math.max(0, (current.followerCount ?? 0) + delta),
-          };
-        }
-        const wasFollowing = current.isFollowingPage === true;
-        const delta = Number(isFollowing) - Number(wasFollowing);
-        return {
-          ...current,
-          isFollowingPage: isFollowing,
-          providerPageFollowerCount: Math.max(0, (current.providerPageFollowerCount ?? 0) + delta),
-        };
-      });
-    };
-    setFollowPending(true);
-    setFollowError("");
-    updateLocalFollow(!following);
-    try {
-      const path = target === "user"
-        ? `/api/v1/users/${encodeURIComponent(id)}/follow`
-        : `/api/v1/users/pages/${encodeURIComponent(id)}/follow`;
-      await apiFetch(path, { method: following ? "DELETE" : "POST" });
-    } catch (error) {
-      updateLocalFollow(following);
-      setFollowError(error instanceof Error ? error.message : "We could not update your follow.");
-    } finally {
-      setFollowPending(false);
-    }
-  };
+  const userFollowButton = (
+    <button
+      ref={userFollow.buttonRef}
+      type="button"
+      disabled={userFollow.state === "pending"}
+      onClick={userFollow.toggle}
+      className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${userFollow.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"}`}
+    >
+      {userFollow.isFollowing ? "Following" : "Follow"}
+    </button>
+  );
+
+  const pageFollowButton = profile?.providerPageId ? (
+    <button
+      ref={pageFollow.buttonRef}
+      type="button"
+      disabled={pageFollow.state === "pending"}
+      onClick={pageFollow.toggle}
+      className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${pageFollow.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"}`}
+    >
+      {pageFollow.isFollowing ? "Page followed" : "Follow page"} · {pageFollow.followerCount}
+    </button>
+  ) : null;
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
@@ -254,14 +263,14 @@ export default function PublicProfilePage() {
                   <p className="mt-1 text-sm text-black/55">{profile.followerCount ?? 0} followers</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={followPending} onClick={() => void toggleFollow("user")} className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${profile.isFollowingUser ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"}`}>{profile.isFollowingUser ? "Following" : "Follow"}</button>
-                  {profile.providerPageId && <button type="button" disabled={followPending} onClick={() => void toggleFollow("page")} className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${profile.isFollowingPage ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"}`}>{profile.isFollowingPage ? "Page followed" : "Follow page"} · {profile.providerPageFollowerCount ?? 0}</button>}
+                  {userFollowButton}
+                  {pageFollowButton}
                 </div>
               </div>
             </section>
 
-            {followError && <p role="alert" className="mt-4 text-sm text-red-700">{followError}</p>}
-
+            {userFollow.burstPortal}
+            {pageFollow.burstPortal}
             {profile.publicEngagement && <section className="mt-6 grid gap-3 sm:grid-cols-2" aria-label="Public provider engagement">
               <div className="rounded-xl border border-black/10 bg-white p-4"><p className="text-xs uppercase tracking-wide text-black/45">Home likes</p><p className="mt-1 text-2xl font-semibold text-safecrib-black">{profile.publicEngagement.likeCount}</p></div>
               <div className="rounded-xl border border-black/10 bg-white p-4"><p className="text-xs uppercase tracking-wide text-black/45">Student recommendations</p><p className="mt-1 text-2xl font-semibold text-safecrib-black">{profile.publicEngagement.recommendationCount}</p></div>

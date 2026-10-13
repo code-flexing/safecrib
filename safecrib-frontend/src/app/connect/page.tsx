@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { UserName, seedVerificationCache } from "@/components/common/UserName";
 import { Icon } from "@/components/ui/Icon";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+import { useFollow } from "@/hooks/useFollow";
 import { apiFetch, cachedApiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/api";
 
 type UserResult = {
@@ -90,8 +91,16 @@ function SearchResultsSkeleton() {
   );
 }
 
-function UserResultCard({ person, pending, onFollow }: { person: UserResult; pending: string | null; onFollow: (kind: "user" | "page", id: string, following: boolean) => void }) {
+function UserResultCard({ person, onFollowersCountChange }: { person: UserResult; onFollowersCountChange?: (id: string, delta: number) => void }) {
   const [avatarReady, setAvatarReady] = useState(Boolean(!person.profilePicture));
+
+  const follow = useFollow({
+    targetType: "user",
+    targetId: person.id,
+    initialState: { isFollowing: person.isFollowing, followerCount: person.followerCount },
+    onFollowersCountChange: (delta) => onFollowersCountChange?.(person.id, delta),
+    disabled: false,
+  });
 
   useEffect(() => {
     setAvatarReady(Boolean(!person.profilePicture));
@@ -113,18 +122,36 @@ function UserResultCard({ person, pending, onFollow }: { person: UserResult; pen
           <UserName user={person} size="sm" showHandle={true} />
           <p className="mt-1 truncate text-xs text-black/50">{person.school || person.role.replaceAll("_", " ").toLowerCase()}</p>
           {person.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{person.shortBio}</p>}
-          <p className="mt-1 text-xs text-black/45">{person.followerCount} followers</p>
+          <p className="mt-1 text-xs text-black/45">{follow.followerCount} followers</p>
         </div>
       )}
       {avatarReady && (
-        <button type="button" aria-pressed={person.isFollowing} onClick={() => void onFollow("user", person.id, person.isFollowing)} disabled={pending === `user:${person.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${person.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{person.isFollowing ? "Following" : "Follow"}</button>
+        <button
+          ref={follow.buttonRef}
+          type="button"
+          aria-pressed={follow.isFollowing}
+          onClick={follow.toggle}
+          disabled={follow.state === "pending"}
+          className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${follow.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}
+        >
+          {follow.isFollowing ? "Following" : "Follow"}
+        </button>
       )}
+      {follow.burstPortal}
     </article>
   );
 }
 
-function PageResultCard({ page, pending, onFollow, showFollowButton = true }: { page: PageResult; pending: string | null; onFollow: (kind: "user" | "page", id: string, following: boolean) => void; showFollowButton?: boolean }) {
+function PageResultCard({ page, onFollowersCountChange, showFollowButton = true }: { page: PageResult; onFollowersCountChange?: (id: string, delta: number) => void; showFollowButton?: boolean }) {
   const [avatarReady, setAvatarReady] = useState(Boolean(!page.profilePicture));
+
+  const follow = useFollow({
+    targetType: "page",
+    targetId: page.id,
+    initialState: { isFollowing: page.isFollowing, followerCount: page.followerCount },
+    onFollowersCountChange: (delta) => onFollowersCountChange?.(page.id, delta),
+    disabled: !showFollowButton,
+  });
 
   useEffect(() => {
     setAvatarReady(Boolean(!page.profilePicture));
@@ -143,12 +170,22 @@ function PageResultCard({ page, pending, onFollow, showFollowButton = true }: { 
         <div className="min-w-0 flex-1">
           <UserName user={{ ...page, id: page.ownerId }} size="sm" showHandle={false} />
           {page.shortBio && <p className="mt-1 line-clamp-2 text-xs leading-5 text-black/55">{page.shortBio}</p>}
-          <p className="mt-1 text-xs text-black/45">{showFollowButton ? `${page.followerCount} followers` : `${page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · ${page.followerCount} followers`}</p>
+          <p className="mt-1 text-xs text-black/45">{showFollowButton ? `${follow.followerCount} followers` : `${page.providerType?.replaceAll("_", " ").toLowerCase() || "provider"} · ${follow.followerCount} followers`}</p>
         </div>
       )}
       {avatarReady && showFollowButton && (
-        <button type="button" aria-pressed={page.isFollowing} onClick={() => void onFollow("page", page.id, page.isFollowing)} disabled={pending === `page:${page.id}`} className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${page.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}>{page.isFollowing ? "Following" : "Follow"}</button>
+        <button
+          ref={follow.buttonRef}
+          type="button"
+          aria-pressed={follow.isFollowing}
+          onClick={follow.toggle}
+          disabled={follow.state === "pending"}
+          className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${follow.isFollowing ? "border border-black/15 text-black/65" : "bg-safecrib-green text-white"} disabled:opacity-50`}
+        >
+          {follow.isFollowing ? "Following" : "Follow"}
+        </button>
       )}
+      {follow.burstPortal}
     </article>
   );
 }
@@ -162,7 +199,17 @@ export default function ConnectPage() {
   const [resultType, setResultType] = useState<ResultType>("People");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pending, setPending] = useState<string | null>(null);
+
+  const handleFollowersCountChange = useCallback((id: string, delta: number) => {
+    setResult((current) => ({
+      users: current.users.map((person) =>
+        person.id === id ? { ...person, followerCount: Math.max(0, person.followerCount + delta) } : person
+      ),
+      pages: current.pages.map((page) =>
+        page.id === id ? { ...page, followerCount: Math.max(0, page.followerCount + delta) } : page
+      ),
+    }));
+  }, []);
 
   useEffect(() => {
     try {
@@ -222,31 +269,6 @@ export default function ConnectPage() {
     return () => { active = false; };
   }, [query, resultType]);
 
-  const toggleFollow = async (kind: "user" | "page", id: string, following: boolean) => {
-    const key = `${kind}:${id}`;
-    setPending(key);
-    const updateFollow = (isFollowing: boolean) => setResult((current) => ({
-      users: current.users.map((person) => kind === "user" && person.id === id
-        ? { ...person, isFollowing, followerCount: Math.max(0, person.followerCount + (isFollowing === following ? 0 : isFollowing ? 1 : -1)) }
-        : person),
-      pages: current.pages.map((page) => kind === "page" && page.id === id
-        ? { ...page, isFollowing, followerCount: Math.max(0, page.followerCount + (isFollowing === following ? 0 : isFollowing ? 1 : -1)) }
-        : page),
-    }));
-    updateFollow(!following);
-    try {
-      const path = kind === "user"
-        ? `/api/v1/users/${encodeURIComponent(id)}/follow`
-        : `/api/v1/users/pages/${encodeURIComponent(id)}/follow`;
-      await apiFetch(path, { method: following ? "DELETE" : "POST" });
-    } catch (followError) {
-      updateFollow(following);
-      setError(followError instanceof Error ? followError.message : "We could not update that follow.");
-    } finally {
-      setPending(null);
-    }
-  };
-
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchingHomes = homes.filter((home) => `${home.title ?? ""} ${home.campus ?? ""} ${home.address ?? ""}`.toLocaleLowerCase().includes(normalizedQuery));
   const people = resultType === "Trending"
@@ -294,7 +316,7 @@ export default function ConnectPage() {
               <span className="text-xs text-black/45">{people.length} found</span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {people.map((person) => <UserResultCard key={person.id} person={person} pending={pending} onFollow={toggleFollow} />)}
+              {people.map((person) => <UserResultCard key={person.id} person={person} onFollowersCountChange={handleFollowersCountChange} />)}
               {people.length === 0 && <p className="text-sm text-black/50">No matching verified users.</p>}
             </div>
           </section>
@@ -304,14 +326,14 @@ export default function ConnectPage() {
               <span className="text-xs text-black/45">{pages.length} found</span>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {pages.map((page) => <PageResultCard key={page.id} page={page} pending={pending} onFollow={toggleFollow} />)}
+              {pages.map((page) => <PageResultCard key={page.id} page={page} onFollowersCountChange={handleFollowersCountChange} />)}
               {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
             </div>
           </section>}
         </div>}
         {resultType === "Pages" && <section className="mt-6" aria-label="Pages">
           <div className="grid gap-3 sm:grid-cols-2">
-            {pages.map((page) => <PageResultCard key={page.id} page={page} pending={pending} onFollow={toggleFollow} showFollowButton={false} />)}
+            {pages.map((page) => <PageResultCard key={page.id} page={page} onFollowersCountChange={handleFollowersCountChange} showFollowButton={false} />)}
           </div>
           {pages.length === 0 && <p className="text-sm text-black/50">No matching pages.</p>}
         </section>}

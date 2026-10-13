@@ -393,6 +393,19 @@ body {
   100% { transform: scale(1.4); opacity: 0; }
 }
 
+/* ---------- Follow celebration burst ---------- */
+@keyframes follow-sparkle-pop {
+  0% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.8); opacity: 0; }
+  20% { opacity: 1; }
+  50% { transform: translate(-50%, -50%) translate(calc(var(--dx) + var(--rot) * 0.5), var(--dy)) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+
+@keyframes follow-ring-pulse {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
 /* Burst container: portaled to document.body, never clips, never interactive. */
 .safecrib-burst {
   position: fixed;
@@ -451,6 +464,18 @@ body {
   animation-timing-function: ease-out;
 }
 
+.follow-sparkle {
+  animation-name: follow-sparkle-pop;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
+.follow-ring {
+  animation-name: follow-ring-pulse;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -491,7 +516,9 @@ body {
   .like-count-pop,
   .lightning-bolt,
   .recommend-spark-fly,
-  .recommend-glow-pulse {
+  .recommend-glow-pulse,
+  .follow-sparkle,
+  .follow-ring {
     animation: none !important;
   }
 
