@@ -203,15 +203,14 @@ export function RecommendButton({
   role,
 }: RecommendButtonProps) {
   const { notifyError } = useNotify();
-  const [flashAnimation, setFlashAnimation] = useState(false);
-  const [pulseAnimation, setPulseAnimation] = useState(false);
   const [countKey, setCountKey] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [burstId, setBurstId] = useState<string | null>(null);
   const [prevRecommended, setPrevRecommended] = useState(initialIsRecommended);
   const [prevCount, setPrevCount] = useState(initialRecommendationCount);
-  const [countPop, setCountPop] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const flashRef = useRef(false);
+  const pulseRef = useRef(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -245,15 +244,6 @@ export function RecommendButton({
   const { count: recommendationCount, recommended: isRecommended } = recState;
 
   useEffect(() => {
-    if (recStatus === "pending" && isRecommended && !reducedMotion) {
-      setFlashAnimation(true);
-      setPulseAnimation(true);
-      setTimeout(() => setFlashAnimation(false), 400);
-      setTimeout(() => setPulseAnimation(false), 500);
-    }
-  }, [recStatus, isRecommended, reducedMotion]);
-
-  useEffect(() => {
     if (!reducedMotion && prevRecommended !== isRecommended) {
       if (!prevRecommended && isRecommended) {
         if (areEffectsEnabled() && canFire(`recommend:${providerId}`)) {
@@ -263,8 +253,14 @@ export function RecommendButton({
           }
         }
         if (recommendationCount > prevCount) {
-          setCountPop(true);
-          setTimeout(() => setCountPop(false), 200);
+          flashRef.current = true;
+          pulseRef.current = true;
+          buttonRef.current?.classList.add("recommend-flash", "recommend-pulse");
+          setTimeout(() => {
+            buttonRef.current?.classList.remove("recommend-flash", "recommend-pulse");
+            flashRef.current = false;
+            pulseRef.current = false;
+          }, 500);
         }
       }
       setPrevRecommended(isRecommended);
@@ -281,9 +277,19 @@ export function RecommendButton({
           setBurstId(id);
         }
       }
+      if (!reducedMotion) {
+        flashRef.current = true;
+        pulseRef.current = true;
+        buttonRef.current?.classList.add("recommend-flash", "recommend-pulse");
+        setTimeout(() => {
+          buttonRef.current?.classList.remove("recommend-flash", "recommend-pulse");
+          flashRef.current = false;
+          pulseRef.current = false;
+        }, 500);
+      }
     }
     toggle();
-  }, [recStatus, disabled, prevRecommended, isRecommended, providerId, toggle]);
+  }, [recStatus, disabled, prevRecommended, isRecommended, providerId, toggle, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",
@@ -305,11 +311,10 @@ export function RecommendButton({
     ? "Recommend this provider to students"
     : "Student accounts can recommend providers";
 
-  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
-  const isDim = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dim";
+  const isDark = typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") === "dark" || document.documentElement.getAttribute("data-theme") === "dim");
 
   const burstPortal = burstId && buttonRef.current ? createPortal(
-    <RecommendBurst burstId={burstId} buttonRef={buttonRef} isDark={isDark || isDim} />,
+    <RecommendBurst burstId={burstId} buttonRef={buttonRef} isDark={isDark} />,
     document.body
   ) : null;
 
@@ -326,38 +331,16 @@ export function RecommendButton({
         data-provider-id={providerId}
         className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isRecommended ? "text-blue-500" : "text-black/50"}`}
       >
-        <span
-          className={`relative inline-flex items-center justify-center ${flashAnimation ? "recommend-flash" : ""} ${pulseAnimation ? "recommend-pulse" : ""}`}
-          style={{
-            animationDuration: flashAnimation ? "100ms" : pulseAnimation ? "400ms" : undefined,
-            animationFillMode: "both",
-            animationTimingFunction: flashAnimation ? "ease-in-out" : pulseAnimation ? "ease-out" : undefined,
-          }}
-        >
-          <span className="relative" aria-hidden="true">
-            {pulseAnimation && !reducedMotion && (
-              <span
-                className="absolute inset-0 rounded-full recommend-glow"
-                style={{
-                  animationDuration: "500ms",
-                  animationFillMode: "both",
-                  animationTimingFunction: "ease-out",
-                  border: "2px solid #3b82f6",
-                  pointerEvents: "none",
-                  borderRadius: "9999px",
-                }}
-              />
-            )}
-            <Icon
-              name="zap"
-              className={`${iconSize} shrink-0 ${isRecommended ? "fill-current" : ""} transition-colors duration-200`}
-            />
-          </span>
+        <span className="relative inline-flex items-center justify-center" aria-hidden="true">
+          <Icon
+            name="zap"
+            className={`${iconSize} shrink-0 ${isRecommended ? "fill-current" : ""} transition-colors duration-200`}
+          />
         </span>
         {showLabel && (
           <span
             key={countKey}
-            className={`count-roll min-w-0 truncate tabular-nums ${countPop ? "like-count-pop" : ""}`}
+            className={`count-roll min-w-0 truncate tabular-nums ${flashRef.current ? "like-count-pop" : ""}`}
             style={{
               animationDuration: "150ms",
               animationFillMode: "both",

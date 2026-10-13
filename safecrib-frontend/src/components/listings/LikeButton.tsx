@@ -172,15 +172,14 @@ export function LikeButton({
   showLabel = true,
 }: LikeButtonProps) {
   const { notifyError } = useNotify();
-  const [popAnimation, setPopAnimation] = useState(false);
-  const [ringAnimation, setRingAnimation] = useState(false);
   const [countKey, setCountKey] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [burstId, setBurstId] = useState<string | null>(null);
   const [prevLiked, setPrevLiked] = useState(initialIsLiked);
   const [prevCount, setPrevCount] = useState(initialLikeCount);
-  const [countPop, setCountPop] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef(false);
+  const ringRef = useRef(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -214,15 +213,6 @@ export function LikeButton({
   const { count: likeCount, liked: isLiked } = likeState;
 
   useEffect(() => {
-    if (likeStatus === "pending" && isLiked && !reducedMotion) {
-      setPopAnimation(true);
-      setRingAnimation(true);
-      setTimeout(() => setPopAnimation(false), 300);
-      setTimeout(() => setRingAnimation(false), 400);
-    }
-  }, [likeStatus, isLiked, reducedMotion]);
-
-  useEffect(() => {
     if (!reducedMotion && prevLiked !== isLiked) {
       if (!prevLiked && isLiked) {
         if (areEffectsEnabled() && canFire(`like:${listingId}`)) {
@@ -232,8 +222,14 @@ export function LikeButton({
           }
         }
         if (likeCount > prevCount) {
-          setCountPop(true);
-          setTimeout(() => setCountPop(false), 200);
+          popRef.current = true;
+          ringRef.current = true;
+          buttonRef.current?.classList.add("like-pop", "like-ring");
+          setTimeout(() => {
+            buttonRef.current?.classList.remove("like-pop", "like-ring");
+            popRef.current = false;
+            ringRef.current = false;
+          }, 400);
         }
       }
       setPrevLiked(isLiked);
@@ -250,9 +246,19 @@ export function LikeButton({
           setBurstId(id);
         }
       }
+      if (!reducedMotion) {
+        popRef.current = true;
+        ringRef.current = true;
+        buttonRef.current?.classList.add("like-pop", "like-ring");
+        setTimeout(() => {
+          buttonRef.current?.classList.remove("like-pop", "like-ring");
+          popRef.current = false;
+          ringRef.current = false;
+        }, 400);
+      }
     }
     toggle();
-  }, [likeStatus, prevLiked, isLiked, listingId, toggle]);
+  }, [likeStatus, prevLiked, isLiked, listingId, toggle, reducedMotion]);
 
   const sizeClasses = {
     sm: "min-h-8 text-xs gap-1 px-2 py-1",
@@ -286,33 +292,16 @@ export function LikeButton({
         data-listing-id={listingId}
         className={`inline-flex min-w-0 max-w-full items-center justify-center ${buttonSize} rounded-full transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50 ${isLiked ? "text-red-500" : "text-black/50"}`}
       >
-        <span
-          className={`relative inline-flex items-center justify-center ${popAnimation ? "like-pop" : ""}`}
-          style={{ animationDuration: "300ms", animationFillMode: "both", animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)" }}
-        >
-          <span className="relative" aria-hidden="true">
-            {ringAnimation && !reducedMotion && (
-              <span
-                className="absolute inset-0 rounded-full like-ring"
-                style={{
-                  animationDuration: "400ms",
-                  animationFillMode: "both",
-                  animationTimingFunction: "ease-out",
-                  border: "2px solid #ef4444",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            <Icon
-              name={isLiked ? "heart" : "heart"}
-              className={`${iconSize} shrink-0 ${isLiked ? "fill-current" : ""} transition-colors duration-200`}
-            />
-          </span>
+        <span className="relative inline-flex items-center justify-center" aria-hidden="true">
+          <Icon
+            name={isLiked ? "heart" : "heart"}
+            className={`${iconSize} shrink-0 ${isLiked ? "fill-current" : ""} transition-colors duration-200`}
+          />
         </span>
         {showLabel && (
           <span
             key={countKey}
-            className={`count-roll min-w-0 truncate tabular-nums ${countPop ? "like-count-pop" : ""}`}
+            className={`count-roll min-w-0 truncate tabular-nums ${popRef.current ? "like-count-pop" : ""}`}
             style={{
               animationDuration: "150ms",
               animationFillMode: "both",
