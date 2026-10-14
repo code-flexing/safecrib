@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AvailabilityStatus } from '@prisma/client';
 import {
+  IsEnum,
   IsInt,
   IsLatitude,
   IsLongitude,
@@ -67,6 +69,11 @@ export class CreateListingDto {
   @IsString()
   @MaxLength(500)
   locationReference?: string;
+
+  @ApiPropertyOptional({ enum: AvailabilityStatus, example: 'AVAILABLE', description: 'Owner-maintained availability status for the home' })
+  @IsOptional()
+  @IsEnum(AvailabilityStatus)
+  availability?: AvailabilityStatus;
 }
 
 export class UpdateListingDto {
@@ -137,6 +144,17 @@ export class UpdateListingDto {
   @IsString()
   @MaxLength(100)
   propertyType?: string;
+
+  @ApiPropertyOptional({ enum: AvailabilityStatus, example: 'AVAILABLE', description: 'Owner-maintained availability status for the home' })
+  @IsOptional()
+  @IsEnum(AvailabilityStatus)
+  availability?: AvailabilityStatus;
+}
+
+export class UpdateListingAvailabilityDto {
+  @ApiProperty({ enum: AvailabilityStatus, example: 'BOOKED', description: 'New availability status for the home' })
+  @IsEnum(AvailabilityStatus)
+  availability: AvailabilityStatus;
 }
 
 export class SearchListingsDto {
@@ -221,7 +239,12 @@ export interface ListingResponse {
   address: string | null;
   locationReference: string | null;
   status: string;
+  /** Backward-compatible binary availability derived from status/bookings. Use `availability` for the editable status. */
   availabilityStatus: 'AVAILABLE' | 'SECURED';
+  /** Owner-maintained availability status (AVAILABLE | BOOKED | RENTED | SOLD) */
+  availability: AvailabilityStatus;
+  availabilityUpdatedAt: Date;
+  availabilityUpdatedById: string | null;
   ownerId: string;
   /** Owner profile fields for social-post card display */
   owner: {

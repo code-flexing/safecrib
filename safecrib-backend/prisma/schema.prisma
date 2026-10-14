@@ -244,6 +244,9 @@ model Listing {
   address   String?
   locationReference String? @map("location_reference")
   status    ListingStatus @default(DRAFT)
+  availability       AvailabilityStatus @default(AVAILABLE)
+  availabilityUpdatedAt DateTime @default(now()) @map("availability_updated_at")
+  availabilityUpdatedById String? @map("availability_updated_by_id")
   bedrooms     Int?    @map("bedrooms")
   bathrooms    Int?    @map("bathrooms")
   propertyType String? @map("property_type")
@@ -266,8 +269,16 @@ model Listing {
   @@index([ownerId])
   @@index([providerPageId])
   @@index([status])
+  @@index([availability])
   @@index([lat, lng])
   @@map("listings")
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BOOKED
+  RENTED
+  SOLD
 }
 
 enum ListingStatus {

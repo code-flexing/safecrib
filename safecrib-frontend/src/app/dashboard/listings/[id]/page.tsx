@@ -12,8 +12,11 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { apiFetch, cachedApiFetch, getCachedApi, getCachedCurrentUser, getCachedListingDetail, seedListingDetailCache, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, resolveMediaUrl, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 import { ListingComments } from "@/components/comments";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
+import { AvailabilityQuickChange } from "@/components/listings/AvailabilityQuickChange";
+import { availabilityShortDescription, canSecure, normalizeAvailability, type AvailabilityStatus } from "@/lib/availability";
 
-type Listing = { id: string; ownerId?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; username?: string | null; email?: string } };
+type Listing = { id: string; ownerId?: string; availability?: AvailabilityStatus; availabilityUpdatedAt?: string; title?: string; description?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; lat?: number; lng?: number; locationReference?: string; photos?: (string | { url?: string })[]; images?: string[]; video?: { mediaId?: string; url?: string } | null; providerId?: string; providerPageId?: string; likeCount?: number; viewCount?: number; likedByCurrentUser?: boolean; providerRecommendationCount?: number; provider?: { id?: string; displayName?: string; username?: string | null; email?: string } };
 type Profile = { id?: string; role?: string; studentProfileStatus?: unknown };
 type ProviderPage = { status?: string } | null;
 type ReportType = "FAKE_LISTING" | "MISREPRESENTED" | "DOUBLE_BOOKING" | "SCAM_AGENT" | "OTHER";
@@ -190,6 +193,8 @@ export default function ListingDetailPage() {
   const [providerVerification, setProviderVerification] = useState<VerificationStageResult | null>(null);
   const [providerBadgeUnavailable, setProviderBadgeUnavailable] = useState(false);
   const [role, setRole] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("not_submitted");
   const [pageStatus, setPageStatus] = useState<PageStatus>("none");
@@ -280,6 +285,7 @@ export default function ListingDetailPage() {
       const accountRole = String(user.role ?? "").toUpperCase();
       const providerRole = ["AGENT", "LANDLORD"].includes(accountRole);
       setRole(accountRole);
+      setCurrentUserId(user?.id ?? null);
 
       // Provider page status
       let page: ProviderPage = null;
@@ -488,6 +494,8 @@ export default function ListingDetailPage() {
 
   const price = listing?.discountedPrice ?? listing?.price;
   const isProvider = ["AGENT", "LANDLORD"].includes(role);
+  const isOwner = Boolean(listing?.ownerId && currentUserId && listing.ownerId === currentUserId);
+  const availabilityDisabled = !canSecure(listing?.availability);
 
   return <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f7f2_100%)] pb-24 md:pb-8">
     <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={false} />
@@ -547,6 +555,12 @@ export default function ListingDetailPage() {
                 ? <Link href={`/profile/${encodeURIComponent(listing.ownerId)}`} className="font-medium text-safecrib-green hover:underline"><UserName user={listing.provider} size="sm" showHandle={true} /></Link>
                 : <span><UserName user={listing.provider} size="sm" showHandle={true} /></span>}
               {providerVerification && <VerificationBadge verification={providerVerification} compact iconOnly />}
+              <span className="inline-flex items-center gap-1.5">
+                <AvailabilityTag availability={listing?.availability} />
+                {isOwner && (
+                  <button type="button" onClick={() => setAvailabilityOpen(true)} className="text-xs font-semibold text-safecrib-green hover:underline">Change</button>
+                )}
+              </span>
               <span className="ml-auto text-xs font-semibold text-safecrib-green">Verified home</span>
             </div>
             {providerBadgeUnavailable && <p className="mt-1 text-xs text-amber-800" role="status">Provider verification badge is temporarily unavailable.</p>}
@@ -576,7 +590,10 @@ export default function ListingDetailPage() {
             </section>
 
             {/* primary action + icon actions */}
-            <Button type="button" onClick={() => gate("secure this accommodation")} className="mt-6 w-full">Secure accommodation</Button>
+            <Button type="button" onClick={() => gate("secure this accommodation")} disabled={availabilityDisabled} className="mt-6 w-full">Secure accommodation</Button>
+            {availabilityDisabled && listing?.availability ? (
+              <p role="status" className="mt-3 text-sm text-black/55">{availabilityShortDescription[listing.availability as AvailabilityStatus]}</p>
+            ) : null}
             <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-2">
               <div className="flex items-center">
                 <ActionButton label={liked ? "Unlike" : "Like"} onClick={() => void toggleLike()} disabled={!listing.ownerId || likePending} pressed={liked} tone="text-red-500" count={likeCount}>
@@ -661,5 +678,12 @@ export default function ListingDetailPage() {
       <p className="mt-1 text-right text-xs text-black/45">{reportDescription.length}/2,000</p>
       <Button type="button" loading={submitting} onClick={() => void submitReport()} className="mt-4">Send report</Button>
     </Modal>
+    <AvailabilityQuickChange
+      open={availabilityOpen}
+      onClose={() => setAvailabilityOpen(false)}
+      listingId={listing?.id ?? ""}
+      current={normalizeAvailability(listing?.availability)}
+      onChanged={(next) => setListing((current) => (current ? { ...current, availability: next, availabilityUpdatedAt: new Date().toISOString() } : current))}
+    />
   </main>;
 }

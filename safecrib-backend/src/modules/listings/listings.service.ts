@@ -17,7 +17,7 @@ import { ProviderPagesService } from '../provider-pages/provider-pages.service.j
 import { MediaService } from '../media/services/media.service.js';
 import { computeProviderRecommendationScore } from '../trust/trust.service.js';
 import { getPublicVerification } from '../../common/verification/public-verification.js';
-import type { MediaPurpose, Prisma } from '@prisma/client';
+import type { AvailabilityStatus, MediaPurpose, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service.js';
 
 export interface CreateListingInput {
@@ -30,6 +30,7 @@ export interface CreateListingInput {
   campus?: string;
   address?: string;
   locationReference?: string;
+  availability?: AvailabilityStatus;
 }
 
 export interface PhotoInput {
@@ -72,6 +73,7 @@ export class ListingsService {
         campus: input.campus ?? null,
         address: input.address ?? null,
         locationReference: input.locationReference ?? null,
+        availability: input.availability ?? undefined,
         providerPageId: page.id,
         status: 'DRAFT',
       },
@@ -141,6 +143,37 @@ export class ListingsService {
         campus: input.campus ?? undefined,
         address: input.address ?? undefined,
         locationReference: input.locationReference ?? undefined,
+        availability: input.availability ?? undefined,
+      },
+      include: this.listingInclude(),
+    });
+
+    return this.toResponse(updated, updated.photos);
+  }
+
+  async updateListingAvailability(
+    listingId: string,
+    ownerId: string,
+    availability: AvailabilityStatus,
+  ): Promise<ListingResponse> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true },
+    });
+
+    if (!listing) {
+      throw new NotFoundException('Listing not found');
+    }
+    if (listing.ownerId !== ownerId) {
+      throw new ForbiddenException('You do not own this listing');
+    }
+
+    const updated = await this.prisma.listing.update({
+      where: { id: listingId },
+      data: {
+        availability,
+        availabilityUpdatedAt: new Date(),
+        availabilityUpdatedById: ownerId,
       },
       include: this.listingInclude(),
     });
@@ -888,11 +921,14 @@ export class ListingsService {
       address: listing.address ?? null,
       locationReference: listing.locationReference ?? null,
       status: listing.status,
-      availabilityStatus:
-        listing.status === 'SOLD' || (listing.bookings?.length ?? 0) > 0
-          ? 'SECURED'
-          : 'AVAILABLE',
-      ownerId: listing.ownerId,
+       availabilityStatus:
+         listing.status === 'SOLD' || (listing.bookings?.length ?? 0) > 0
+           ? 'SECURED'
+           : 'AVAILABLE',
+       availability: listing.availability ?? 'AVAILABLE',
+       availabilityUpdatedAt: listing.availabilityUpdatedAt ?? listing.updatedAt,
+       availabilityUpdatedById: listing.availabilityUpdatedById ?? null,
+       ownerId: listing.ownerId,
       owner: {
         id: owner?.id ?? listing.ownerId,
         displayName: ownerDisplayName,

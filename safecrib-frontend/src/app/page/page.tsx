@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { ReviewPendingState } from "@/components/verification/ReviewPendingState";
 import { normalizeVerificationStage, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { UserName } from "@/components/common/UserName";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
 import { ApiError, apiFetch, cachedApiFetch, clearClientCache, getCurrentUser, getPersistedVerification, normalizeAccountStatus, normalizePageStatus, setPersistedVerification, unwrapData, type AccountStatus, type PageStatus } from "@/lib/api";
 import { readDraft, removeDraft } from "@/lib/drafts";
+import type { AvailabilityStatus } from "@/lib/availability";
 
 type ProviderPageData = { id?: string; displayName?: string; status?: string; verificationNotes?: string; rejectionReason?: string; reason?: string } | null;
 type ListingPhoto = string | { id?: string; url?: string; mediaId?: string };
-type Listing = { id: string; title?: string; description?: string; status?: string; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhoto[]; video?: { mediaId?: string } | null; updatedAt?: string; createdAt?: string };
+type Listing = { id: string; title?: string; description?: string; status?: string; availability?: AvailabilityStatus; price?: number; discountAmount?: number; discountedPrice?: number; address?: string; campus?: string; photos?: ListingPhoto[]; video?: { mediaId?: string } | null; updatedAt?: string; createdAt?: string };
 type User = { id?: string; role?: string; displayName?: unknown; email?: string; verificationStage?: unknown };
 type LocalListingDraft = { listingId?: string };
 
@@ -223,7 +225,7 @@ export default function ProviderWorkspacePage() {
                 const canEdit = ["DRAFT", "REJECTED"].includes(String(listing.status ?? "").toUpperCase());
                 return <article key={listing.id} className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center">
                   {photo ? <ListingMediaImage mediaId={imageMediaId} url={imageUrl} alt={`${listing.title || "Home"} photo`} width={112} height={84} className="h-20 w-28 shrink-0 object-cover" /> : listing.video?.mediaId ? <ListingMediaVideo mediaId={listing.video.mediaId} className="h-20 w-32 shrink-0 object-cover" /> : null}
-                  <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-safecrib-black">{listing.title || "Untitled home"}</h3><span className="border border-black/15 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-black/55">{statusLabel(listing.status)}</span></div><p className="mt-1 text-sm text-black/55">{listing.address || listing.campus || "Location not set"}</p><p className="mt-2 text-sm font-medium text-safecrib-black">{priceLabel(listing.discountedPrice ?? listing.price)}{typeof listing.discountAmount === "number" && listing.discountAmount > 0 && <span className="ml-2 text-xs font-normal text-black/45">Base {priceLabel(listing.price)}</span>}</p></div>
+                                     <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-safecrib-black">{listing.title || "Untitled home"}</h3><span className="border border-black/15 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-black/55">{statusLabel(listing.status)}</span>{listing.availability && <AvailabilityTag availability={listing.availability} />}</div><p className="mt-1 text-sm text-black/55">{listing.address || listing.campus || "Location not set"}</p><p className="mt-2 text-sm font-medium text-safecrib-black">{priceLabel(listing.discountedPrice ?? listing.price)}{typeof listing.discountAmount === "number" && listing.discountAmount > 0 && <span className="ml-2 text-xs font-normal text-black/45">Base {priceLabel(listing.price)}</span>}</p></div>
                   <div className="flex shrink-0 flex-wrap items-center gap-4 text-sm font-medium"><Link href={`/page/homes/new?id=${encodeURIComponent(listing.id)}`} className="text-safecrib-green hover:underline">{canEdit ? (String(listing.status).toUpperCase() === "DRAFT" ? "Edit draft" : "Edit home") : "View"}</Link>{String(listing.status ?? "").toUpperCase() === "DRAFT" && <button type="button" disabled={deletingDraftId === listing.id} onClick={() => void deleteDraft(listing)} className="text-red-700 hover:underline disabled:opacity-50">{deletingDraftId === listing.id ? "Deleting…" : "Delete draft"}</button>}<span className="text-black/50">{listing.photos?.length ?? 0} photos{listing.video ? " · video" : ""}</span></div>
                 </article>;
               })}</div>}

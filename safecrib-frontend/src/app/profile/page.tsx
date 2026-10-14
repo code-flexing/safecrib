@@ -9,6 +9,8 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { normalizeVerificationStage, VerificationBadge, type VerificationStageResult } from "@/components/verification/VerificationBadge";
 import { UserName } from "@/components/common/UserName";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
+import type { AvailabilityStatus } from "@/lib/availability";
 import { apiFetch, cachedApiFetch, cachedCurrentUser, clearSession, displayName, getCachedCurrentUser, getCachedMediaUrl, getPersistedVerification, isUnauthorizedError, normalizeAccountStatus, resolveMediaUrl, setPersistedVerification, subscribeClientCacheUpdates, unwrapData, userSessionClearedEvent, getCachedUserAvatar, setCachedUserAvatar } from "@/lib/api";
 
 type User = {
@@ -73,6 +75,7 @@ type Listing = {
   price?: number;
   discountedPrice?: number;
   status?: string;
+  availability?: AvailabilityStatus;
   campus?: string;
   address?: string;
   createdAt?: string;
@@ -122,9 +125,12 @@ function ListingGrid({ listings, own = false }: { listings: Listing[]; own?: boo
         {image && <Image src={image} alt="" width={720} height={440} unoptimized className="h-44 w-full object-cover" />}
         <div className="p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="font-medium text-safecrib-black">{listing.title || "Untitled home"}</h3>
-            {own && listing.status && <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-xs font-medium text-black/60">{readable(listing.status)}</span>}
-          </div>
+           <h3 className="font-medium text-safecrib-black">{listing.title || "Untitled home"}</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              {own && listing.status && <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-xs font-medium text-black/60">{readable(listing.status)}</span>}
+              {listing.availability && <AvailabilityTag availability={listing.availability} />}
+            </div>
+           </div>
 
           <p className="mt-2 line-clamp-2 text-sm leading-5 text-black/55">{listing.description || "View this home for details."}</p>
           <p className="mt-3 font-semibold text-safecrib-black">{typeof (listing.discountedPrice ?? listing.price) === "number" ? `₦${(listing.discountedPrice ?? listing.price)?.toLocaleString()}` : "Price on request"}</p>

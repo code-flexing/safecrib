@@ -3,7 +3,9 @@
 import { PostHeader } from "./PostHeader";
 import { PostMedia } from "./PostMedia";
 import { PostActions } from "./PostActions";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
 import { Icon } from "@/components/ui/Icon";
+import type { AvailabilityStatus } from "@/lib/availability";
 
 type ListingForPost = {
   id: string;
@@ -11,6 +13,7 @@ type ListingForPost = {
   description?: string | null;
   price?: number;
   discountAmount?: number | null;
+  availability?: AvailabilityStatus;
   campus?: string | null;
   address?: string | null;
   // Optional — backend does not currently return these fields.
@@ -139,6 +142,10 @@ export function ListingPost({
 
         {/* Feature chips */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          {listing.availability && (
+            <AvailabilityTag availability={listing.availability} label={true} />
+          )}
+
           {typeof listing.bedrooms === "number" && listing.bedrooms > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-black/[0.02] px-2.5 py-1 text-[11px] font-medium text-black/70">
               <Icon name="bed" className="h-3 w-3" />

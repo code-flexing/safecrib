@@ -6,7 +6,52 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { InstallButton } from "@/components/pwa/InstallButton";
-import { getCurrentUser } from "@/lib/api";
+import { apiFetch, getCurrentUser } from "@/lib/api";
+import { ListingPost } from "@/components/listings/ListingPost";
+import { ListingPostSkeleton } from "@/components/listings/ListingPostSkeleton";
+import { fetchPublicListings } from "@/lib/api";
+import { EmptyListingsIllustration } from "@/components/branding/EmptyListingsIllustration";
+import type { AvailabilityStatus } from "@/lib/availability";
+
+type PublicListing = {
+  id: string;
+  title?: string;
+  description?: string | null;
+  price?: number;
+  discountAmount?: number | null;
+  campus?: string | null;
+  address?: string | null;
+  photos?: Array<{ id: string; mediaId?: string | null; url: string }>;
+  video?: { mediaId: string; durationSec?: number | null } | null;
+  likeCount?: number;
+  likedByCurrentUser?: boolean;
+  commentCount?: number;
+  shareCount?: number;
+  viewCount?: number;
+  _count?: { comments?: number; shares?: number; views?: number };
+  ownerId?: string;
+  ownerDisplayName?: string;
+  ownerHandle?: string;
+  ownerAvatarMediaId?: string;
+  ownerAvatarUrl?: string;
+  ownerIsVerified?: boolean;
+  availability?: AvailabilityStatus;
+  ownerVerificationBadge?: "green" | "blue" | "gold";
+  ownerAgencyName?: string;
+  ownerPhone?: string;
+  ownerWhatsApp?: string;
+  owner?: {
+    id: string;
+    displayName?: string;
+    username?: string;
+    profilePicture?: string;
+    phone?: string;
+    whatsApp?: string;
+    verification?: { stage?: string; badgeColor?: "green" | "blue" | "gold" } | null;
+    providerPage?: { displayName?: string } | null;
+  };
+  createdAt?: string | Date;
+};
 
 type Audience = "student" | "provider";
 

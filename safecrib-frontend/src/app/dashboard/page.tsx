@@ -13,6 +13,9 @@ import { LikeButton } from "@/components/listings/LikeButton";
 import { RecommendButton } from "@/components/listings/RecommendButton";
 import { ProviderFollowButton } from "@/components/listings/ProviderFollowButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
+import { AvailabilityQuickChange } from "@/components/listings/AvailabilityQuickChange";
+import { normalizeAvailability, type AvailabilityStatus } from "@/lib/availability";
 
 import { Icon } from "@/components/ui/Icon";
 
@@ -56,6 +59,7 @@ export type ListingPhotoValue =
 export type Listing = {
   id: string;
   ownerId?: string;
+  availability?: AvailabilityStatus;
   owner?: { displayName?: string | null; profilePicture?: string | null; providerPageProfilePicture?: string | null; username?: string | null; verification?: { stage?: string; badge?: string; badgeColor?: "green" | "blue" | "gold"; riskBlocked?: boolean; eligible?: boolean; kind?: string | null } | null };
   title?: string;
   description?: string;
@@ -546,6 +550,8 @@ type ListingActionTrayProps = {
   commentCount: number;
   recommendationDisabled: boolean;
   role: string;
+  currentUserId?: string;
+  onAvailabilityChange?: () => void;
   onToggle: () => void;
   onClose: () => void;
   onLike: (listingId: string, liked: boolean) => Promise<void>;
@@ -572,6 +578,8 @@ function ListingActionTray({
   commentCount,
   recommendationDisabled,
   role,
+  currentUserId,
+  onAvailabilityChange,
   onLike,
   onComment,
   onRecommend,
@@ -709,6 +717,17 @@ function ListingActionTray({
                 View provider
               </Link>
             )}
+            {currentUserId && listing.ownerId === currentUserId && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { onAvailabilityChange?.(); onCloseMenu?.(); }}
+                className="feed-text flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition hover:bg-white/10"
+              >
+                <Icon name="edit-2" className="h-4 w-4" />
+                Change availability
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -757,6 +776,7 @@ export default function DashboardPage() {
   });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [openActionTrayId, setOpenActionTrayId] = useState<string | null>(null);
+  const [availabilityEditId, setAvailabilityEditId] = useState<string | null>(null);
   const [videoProgress, setVideoProgress] = useState<{ listingId: string; currentTime: number; duration: number } | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const scrollRestoredRef = useRef(false);
@@ -1822,6 +1842,7 @@ export default function DashboardPage() {
                     {/* Price */}
                     <div className="mt-1.5 flex items-center justify-between gap-3">
                       <ListingPriceTag listing={listing} />
+                      <AvailabilityTag availability={listing.availability} />
                     </div>
                   </div>
 
@@ -1831,6 +1852,8 @@ export default function DashboardPage() {
                       listing={listing}
                       isOpen={openActionTrayId === listing.id}
                       isSaved={isSaved}
+                      currentUserId={profile?.id}
+                      onAvailabilityChange={() => setAvailabilityEditId(listing.id)}
                       isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
                       canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
                       menuOpen={openMenuId === listing.id}
@@ -1906,6 +1929,16 @@ export default function DashboardPage() {
         </div>
       </section>
       <RestrictedActionModal message={actionMessage} onClose={() => setActionMessage(null)} />
+      <AvailabilityQuickChange
+        open={Boolean(availabilityEditId)}
+        onClose={() => setAvailabilityEditId(null)}
+        listingId={availabilityEditId ?? ""}
+        current={normalizeAvailability(listings.find((item) => item.id === availabilityEditId)?.availability)}
+        onChanged={(next) => {
+          setListings((current) => current.map((item) => item.id === availabilityEditId ? { ...item, availability: next, availabilityUpdatedAt: new Date().toISOString() } : item));
+        }}
+        onError={(message) => setActionMessage(message)}
+      />
     </main>
   );
 }

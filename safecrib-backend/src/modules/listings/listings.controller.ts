@@ -26,6 +26,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { ListingsService } from './listings.service.js';
 import { CreateListingCommentDto, CreateListingDto } from './dto/listing.dto.js';
 import { UpdateListingDto } from './dto/listing.dto.js';
+import { UpdateListingAvailabilityDto } from './dto/listing.dto.js';
 import { SearchListingsDto } from './dto/listing.dto.js';
 import { AttachListingMediaDto } from './dto/listing.dto.js';
 
@@ -164,12 +165,13 @@ export class ListingsController {
         description: dto.description,
         price: dto.price,
         discountAmount: dto.discountAmount,
-        lat: dto.lat,
-        lng: dto.lng,
-        campus: dto.campus,
-        address: dto.address,
-        locationReference: dto.locationReference,
-      },
+         lat: dto.lat,
+         lng: dto.lng,
+         campus: dto.campus,
+         address: dto.address,
+         locationReference: dto.locationReference,
+         availability: dto.availability,
+       },
     );
   }
 
@@ -276,7 +278,22 @@ export class ListingsController {
     @CurrentUser() user: { id: string },
     @Body() dto: UpdateListingDto,
   ) {
-    return this.listingsService.updateListing(id, user.id, dto);
+     return this.listingsService.updateListing(id, user.id, dto);
+  }
+
+  @Patch(':id/availability')
+  @Roles('AGENT', 'LANDLORD')
+  @ApiOperation({ summary: 'Update a home availability status' })
+  @ApiResponse({ status: 200, type: Object })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Listing not found' })
+  @HttpCode(HttpStatus.OK)
+  updateListingAvailability(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdateListingAvailabilityDto,
+  ) {
+    return this.listingsService.updateListingAvailability(id, user.id, dto.availability);
   }
 
   @Delete(':id')

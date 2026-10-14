@@ -45,11 +45,20 @@
 
 ## Feed item / listing (owner in listing response)
 
+> `availability` (`AVAILABLE` | `BOOKED` | `RENTED` | `SOLD`) and `availabilityUpdatedAt`
+> are owner-maintained fields on every listing response. The binary `availabilityStatus`
+> field is still returned for backward compatibility. Availability is editable via
+> `PATCH /api/v1/listings/{id}/availability` (owner only) and through the create/edit form.
+
 ```json
 {
   "id": "listing_1",
   "title": "Cozy room near campus",
   "price": 50000,
+  "status": "VERIFIED",
+  "availability": "AVAILABLE",
+  "availabilityUpdatedAt": "2026-10-12T09:00:00.000Z",
+  "availabilityStatus": "AVAILABLE",
   "owner": {
     "id": "agent_1",
     "displayName": "codeflex",

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ListingsService } from './listings.service.js';
 
 type ListingVideoMock = {
@@ -353,5 +353,73 @@ describe('ListingsService listing media and pricing rules', () => {
       service.attachVideoMedia('listing_1', 'agent_1', 'media_video_2'),
     ).rejects.toThrow(ConflictException);
     expect(prisma.listingVideo.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListingsService availability', () => {
+  it('sets the availability status and records the owner as the updater', async () => {
+    const { service, prisma } = makeService();
+    prisma.listing.findUnique.mockResolvedValueOnce({ id: 'listing_1', ownerId: 'agent_1' });
+    prisma.listing.update.mockResolvedValueOnce(
+      makeListing({ availability: 'BOOKED', availabilityUpdatedById: 'agent_1' }),
+    );
+
+    const result = await service.updateListingAvailability('listing_1', 'agent_1', 'BOOKED');
+
+    expect(result.availability).toBe('BOOKED');
+    expect(result.availabilityUpdatedById).toBe('agent_1');
+    expect(prisma.listing.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'listing_1' },
+        data: expect.objectContaining({
+          availability: 'BOOKED',
+          availabilityUpdatedById: 'agent_1',
+          availabilityUpdatedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('refuses to change availability for a listing the caller does not own', async () => {
+    const { service, prisma } = makeService();
+    prisma.listing.findUnique.mockResolvedValueOnce({ id: 'listing_1', ownerId: 'agent_1' });
+
+    await expect(service.updateListingAvailability('listing_1', 'student_1', 'SOLD')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.listing.update).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when the listing does not exist', async () => {
+    const { service, prisma } = makeService();
+    prisma.listing.findUnique.mockResolvedValueOnce(null);
+
+    await expect(service.updateListingAvailability('nope', 'agent_1', 'SOLD')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.listing.update).not.toHaveBeenCalled();
+  });
+
+  it('exposes availability in the listing response defaulting to AVAILABLE', async () => {
+    const { service, prisma } = makeService();
+    const owner = {
+      id: 'agent_1',
+      role: 'AGENT',
+      displayName: null,
+      profilePicture: null,
+      email: null,
+      identityVerified: false,
+      studentProfile: null,
+      providerPage: null,
+      verification: null,
+    };
+    prisma.listing.findUnique.mockResolvedValueOnce(
+      makeListing({ owner, _count: { likes: 0, views: 0, comments: 0, bookmarks: 0 } }),
+    );
+
+    const result = await service.getListing('listing_1', 'student_1');
+
+    expect(result.availability).toBe('AVAILABLE');
+    expect(result.availabilityUpdatedAt).toBeInstanceOf(Date);
   });
 });

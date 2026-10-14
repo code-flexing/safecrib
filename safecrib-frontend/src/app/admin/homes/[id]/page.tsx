@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { AvailabilityTag } from "@/components/listings/AvailabilityTag";
+import type { AvailabilityStatus } from "@/lib/availability";
 import {
   adminFetch,
   ApiError,
@@ -30,6 +32,7 @@ type HomeListing = {
   address: string | null;
   locationReference: string | null;
   status: ListingStatus;
+  availability?: AvailabilityStatus;
   ownerId: string;
   photos: ListingPhoto[];
   video: { mediaId: string; durationSec: number | null } | null;
@@ -175,7 +178,7 @@ export default function AdminHomeReviewPage() {
             </p>
             <h1 className="mt-2 text-3xl font-medium">{home.title}</h1>
             <p className="mt-2 text-sm text-black/55">
-              {home.status} · Submitted {new Date(home.createdAt).toLocaleString()}
+              {home.status} · <AvailabilityTag availability={home.availability} /> · Submitted {new Date(home.createdAt).toLocaleString()}
             </p>
           </div>
           {pending && (
