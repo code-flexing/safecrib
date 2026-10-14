@@ -13,9 +13,9 @@ BEGIN
   END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS "listings_availability_idx" ON "listings"("availability");
-
 ALTER TABLE "listings"
   ADD COLUMN IF NOT EXISTS "availability" "AvailabilityStatus" NOT NULL DEFAULT 'AVAILABLE',
   ADD COLUMN IF NOT EXISTS "availability_updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ADD COLUMN IF NOT EXISTS "availability_updated_by_id" TEXT;
+
+CREATE INDEX IF NOT EXISTS "listings_availability_idx" ON "listings"("availability");
