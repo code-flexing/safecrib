@@ -181,7 +181,7 @@ export class BookingsService {
           },
         });
         await this.trustRecomputeQueue.add('recompute', { userId: listingOwner.ownerId });
-        await this.notifications.enqueue(listingOwner.ownerId, {
+        await this.notifications.enqueueSystem(listingOwner.ownerId, {
           type: 'BOOKING_CONFIRMED',
           title: 'Booking confirmed',
           body: 'A student confirmed the booking for your home.',
@@ -251,14 +251,14 @@ export class BookingsService {
         data: { status: 'VERIFIED' },
       }),
     ]);
-    await this.notifications.enqueue(booking.studentId, {
-      type: 'BOOKING_HOLD_EXPIRED',
-      title: 'Booking hold expired',
-      body: 'Your temporary hold expired and the home is available again.',
-      href: '/dashboard',
-      data: { bookingId, listingId: booking.listingId },
-      dedupeKey: `booking:${bookingId}:hold-expired:student`,
-    });
+await this.notifications.enqueueSystem(booking.studentId, {
+        type: 'BOOKING_HOLD_EXPIRED',
+        title: 'Booking hold expired',
+        body: 'Your temporary hold expired and the home is available again.',
+        href: '/dashboard',
+        data: { bookingId, listingId: booking.listingId },
+        dedupeKey: `booking:${bookingId}:hold-expired:student`,
+      });
   }
 
   async cancelBooking(bookingId: string, studentId: string): Promise<void> {

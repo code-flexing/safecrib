@@ -110,14 +110,14 @@ export class AuthService {
       },
     });
 
-    await this.notifications.enqueue(user.id, {
+    await this.notifications.enqueueSystem(user.id, {
       type: 'WELCOME',
       title: 'Welcome to SafeCrib',
       body: 'Your account is ready. Complete your profile to get started.',
       href: '/profile',
       dedupeKey: `welcome:${user.id}`,
     });
-    await this.notifications.enqueue(user.id, {
+    await this.notifications.enqueueSystem(user.id, {
       type: 'STUDENT_PROFILE_COMPLETION',
       title: 'Complete your student profile',
       body: 'Add your student details and submit them for verification.',

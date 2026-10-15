@@ -789,22 +789,22 @@ export class AdminService {
       : providerPage?.ownerId;
     if (notificationUserId) {
       const approved = newStatus === 'APPROVED';
-      await this.notifications.enqueue(notificationUserId, {
-        type: entityType === 'student_profile'
-          ? approved ? 'STUDENT_PROFILE_APPROVED' : 'STUDENT_PROFILE_REJECTED'
-          : approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
-        title: entityType === 'student_profile'
-          ? approved ? 'Student profile approved' : 'Student profile needs changes'
-          : approved ? 'Provider Page approved' : 'Provider Page needs changes',
-        body: approved
-          ? entityType === 'student_profile'
-            ? 'Your student profile is approved. Your student account is ready to use.'
-            : 'Your provider Page is verified. You can now publish homes.'
-          : `Your submission was not approved. ${reason ?? 'Review your profile and update the requested details.'}`,
-        href: entityType === 'student_profile' ? '/profile' : '/page',
-        data: { submissionId, entityType, status: newStatus },
-        dedupeKey: `review:${submissionId}:${newStatus.toLowerCase()}`,
-      });
+await this.notifications.enqueueSystem(notificationUserId, {
+      type: entityType === 'student_profile'
+        ? approved ? 'STUDENT_PROFILE_APPROVED' : 'STUDENT_PROFILE_REJECTED'
+        : approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
+      title: entityType === 'student_profile'
+        ? approved ? 'Student profile approved' : 'Student profile needs changes'
+        : approved ? 'Provider Page approved' : 'Provider Page needs changes',
+      body: approved
+        ? entityType === 'student_profile'
+          ? 'Your student profile is approved. Your student account is ready to use.'
+          : 'Your provider Page is verified. You can now publish homes.'
+        : `Your submission was not approved. ${reason ?? 'Review your profile and update the requested details.'}`,
+      href: entityType === 'student_profile' ? '/profile' : '/page',
+      data: { submissionId, entityType, status: newStatus },
+      dedupeKey: `review:${submissionId}:${newStatus.toLowerCase()}`,
+    });
     }
 
     if (newStatus === 'APPROVED' && approvedUserId) {

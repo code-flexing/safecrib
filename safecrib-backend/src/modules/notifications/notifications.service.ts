@@ -11,6 +11,26 @@ const MAX_BODY_LENGTH = 500;
 const MAX_HREF_LENGTH = 500;
 const MAX_DEDUPE_KEY_LENGTH = 200;
 
+/** System notifications (WELCOME, STUDENT_PROFILE_COMPLETION, etc.) are sent by CribBot. */
+const CRIBBOT_AVATAR_URL = '/cribbot-avatar.png';
+const CRIBBOT_NAME = 'CribBot';
+
+/**
+ * Wrap enqueue() to attach CribBot sender metadata for system-type notifications.
+ * Pass `system: true` to mark a notification as coming from CribBot instead of a real user.
+ */
+export function withSystemSender(input: NotificationInput): NotificationInput {
+  return {
+    ...input,
+    data: {
+      ...(input.data ?? {}),
+      systemSender: true,
+      systemSenderName: CRIBBOT_NAME,
+      systemSenderAvatar: CRIBBOT_AVATAR_URL,
+    },
+  };
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -47,6 +67,11 @@ export class NotificationsService {
         error instanceof Error ? error.stack : undefined,
       );
     }
+  }
+
+  /** Enqueue a system notification from CribBot. */
+  async enqueueSystem(userId: string, input: NotificationInput): Promise<void> {
+    return this.enqueue(userId, withSystemSender(input));
   }
 
   async enqueueAdmins(input: NotificationInput): Promise<void> {

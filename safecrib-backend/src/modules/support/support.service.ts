@@ -145,10 +145,10 @@ export class SupportService {
       });
       return message;
     });
-    await this.notifications.enqueue(conversation.user.id, {
+    await this.notifications.enqueueSystem(conversation.user.id, {
       type: 'SUPPORT_REPLY',
       title: 'Support replied',
-      body: 'The SafeCrib support team replied to your conversation.',
+      body: 'CribBot replied to your conversation.',
       href: '/support',
       data: { conversationId },
       dedupeKey: `support-reply:${message.id}`,

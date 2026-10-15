@@ -49,9 +49,40 @@ function getAdminSender(notification: NotificationItem): { name: string; avatarR
     : "SafeCribs Team";
   const avatarRef = typeof data.senderAvatarSnapshot === "string" && data.senderAvatarSnapshot
     ? data.senderAvatarSnapshot
-    : null;
+    : "/cribbot-avatar.png";
   const id = typeof data.senderAdminId === "string" ? data.senderAdminId : undefined;
   return { name, avatarRef, id };
+}
+
+function isSystemNotification(notification: NotificationItem): boolean {
+  return Boolean(notification.data?.systemSender);
+}
+
+function isCribBotNotification(notification: NotificationItem): boolean {
+  return isSystemNotification(notification) && !isAdminMessage(notification);
+}
+
+function getSystemSender(notification: NotificationItem): { name: string; avatarRef: string | null } {
+  const data = notification.data ?? {};
+  return {
+    name: typeof data.systemSenderName === "string" && data.systemSenderName
+      ? data.systemSenderName
+      : "CribBot",
+    avatarRef: typeof data.systemSenderAvatar === "string" && data.systemSenderAvatar
+      ? data.systemSenderAvatar
+      : "/cribbot-avatar.png",
+  };
+}
+
+function getActorName(notification: NotificationItem): string | null {
+  const data = notification.data ?? {};
+  if (typeof data.actorUsername === "string" && data.actorUsername) {
+    return data.actorUsername;
+  }
+  if (typeof data.actorName === "string" && data.actorName) {
+    return data.actorName;
+  }
+  return null;
 }
 
 function AdminProfilePopover({
@@ -98,25 +129,33 @@ function AdminProfilePopover({
 }
 
 function NotificationActor({ notification }: { notification: NotificationItem }) {
-  const actorName = typeof notification.data?.actorName === "string"
-    ? notification.data.actorName
-    : null;
+  const isSystem = isSystemNotification(notification);
+  const actorName = getActorName(notification);
   const actorId = typeof notification.data?.actorId === "string"
     ? notification.data.actorId
     : null;
   const photoReference = typeof notification.data?.actorProfilePicture === "string"
     ? notification.data.actorProfilePicture
     : null;
-  const [photo, setPhoto] = useState<string | null>(() => getCachedMediaUrl(photoReference));
+  const [photo, setPhoto] = useState<string | null>(() =>
+    isSystem ? getSystemSender(notification).avatarRef : (photoReference ? getCachedMediaUrl(photoReference) : null)
+  );
 
   useEffect(() => {
+    if (isSystem) {
+      setPhoto(getSystemSender(notification).avatarRef);
+      return;
+    }
+    if (!photoReference) {
+      setPhoto(null);
+      return;
+    }
     const cached = getCachedMediaUrl(photoReference);
     if (cached) {
       setPhoto(cached);
       return;
     }
     setPhoto(null);
-    if (!photoReference) return;
     let active = true;
     void resolveMediaUrl(photoReference)
       .then((url) => { if (active) setPhoto(url); })
@@ -124,14 +163,21 @@ function NotificationActor({ notification }: { notification: NotificationItem })
         if (active) console.error("Could not load the notification sender's profile picture.", error);
       });
     return () => { active = false; };
-  }, [photoReference]);
+  }, [isSystem, photoReference]);
+
+  const displayName = isSystem ? getSystemSender(notification).name : actorName;
+  const displayId = isSystem ? undefined : actorId ?? undefined;
 
   return (
     <span className="flex shrink-0 flex-col items-center gap-1">
-      <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "SafeCrib notification"} size="small" className="h-11 w-11" />
+      {isSystem ? (
+        <ProfileAvatar src={photo} alt="CribBot profile" size="small" className="h-11 w-11" />
+      ) : (
+        <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "SafeCrib notification"} size="small" className="h-11 w-11" />
+      )}
       {actorName && (
         <UserName
-          user={{ id: actorId ?? undefined, displayName: actorName }}
+          user={{ id: displayId, displayName: actorName }}
           size="sm"
           showHandle={false}
           fallback="SafeCrib member"
@@ -144,24 +190,29 @@ function NotificationActor({ notification }: { notification: NotificationItem })
 
 function AdminMessageActor({ notification }: { notification: NotificationItem }) {
   const { name, avatarRef, id } = useMemo(() => getAdminSender(notification), [notification]);
-  const [photo, setPhoto] = useState<string | null>(() => getCachedMediaUrl(avatarRef));
+  const [photo, setPhoto] = useState<string | null>(() => avatarRef ? getCachedMediaUrl(avatarRef) : "/cribbot-avatar.png");
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    const cached = getCachedMediaUrl(avatarRef);
-    if (cached) {
-      setPhoto(cached);
-      return;
+    if (avatarRef) {
+      const cached = getCachedMediaUrl(avatarRef);
+      if (cached) {
+        setPhoto(cached);
+        return;
+      }
+      setPhoto(null);
+      let active = true;
+      void resolveMediaUrl(avatarRef)
+        .then((url) => { if (active) setPhoto(url); })
+        .catch((error: unknown) => {
+          if (active) {
+            console.error("Could not load the admin sender's profile picture.", error);
+            setPhoto("/cribbot-avatar.png");
+          }
+        });
+      return () => { active = false; };
     }
-    setPhoto(null);
-    if (!avatarRef) return;
-    let active = true;
-    void resolveMediaUrl(avatarRef)
-      .then((url) => { if (active) setPhoto(url); })
-      .catch((error: unknown) => {
-        if (active) console.error("Could not load the admin sender's profile picture.", error);
-      });
-    return () => { active = false; };
+    setPhoto("/cribbot-avatar.png");
   }, [avatarRef]);
 
   return (

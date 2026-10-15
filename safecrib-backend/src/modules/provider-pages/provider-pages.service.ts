@@ -395,7 +395,7 @@ export class ProviderPagesService {
       page.owner.email,
       approved ? undefined : reason ?? 'No reason provided',
     );
-    await this.notifications.enqueue(page.ownerId, {
+    await this.notifications.enqueueSystem(page.ownerId, {
       type: approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
       title: approved ? 'Provider Page approved' : 'Provider Page needs changes',
       body: approved

@@ -397,7 +397,7 @@ export class ListingsService {
       await this.notifications.enqueue(listing.ownerId, {
         type: 'LISTING_LIKED',
         title: 'Someone liked your home',
-        body: 'A SafeCrib user liked your listing.',
+        body: `${actor?.username ?? actor?.displayName ?? 'A SafeCrib user'} liked your listing.`,
         href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
         data: {
           listingId,
@@ -547,6 +547,40 @@ export class ListingsService {
         mentions: { select: { user: { select: { id: true, displayName: true, username: true, role: true, profilePicture: true, identityVerified: true, studentProfile: { select: { status: true } }, providerPage: { select: { verificationState: true } }, verification: { select: { stage: true, badge: true, badgeColor: true, riskBlocked: true, identityVerified: true, providerVerified: true, studentProfileApproved: true } }, _count: { select: { followers: true } } } } } },
       },
     });
+
+    // Notify the parent comment author when this is a reply
+    if (input.parentId) {
+      const parentComment = await this.prisma.listingComment.findUnique({
+        where: { id: input.parentId },
+        select: { userId: true },
+      });
+      if (parentComment && parentComment.userId !== userId) {
+        const parentAuthor = await this.prisma.user.findUnique({
+          where: { id: parentComment.userId },
+          select: { displayName: true, username: true },
+        });
+        const actorName = comment.user.displayName ?? parentAuthor?.displayName ?? "Someone";
+        const actorUsername = comment.user.username ?? actorName;
+        await this.notifications.enqueue(parentComment.userId, {
+          type: 'COMMENT_REPLY',
+          title: 'Someone replied to your comment',
+          body: `${actorUsername} replied to your comment on ${listing.title ?? 'a home'}.`,
+          href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
+          data: {
+            listingId,
+            commentId: comment.id,
+            parentId: input.parentId,
+            actorName,
+            actorUsername,
+            actorProfilePicture: comment.user.profilePicture
+              ?? comment.user.studentProfile?.profilePicture
+              ?? comment.user.providerPage?.profilePicture,
+          },
+          dedupeKey: `comment-reply:${comment.id}:${parentComment.userId}`,
+        });
+      }
+    }
+
     if (listing.ownerId !== userId) {
       const actorPhoto = comment.user.profilePicture
         ?? comment.user.studentProfile?.profilePicture
@@ -554,12 +588,13 @@ export class ListingsService {
       await this.notifications.enqueue(listing.ownerId, {
         type: 'LISTING_COMMENT',
         title: 'New comment on your home',
-        body: 'A SafeCrib user commented on your listing.',
+        body: `${comment.user.username ?? comment.user.displayName ?? 'A SafeCrib user'} commented on your listing.`,
         href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
         data: {
           listingId,
           commentId: comment.id,
           actorName: comment.user.displayName,
+          actorUsername: comment.user.username,
           actorProfilePicture: actorPhoto,
         },
         dedupeKey: `listing-comment:${comment.id}:owner`,
@@ -568,12 +603,13 @@ export class ListingsService {
     await Promise.all(mentionIds.map((mentionedUserId) => this.notifications.enqueue(mentionedUserId, {
       type: 'COMMENT_MENTION',
       title: 'You were mentioned',
-      body: `You were mentioned in a comment on ${listing.title ?? 'a home'}.`,
+      body: `${comment.user.username ?? comment.user.displayName ?? 'Someone'} mentioned you in a comment on ${listing.title ?? 'a home'}.`,
       href: `/dashboard/listings/${encodeURIComponent(listingId)}`,
       data: {
         listingId,
         commentId: comment.id,
         actorName: comment.user.displayName,
+        actorUsername: comment.user.username,
         actorProfilePicture: comment.user.profilePicture
           ?? comment.user.studentProfile?.profilePicture
           ?? comment.user.providerPage?.profilePicture,
