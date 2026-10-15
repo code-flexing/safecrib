@@ -69,11 +69,6 @@ export class NotificationsService {
     }
   }
 
-  /** Enqueue a system notification from CribBot. */
-  async enqueueSystem(userId: string, input: NotificationInput): Promise<void> {
-    return this.enqueue(userId, withSystemSender(input));
-  }
-
   async enqueueAdmins(input: NotificationInput): Promise<void> {
     try {
       const admins = await this.prisma.user.findMany({

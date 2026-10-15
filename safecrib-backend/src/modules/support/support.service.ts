@@ -12,7 +12,7 @@ import type {
   CreateSupportConversationDto,
   CreateSupportMessageDto,
 } from './dto/support.dto.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
+import { NotificationsService, withSystemSender } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class SupportService {
@@ -145,14 +145,14 @@ export class SupportService {
       });
       return message;
     });
-    await this.notifications.enqueueSystem(conversation.user.id, {
+    await this.notifications.enqueue(conversation.user.id, withSystemSender({
       type: 'SUPPORT_REPLY',
       title: 'Support replied',
       body: 'CribBot replied to your conversation.',
       href: '/support',
       data: { conversationId },
       dedupeKey: `support-reply:${message.id}`,
-    });
+    }));
     return message;
   }
 

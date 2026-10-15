@@ -55,8 +55,24 @@ function getAdminSender(notification: NotificationItem): { name: string; avatarR
 }
 
 function isSystemNotification(notification: NotificationItem): boolean {
-  return Boolean(notification.data?.systemSender);
+  if (notification.data?.systemSender) return true;
+  return SYSTEM_NOTIFICATION_TYPES.has(notification.type);
 }
+
+/** Notification types that are always sent by CribBot (used as a fallback for older rows). */
+const SYSTEM_NOTIFICATION_TYPES = new Set([
+  "WELCOME",
+  "STUDENT_PROFILE_COMPLETION",
+  "PROVIDER_PAGE_APPROVED",
+  "PROVIDER_PAGE_REJECTED",
+  "STUDENT_PROFILE_APPROVED",
+  "STUDENT_PROFILE_REJECTED",
+  "LISTING_APPROVED",
+  "LISTING_REJECTED",
+  "BOOKING_CONFIRMED",
+  "BOOKING_HOLD_EXPIRED",
+  "SUPPORT_REPLY",
+]);
 
 function isCribBotNotification(notification: NotificationItem): boolean {
   return isSystemNotification(notification) && !isAdminMessage(notification);

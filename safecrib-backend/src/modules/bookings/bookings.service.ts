@@ -18,7 +18,7 @@ import {
 } from '../../domain/booking/booking-state-machine.js';
 type PrismaBookingStatus = Exclude<BookingStatus, 'AVAILABLE'>;
 import type { CreateBookingDto } from './dto/booking.dto.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
+import { NotificationsService, withSystemSender } from '../notifications/notifications.service.js';
 
 export interface BookingResult {
   id: string;
@@ -181,14 +181,14 @@ export class BookingsService {
           },
         });
         await this.trustRecomputeQueue.add('recompute', { userId: listingOwner.ownerId });
-        await this.notifications.enqueueSystem(listingOwner.ownerId, {
+        await this.notifications.enqueue(listingOwner.ownerId, withSystemSender({
           type: 'BOOKING_CONFIRMED',
           title: 'Booking confirmed',
           body: 'A student confirmed the booking for your home.',
           href: '/page',
           data: { bookingId, listingId: booking.listingId },
           dedupeKey: `booking:${bookingId}:confirmed:owner`,
-        });
+        }));
       }
 
       return this.toResult(result);
@@ -251,14 +251,14 @@ export class BookingsService {
         data: { status: 'VERIFIED' },
       }),
     ]);
-await this.notifications.enqueueSystem(booking.studentId, {
+await this.notifications.enqueue(booking.studentId, withSystemSender({
         type: 'BOOKING_HOLD_EXPIRED',
         title: 'Booking hold expired',
         body: 'Your temporary hold expired and the home is available again.',
         href: '/dashboard',
         data: { bookingId, listingId: booking.listingId },
         dedupeKey: `booking:${bookingId}:hold-expired:student`,
-      });
+      }));
   }
 
   async cancelBooking(bookingId: string, studentId: string): Promise<void> {

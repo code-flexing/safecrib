@@ -14,6 +14,7 @@ import type { JobQueueClient } from '../../infra/queue/queue.service.js';
 
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.constants.js';
+import { withSystemSender } from '../notifications/notifications.service.js';
 import type { Role } from '../../common/roles.decorator.js';
 import { generateUniqueUsername } from '../../common/username.utils.js';
 import type { RegisterDto } from './dto/auth.dto.js';
@@ -110,20 +111,20 @@ export class AuthService {
       },
     });
 
-    await this.notifications.enqueueSystem(user.id, {
+    await this.notifications.enqueue(user.id, withSystemSender({
       type: 'WELCOME',
       title: 'Welcome to SafeCrib',
       body: 'Your account is ready. Complete your profile to get started.',
       href: '/profile',
       dedupeKey: `welcome:${user.id}`,
-    });
-    await this.notifications.enqueueSystem(user.id, {
+    }));
+    await this.notifications.enqueue(user.id, withSystemSender({
       type: 'STUDENT_PROFILE_COMPLETION',
       title: 'Complete your student profile',
       body: 'Add your student details and submit them for verification.',
       href: '/profile/complete',
       dedupeKey: 'student-profile-completion',
-    });
+    }));
 
     await this.enqueueEmail(
       'welcome-email',

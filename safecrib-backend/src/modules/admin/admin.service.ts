@@ -15,7 +15,7 @@ import type { CreateAdminDto, OnboardAgentDto } from './dto/admin.dto.js';
 import type { IdentityVerificationDto } from './dto/admin.dto.js';
 import type { ReviewSubmissionDto } from './dto/review.dto.js';
 import type { ProfileStatus, SubmissionEntityType } from '../../common/types.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
+import { NotificationsService, withSystemSender } from '../notifications/notifications.service.js';
 import { generateUniqueUsername } from '../../common/username.utils.js';
 import { getPublicVerification } from '../../common/verification/public-verification.js';
 import type { Role } from '../../common/roles.decorator.js';
@@ -789,7 +789,7 @@ export class AdminService {
       : providerPage?.ownerId;
     if (notificationUserId) {
       const approved = newStatus === 'APPROVED';
-await this.notifications.enqueueSystem(notificationUserId, {
+await this.notifications.enqueue(notificationUserId, withSystemSender({
       type: entityType === 'student_profile'
         ? approved ? 'STUDENT_PROFILE_APPROVED' : 'STUDENT_PROFILE_REJECTED'
         : approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
@@ -804,7 +804,7 @@ await this.notifications.enqueueSystem(notificationUserId, {
       href: entityType === 'student_profile' ? '/profile' : '/page',
       data: { submissionId, entityType, status: newStatus },
       dedupeKey: `review:${submissionId}:${newStatus.toLowerCase()}`,
-    });
+    }));
     }
 
     if (newStatus === 'APPROVED' && approvedUserId) {

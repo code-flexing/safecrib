@@ -20,7 +20,7 @@ import type {
   UpdateProviderPageDto,
 } from './dto/provider-page.dto.js';
 import { StudentProfileService } from '../student-profiles/student-profiles.service.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
+import { NotificationsService, withSystemSender } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class ProviderPagesService {
@@ -395,7 +395,7 @@ export class ProviderPagesService {
       page.owner.email,
       approved ? undefined : reason ?? 'No reason provided',
     );
-    await this.notifications.enqueueSystem(page.ownerId, {
+    await this.notifications.enqueue(page.ownerId, withSystemSender({
       type: approved ? 'PROVIDER_PAGE_APPROVED' : 'PROVIDER_PAGE_REJECTED',
       title: approved ? 'Provider Page approved' : 'Provider Page needs changes',
       body: approved
@@ -404,7 +404,7 @@ export class ProviderPagesService {
       href: '/page',
       data: { providerPageId: pageId, status: approved ? 'VERIFIED' : 'REJECTED' },
       dedupeKey: `provider-page-review:${pageId}:${approved ? 'approved' : 'rejected'}`,
-    });
+    }));
 
     if (approved) {
       try {
