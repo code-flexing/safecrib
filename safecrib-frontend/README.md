@@ -64,7 +64,7 @@ flowchart LR
 		Browser -->|attach READY media ID| API
 ```
 
-The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to the configured API origin. Login, registration, and Socket.IO use the same origin selection. In development the default is `http://localhost:3001`; in production it is `https://safecrib.onrender.com`. Set `NEXT_PUBLIC_API_URL` to override either value.
+The catch-all proxy in `src/app/api/backend/[...path]/route.ts` forwards same-origin `/api/backend/api/v1/...` requests to the configured API origin. Login, registration, and Socket.IO use the same origin selection. Local development defaults to `https://dev-safecribs.onrender.com`; production defaults to `https://safecrib.onrender.com`. Set `NEXT_PUBLIC_API_URL` to override either value.
 
 ### Account and review flow
 
@@ -159,7 +159,7 @@ The UI uses the App Router, React 19, TypeScript, Tailwind CSS, and small local 
 
 - Node.js 20 LTS recommended
 - npm
-- A local backend and Redis for local authenticated and real-time notification flows
+- Network access to the development API (`https://dev-safecribs.onrender.com` by default)
 
 ### Install and start
 
@@ -169,7 +169,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Start the backend and Redis using the instructions in `../safecrib-backend/README.md`, then open `http://localhost:3000`. Set `NEXT_PUBLIC_API_URL` in `.env.local` if the backend runs on a different origin.
+Open `http://localhost:3000`; the frontend uses the development API by default. To use a local backend, set `NEXT_PUBLIC_API_URL=http://localhost:3001` in `.env.local` and start the backend (and Redis if needed) using `../safecrib-backend/README.md`.
 
 ### Useful commands
 
@@ -188,7 +188,7 @@ There is currently no automated test script configured in `package.json`. Before
 ## API and media integration
 
 - **Live API docs:** [safecrib.onrender.com/api/v1/docs](https://safecrib.onrender.com/api/v1/docs#/)
-- **API origin:** `NEXT_PUBLIC_API_URL` (or `NEXT_PUBLIC_API_ORIGIN` / `NEXT_PUBLIC_BACKEND_URL`) configures the API proxy, login/registration, and notification Socket.IO client. Local development defaults to `http://localhost:3001`; production defaults to `https://safecrib.onrender.com`.
+- **API origin:** `NEXT_PUBLIC_API_ORIGIN`, `NEXT_PUBLIC_API_URL`, or `NEXT_PUBLIC_BACKEND_URL` configures the API proxy, login/registration, and notification Socket.IO client, in that precedence order. Local development defaults to `https://dev-safecribs.onrender.com`; production defaults to `https://safecrib.onrender.com`.
 - **Authentication:** access tokens are sent as `Authorization: Bearer <token>`. The client refreshes sessions and keeps current-user data in a best-effort browser cache for fast page transitions.
 - **Errors:** handle `401` as an expired/missing session, `403` as an authorization decision, `404` as a missing resource, and `409` as a state/limit conflict. Do not silently override server decisions in client state.
 - **Uploads:** request a signed upload, upload bytes to Cloudinary, wait for `READY`, then attach the media ID to the listing. Video readiness is webhook-driven.
@@ -221,6 +221,8 @@ The project uses OpenNext for Cloudflare Workers (`open-next.config.ts`) and Wra
 5. Deploy with `npm run deploy` only from the intended branch/environment.
 
 Do not assume a successful static build verifies authenticated API, Cloudinary, webhook, or review workflows; those require backend-connected test accounts.
+
+For a deployed development frontend, explicitly set the API-origin variable to `https://dev-safecribs.onrender.com` in that build environment. Cloudflare builds run in production mode, so the local-development fallback does not select the development API there. Keep the production frontend configured for `https://safecrib.onrender.com`.
 
 ## Known API contract gaps
 
