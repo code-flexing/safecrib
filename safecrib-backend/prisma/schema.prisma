@@ -264,6 +264,7 @@ model Listing {
   @@index([ownerId])
   @@index([providerPageId])
   @@index([status])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)], map: "listings_status_created_at_id_idx")
   @@index([lat, lng])
   @@map("listings")
 }

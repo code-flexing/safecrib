@@ -1109,14 +1109,9 @@ export default function DashboardPage() {
 
     listings.forEach((listing) => {
       if (!listing.ownerId) return;
-      if (listing.owner?.profilePicture) {
-        resolveProviderAvatar(listing.id, listing.owner.profilePicture);
-        return;
-      }
-      void apiFetch<unknown>(`/api/v1/users/${encodeURIComponent(listing.ownerId)}/public-profile`)
-        .then((response) => unwrapData<{ profilePicture?: string | null } | null>(response))
-        .then((publicProfile) => resolveProviderAvatar(listing.id, publicProfile?.profilePicture))
-        .catch(() => undefined);
+      // The listings response already includes the resolved owner/student/provider
+      // profile picture. Avoid a public-profile request for each feed card.
+      resolveProviderAvatar(listing.id, listing.owner?.profilePicture);
     });
     return () => { active = false; };
   }, [listings]);
