@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 const HEALTH_CHECK_TIMEOUT_MS = 1_500;
+const SLOW_QUERY_THRESHOLD_MS = 100;
 
 @Injectable()
 export class PrismaService
@@ -18,6 +19,15 @@ export class PrismaService
         { emit: 'stdout', level: 'error' },
         { emit: 'stdout', level: 'warn' },
       ],
+    });
+
+    this.$on('query', (event) => {
+      if (event.duration < SLOW_QUERY_THRESHOLD_MS) return;
+      this.logger.warn(JSON.stringify({
+        event: 'slow_database_query',
+        durationMs: event.duration,
+        target: event.target,
+      }));
     });
   }
 

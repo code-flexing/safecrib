@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import dns from 'node:dns';
 
 import { AppModule } from './app.module.js';
+import { createHttpTimingMiddleware } from './common/http-timing.js';
 import { RedisSocketAdapter } from './infra/queue/redis-socket.adapter.js';
 import { PrismaService } from './infra/prisma/prisma.service.js';
 import { QueueService } from './infra/queue/queue.service.js';
@@ -62,6 +63,7 @@ async function bootstrap(): Promise<void> {
     rawBody: true, // Required for Cloudinary webhook signature verification
   });
   appInstance = app;
+  app.use(createHttpTimingMiddleware());
   getRedis();
   socketAdapter = new RedisSocketAdapter(app);
   app.useWebSocketAdapter(socketAdapter);

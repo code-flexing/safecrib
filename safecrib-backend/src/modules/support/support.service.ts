@@ -51,7 +51,7 @@ export class SupportService {
   async listMyConversations(userId: string) {
     return this.prisma.supportConversation.findMany({
       where: { userId },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
+      include: { messages: { orderBy: { createdAt: 'desc' }, take: 1 } },
       orderBy: { lastMessageAt: 'desc' },
     });
   }
