@@ -277,8 +277,8 @@ function getListingImageReference(listing: Listing): string | null {
   const collection = Array.isArray(listing.photos) && listing.photos.length > 0
     ? listing.photos
     : Array.isArray(listing.images) && listing.images.length > 0
-    ? listing.images
-    : null;
+      ? listing.images
+      : null;
   if (collection) {
     for (const item of collection) {
       const reference = extractListingImageReference(item);
@@ -887,12 +887,12 @@ export default function DashboardPage() {
         setOpenSupportCount(
           Array.isArray(conversations)
             ? conversations.filter(
-                (conversation) =>
-                  typeof conversation === "object" &&
-                  conversation !== null &&
-                  "status" in conversation &&
-                  String(conversation.status).toUpperCase() === "OPEN",
-              ).length
+              (conversation) =>
+                typeof conversation === "object" &&
+                conversation !== null &&
+                "status" in conversation &&
+                String(conversation.status).toUpperCase() === "OPEN",
+            ).length
             : 0,
         );
       }
@@ -975,9 +975,9 @@ export default function DashboardPage() {
       const studentMode = ["STUDENT", "UNVERIFIED"].includes(role);
       const studentStatusRequest = studentMode
         ? apiFetch<unknown>("/api/v1/student-profiles/status")
-            .then(unwrapData<unknown>)
-            .then(normalizeAccountStatus)
-            .catch(() => null)
+          .then(unwrapData<unknown>)
+          .then(normalizeAccountStatus)
+          .catch(() => null)
         : Promise.resolve(null);
       const cachedListingsRaw = getCachedApi<unknown>("/api/v1/listings");
       const homesRequest = cachedListingsRaw !== null
@@ -985,12 +985,12 @@ export default function DashboardPage() {
         : cachedApiFetch<unknown>("/api/v1/listings").then(extractListings).catch(() => []);
       const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !user.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
-            .then((response) => {
-              const stage = normalizeVerificationStage(response);
-              if (stage) setPersistedVerification(user.id, response);
-              return stage;
-            })
-            .catch(() => null)
+          .then((response) => {
+            const stage = normalizeVerificationStage(response);
+            if (stage) setPersistedVerification(user.id, response);
+            return stage;
+          })
+          .catch(() => null)
         : Promise.resolve(null);
       void verificationRequest.then(() => undefined);
       const [studentProfile, providerPage, homes, bookmarks, conversations, recommendations] = await Promise.all([
@@ -1001,14 +1001,14 @@ export default function DashboardPage() {
         cachedApiFetch<unknown>("/api/v1/support/conversations").catch(() => []),
         role === "STUDENT"
           ? cachedApiFetch<string[]>("/api/v1/trust/me/recommendations")
-              .then((value) => {
-                setRecommendationsLoaded(true);
-                return value;
-              })
-              .catch((error: unknown) => {
-                setActionMessage(error instanceof Error ? error.message : "We could not load your recommendations.");
-                return [];
-              })
+            .then((value) => {
+              setRecommendationsLoaded(true);
+              return value;
+            })
+            .catch((error: unknown) => {
+              setActionMessage(error instanceof Error ? error.message : "We could not load your recommendations.");
+              return [];
+            })
           : Promise.resolve([]),
       ]);
       return { user, studentProfile, studentStatusRequest, providerPage, homes, bookmarks, conversations, recommendations };
@@ -1300,7 +1300,7 @@ export default function DashboardPage() {
               const home = unwrapData<CachedListingDetail>(homeRes.value);
               if (home?.id) seedListingDetailCache(home);
               if (home?.video?.mediaId) resolveMediaUrl(home.video.mediaId).catch(() => undefined);
-            } catch {}
+            } catch { }
           }
           if (verificationRes.status === "fulfilled" && verificationRes.value) {
             try {
@@ -1309,7 +1309,7 @@ export default function DashboardPage() {
                 const stage = normalizeVerificationStage(verificationRes.value);
                 if (stage) setPersistedVerification(home.ownerId, verificationRes.value);
               }
-            } catch {}
+            } catch { }
           }
         }).finally(() => {
           inFlight--;
@@ -1331,7 +1331,7 @@ export default function DashboardPage() {
     };
 
     const prefetchRoute = (listingId: string) => {
-      try { router.prefetch(`/dashboard/listings/${listingId}`); } catch {}
+      try { router.prefetch(`/dashboard/listings/${listingId}`); } catch { }
     };
 
     // IntersectionObserver for active card (60% visible for ~300ms)
@@ -1477,7 +1477,7 @@ export default function DashboardPage() {
             localStorage.setItem(key, JSON.stringify(updated));
             localStorage.setItem(`${key}:updatedAt`, String(Date.now()));
           }
-        } catch {}
+        } catch { }
       }
       notifySuccess("Recommendation saved!");
     } catch (error) {
@@ -1557,7 +1557,7 @@ export default function DashboardPage() {
         </section>
       </main>
     );
-  } 
+  }
 
   const submitSearch = () => {
     const query = searchQuery.trim();
@@ -1570,133 +1570,133 @@ export default function DashboardPage() {
       <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
       <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden">
         <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-[var(--theme-bg)] md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
-        {/* Top bar: avatar | For You | search */}
-        <div className="pointer-events-none absolute inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-40">
-          <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
-            {searchOpen ? (
-              <form
-                role="search"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitSearch();
-                }}
-                className="feed-surface flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full pl-4 pr-1.5"
-              >
-                <Icon name="search" className="h-4 w-4 shrink-0" />
-                <input
-                  autoFocus
-                  type="search"
-                  enterKeyHint="search"
-                  aria-label="Search verified student cribs, hostels, or providers"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search cribs, campus, host"
-                  className="feed-input min-w-0 flex-1 text-sm [&::-webkit-search-cancel-button]:hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSearchOpen(false);
+          {/* Top bar: avatar | For You | search */}
+          <div className="pointer-events-none absolute inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-40">
+            <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
+              {searchOpen ? (
+                <form
+                  role="search"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitSearch();
                   }}
-                  aria-label="Close search"
-                  className="feed-chip flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                  className="feed-surface flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full pl-4 pr-1.5"
                 >
-                  <Icon name="x" className="h-4 w-4" />
-                </button>
-              </form>
-            ) : (
-              <>
-                <Link
-                  href="/profile"
-                  aria-label="View your profile"
-                  title={accountName || "Your Profile"}
-                  className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white/80 shadow-lg active:scale-95"
-                >
-                  <ProfileAvatar
-                    src={profileImage}
-                    seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
-                    alt={`${accountName || "Your"} profile photo`}
-                    size="small"
-                    className="h-full w-full object-cover"
+                  <Icon name="search" className="h-4 w-4 shrink-0" />
+                  <input
+                    autoFocus
+                    type="search"
+                    enterKeyHint="search"
+                    aria-label="Search verified student cribs, hostels, or providers"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search cribs, campus, host"
+                    className="feed-input min-w-0 flex-1 text-sm [&::-webkit-search-cancel-button]:hidden"
                   />
-                </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchOpen(false);
+                    }}
+                    aria-label="Close search"
+                    className="feed-chip flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                  >
+                    <Icon name="x" className="h-4 w-4" />
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <Link
+                    href="/profile"
+                    aria-label="View your profile"
+                    title={accountName || "Your Profile"}
+                    className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white/80 shadow-lg active:scale-95"
+                  >
+                    <ProfileAvatar
+                      src={profileImage}
+                      seed={profile?.id ?? profile?.email ?? "safecrib-member-avatar"}
+                      alt={`${accountName || "Your"} profile photo`}
+                      size="small"
+                      className="h-full w-full object-cover"
+                    />
+                  </Link>
 
-                <h1 className="feed-count relative text-[17px] font-bold">
-                  For You
-                  <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-white" />
-                </h1>
+                  <h1 className="feed-count relative text-[17px] font-bold">
+                    For You
+                    <span aria-hidden="true" className="absolute -bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-white" />
+                  </h1>
 
-                <button
-                  type="button"
-                  onClick={() => setSearchOpen(true)}
-                  aria-label="Search"
-                  className="feed-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-full active:scale-90"
-                >
-                  <Icon name="search" className="h-5 w-5" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Empty state when no listings exist */}
-        {listings.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[var(--theme-bg)] px-6 pb-12 pt-28 text-center" aria-label="No listings available">
-            <div className="feed-card flex max-w-sm flex-col items-center rounded-3xl p-8 shadow-2xl">
-              <EmptyListingsIllustration />
-              <h2 className="feed-text mt-5 font-display text-xl font-bold">No homes listed yet</h2>
-              <p className="feed-muted mt-2 text-sm leading-relaxed">
-                Verified student accommodation and listings from trusted landlords will show up here as soon as they go live.
-              </p>
-              <button
-                type="button"
-                onClick={() => void refreshFeed()}
-                className="feed-cta mt-6 inline-flex h-10 items-center rounded-full px-6 text-sm font-bold transition active:scale-95"
-              >
-                Refresh feed
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    aria-label="Search"
+                    className="feed-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-full active:scale-90"
+                  >
+                    <Icon name="search" className="h-5 w-5" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Vertical snap feed */}
-        <div
-          ref={feedRef}
-          onScroll={() => {
-            if (openActionTrayId) setOpenActionTrayId(null);
-            if (openMenuId) setOpenMenuId(null);
-          }}
-          className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {/* Floating pill: new posts available */}
-          {newPostsAvailable && (
-            <div className="pointer-events-none sticky top-20 z-40 flex h-0 justify-center">
-              <button
-                type="button"
-                onClick={() => void refreshFeed()}
-                className="feed-cta pointer-events-auto inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-[0_10px_25px_rgba(16,185,129,0.4)] transition hover:scale-105 active:scale-95"
-                aria-live="polite"
-              >
-                <Icon name="arrow-up" className="h-3.5 w-3.5 animate-bounce" />
-                New homes posted
-              </button>
+          {/* Empty state when no listings exist */}
+          {listings.length === 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[var(--theme-bg)] px-6 pb-12 pt-28 text-center" aria-label="No listings available">
+              <div className="feed-card flex max-w-sm flex-col items-center rounded-3xl p-8 shadow-2xl">
+                <EmptyListingsIllustration />
+                <h2 className="feed-text mt-5 font-display text-xl font-bold">No homes listed yet</h2>
+                <p className="feed-muted mt-2 text-sm leading-relaxed">
+                  Verified student accommodation and listings from trusted landlords will show up here as soon as they go live.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refreshFeed()}
+                  className="feed-cta mt-6 inline-flex h-10 items-center rounded-full px-6 text-sm font-bold transition active:scale-95"
+                >
+                  Refresh feed
+                </button>
+              </div>
             </div>
           )}
 
-          {listings.map((listing, index) => {
-            const image = resolvedListingImages[listing.id] ?? getListingImageUrl(listing);
-            const fallbackImage = getListingImageUrl(listing);
-            const providerName = listing.owner?.displayName || "Verified Host";
-            const location = listing.campus || listing.address;
-            const isSaved = bookmarkedIds.includes(listing.id);
-            const commentsOpen = openCommentIds.has(listing.id);
-            const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
-            const hasMedia = Boolean(image || listing.video);
+          {/* Vertical snap feed */}
+          <div
+            ref={feedRef}
+            onScroll={() => {
+              if (openActionTrayId) setOpenActionTrayId(null);
+              if (openMenuId) setOpenMenuId(null);
+            }}
+            className="absolute inset-0 snap-y snap-mandatory overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {/* Floating pill: new posts available */}
+            {newPostsAvailable && (
+              <div className="pointer-events-none sticky top-20 z-40 flex h-0 justify-center">
+                <button
+                  type="button"
+                  onClick={() => void refreshFeed()}
+                  className="feed-cta pointer-events-auto inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-bold shadow-[0_10px_25px_rgba(16,185,129,0.4)] transition hover:scale-105 active:scale-95"
+                  aria-live="polite"
+                >
+                  <Icon name="arrow-up" className="h-3.5 w-3.5 animate-bounce" />
+                  New homes posted
+                </button>
+              </div>
+            )}
 
-            // Build the owner's verification object once and reuse it below
-            const ownerVerificationRaw = listing.owner?.verification;
-            const ownerVerification: VerificationStageResult | null = ownerVerificationRaw
-              ? {
+            {listings.map((listing, index) => {
+              const image = resolvedListingImages[listing.id] ?? getListingImageUrl(listing);
+              const fallbackImage = getListingImageUrl(listing);
+              const providerName = listing.owner?.displayName || "Verified Host";
+              const location = listing.campus || listing.address;
+              const isSaved = bookmarkedIds.includes(listing.id);
+              const commentsOpen = openCommentIds.has(listing.id);
+              const commentCount = commentCounts[listing.id] ?? listing.commentCount ?? 0;
+              const hasMedia = Boolean(image || listing.video);
+
+              // Build the owner's verification object once and reuse it below
+              const ownerVerificationRaw = listing.owner?.verification;
+              const ownerVerification: VerificationStageResult | null = ownerVerificationRaw
+                ? {
                   eligible: ownerVerificationRaw.eligible ?? true,
                   stage: (ownerVerificationRaw.stage as VerificationStageResult["stage"]) || "PROFILE_VERIFIED",
                   badge: (ownerVerificationRaw.badge as VerificationStageResult["badge"]) || "GREEN_CHECK",
@@ -1705,227 +1705,226 @@ export default function DashboardPage() {
                   nextMilestone: null,
                   criteria: [],
                 }
-              : null;
+                : null;
 
-            // Seed verification cache for provider
-            if (listing.ownerId && listing.owner) {
-              seedVerificationCache({
-                id: listing.ownerId,
-                displayName: listing.owner.displayName,
-                username: listing.owner.username,
-                verification: ownerVerification,
-                isVerified: ownerVerificationRaw?.eligible ?? false,
-                role: "AGENT",
-              });
-            }
+              // Seed verification cache for provider
+              if (listing.ownerId && listing.owner) {
+                seedVerificationCache({
+                  id: listing.ownerId,
+                  displayName: listing.owner.displayName,
+                  username: listing.owner.username,
+                  verification: ownerVerification,
+                  isVerified: ownerVerificationRaw?.eligible ?? false,
+                  role: "AGENT",
+                });
+              }
 
-            return (
-              <article
-                key={listing.id}
-                data-listing-id={listing.id}
-                className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-[var(--feed-text)] ${
-                  hasMedia ? "bg-[var(--theme-bg)]" : "bg-[var(--theme-surface-raised)]"
-                }`}
-              >
-                {/* Media layer (video or image) */}
-                {hasMedia && (
-                  <div className="absolute inset-0">
-                    {listing.video ? (
-                      <ListingCardVideo
-                        video={listing.video}
-                        poster={image ?? null}
-                        fallbackSrc={fallbackImage}
-                        alt={listing.title ?? "Listing"}
-                        onProgress={(currentTime, duration) =>
-                          setVideoProgress({ listingId: listing.id, currentTime, duration })
-                        }
-                      />
-                    ) : image ? (
-                      <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
-                        <ListingCardImage
-                          src={image}
+              return (
+                <article
+                  key={listing.id}
+                  data-listing-id={listing.id}
+                  className={`relative h-full min-h-full w-full snap-start snap-always overflow-hidden text-[var(--feed-text)] ${hasMedia ? "bg-[var(--theme-bg)]" : "bg-[var(--theme-surface-raised)]"
+                    }`}
+                >
+                  {/* Media layer (video or image) */}
+                  {hasMedia && (
+                    <div className="absolute inset-0">
+                      {listing.video ? (
+                        <ListingCardVideo
+                          video={listing.video}
+                          poster={image ?? null}
                           fallbackSrc={fallbackImage}
                           alt={listing.title ?? "Listing"}
-                          priority={index === 0}
+                          onProgress={(currentTime, duration) =>
+                            setVideoProgress({ listingId: listing.id, currentTime, duration })
+                          }
                         />
-                      </Link>
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Soft bottom fade - gradient scrim for text readability on bright videos */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/35 via-transparent to-transparent"
-                />
-
-                {/* Video progress: thin line at the bottom of the card */}
-                {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
-                  <div
-                    aria-label="Video progress"
-                    className="absolute inset-x-0 bottom-0 z-30 h-[3px] bg-white/25"
-                  >
-                    <div
-                      className="h-full bg-white transition-all duration-150"
-                      style={{ width: `${Math.min(100, (videoProgress.currentTime / videoProgress.duration) * 100)}%` }}
-                    />
-                  </div>
-                )}
-
-                {/* Bottom UI: listing card on the left, engagement rail on the right */}
-                <div className="pointer-events-none absolute inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
-                  {/* Left: everything starts at the same left edge */}
-                  <div className="feed-card feed-listing-details pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
-                    {/* Row 1: avatar + name */}
-                    <div className="flex min-w-0 items-center justify-start gap-2">
-                      {listing.ownerId ? (
-                        <div className="relative h-8 w-8 shrink-0">
-                          <Link
-                            href={`/profile/${encodeURIComponent(listing.ownerId)}`}
-                            aria-label="View provider profile"
-                            className="absolute inset-0 overflow-hidden rounded-full border border-white/30"
-                          >
-                            <ProfileAvatar
-                              src={resolvedProviderAvatars[listing.id]?.src}
-                              fallbackSrc={resolvedProviderAvatars[listing.id]?.fallbackSrc}
-                              seed={listing.ownerId}
-                              alt={`${providerName} avatar`}
-                              size="small"
-                              className="h-full w-full object-cover"
-                            />
-                          </Link>
-                        </div>
-                      ) : null}
-                      <div className="flex min-w-0 items-center gap-1.5 leading-none">
-                        <UserName
-                          user={{
-                            id: listing.ownerId,
-                            displayName: listing.owner?.displayName,
-                            username: listing.owner?.username,
-                            verification: ownerVerification,
-                            isVerified: ownerVerificationRaw?.eligible ?? false,
-                            role: "AGENT",
-                          }}
-                          size="sm"
-                          showHandle={false}
-                          nameClassName="text-white truncate text-[14px] font-bold leading-5"
-                        />
-                        {listing.ownerId && listing.ownerId !== profile?.id && (
-                          <ProviderFollowButton
-                            ownerId={listing.ownerId}
-                            initialFollowed={Boolean(listing.followedPage)}
-                            onFollowChange={(isFollowing) => {
-                              setListings((current) =>
-                                current.map((item) =>
-                                  item.ownerId === listing.ownerId ? { ...item, followedPage: isFollowing } : item
-                                )
-                              );
-                            }}
+                      ) : image ? (
+                        <Link href={`/dashboard/listings/${listing.id}`} aria-label={`Open ${listing.title ?? "listing"}`} className="absolute inset-0">
+                          <ListingCardImage
+                            src={image}
+                            fallbackSrc={fallbackImage}
+                            alt={listing.title ?? "Listing"}
+                            priority={index === 0}
                           />
-                        )}
+                        </Link>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Soft bottom fade - gradient scrim for text readability on bright videos */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/35 via-transparent to-transparent"
+                  />
+
+                  {/* Video progress: thin line at the bottom of the card */}
+                  {listing.video && videoProgress?.listingId === listing.id && videoProgress.duration > 0 && (
+                    <div
+                      aria-label="Video progress"
+                      className="absolute inset-x-0 bottom-0 z-30 h-[3px] bg-white/25"
+                    >
+                      <div
+                        className="h-full bg-white transition-all duration-150"
+                        style={{ width: `${Math.min(100, (videoProgress.currentTime / videoProgress.duration) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Bottom UI: listing card on the left, engagement rail on the right */}
+                  <div className="pointer-events-none absolute inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
+                    {/* Left: everything starts at the same left edge */}
+                    <div className="feed-card feed-listing-details pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
+                      {/* Row 1: avatar + name */}
+                      <div className="flex min-w-0 items-center justify-start gap-2">
+                        {listing.ownerId ? (
+                          <div className="relative h-8 w-8 shrink-0">
+                            <Link
+                              href={`/profile/${encodeURIComponent(listing.ownerId)}`}
+                              aria-label="View provider profile"
+                              className="absolute inset-0 overflow-hidden rounded-full border border-white/30"
+                            >
+                              <ProfileAvatar
+                                src={resolvedProviderAvatars[listing.id]?.src}
+                                fallbackSrc={resolvedProviderAvatars[listing.id]?.fallbackSrc}
+                                seed={listing.ownerId}
+                                alt={`${providerName} avatar`}
+                                size="small"
+                                className="h-full w-full object-cover"
+                              />
+                            </Link>
+                          </div>
+                        ) : null}
+                        <div className="flex min-w-0 items-center gap-1.5 leading-none">
+                          <UserName
+                            user={{
+                              id: listing.ownerId,
+                              displayName: listing.owner?.displayName,
+                              username: listing.owner?.username,
+                              verification: ownerVerification,
+                              isVerified: ownerVerificationRaw?.eligible ?? false,
+                              role: "AGENT",
+                            }}
+                            size="sm"
+                            showHandle={false}
+                            nameClassName="text-white truncate text-[14px] font-bold leading-5"
+                          />
+                          {listing.ownerId && listing.ownerId !== profile?.id && (
+                            <ProviderFollowButton
+                              ownerId={listing.ownerId}
+                              initialFollowed={Boolean(listing.followedPage)}
+                              onFollowChange={(isFollowing) => {
+                                setListings((current) =>
+                                  current.map((item) =>
+                                    item.ownerId === listing.ownerId ? { ...item, followedPage: isFollowing } : item
+                                  )
+                                );
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 2: title */}
+                      <h2 className="feed-text mt-1.5 line-clamp-1 text-left text-[14px] font-semibold leading-5">
+                        {listing.title ?? "Verified Campus Home"}
+                      </h2>
+
+                      {/* Location */}
+                      {location && (
+                        <p className="feed-muted mt-1 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
+                          <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{location}</span>
+                        </p>
+                      )}
+
+                      {/* Price */}
+                      <div className="mt-1.5 flex items-center justify-between gap-3">
+                        <ListingPriceTag listing={listing} />
+                        <AvailabilityTag availability={listing.availability} />
                       </div>
                     </div>
 
-                    {/* Row 2: title */}
-                    <h2 className="feed-text mt-1.5 line-clamp-1 text-left text-[14px] font-semibold leading-5">
-                      {listing.title ?? "Verified Campus Home"}
-                    </h2>
-
-                    {/* Location */}
-                    {location && (
-                      <p className="feed-muted mt-1 flex items-center justify-start gap-1.5 text-xs font-medium leading-5">
-                        <Icon name="map-pin" className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{location}</span>
-                      </p>
-                    )}
-
-                    {/* Price */}
-                    <div className="mt-1.5 flex items-center justify-between gap-3">
-                      <ListingPriceTag listing={listing} />
-                      <AvailabilityTag availability={listing.availability} />
-                    </div>
-                  </div>
-
-                  {/* Right: Vertical Interaction Rail */}
-                  <div className="pointer-events-auto flex flex-col items-center gap-3">
-                    <ListingActionTray
-                      listing={listing}
-                      isOpen={openActionTrayId === listing.id}
-                      isSaved={isSaved}
-                      currentUserId={profile?.id}
-                      onAvailabilityChange={() => setAvailabilityEditId(listing.id)}
-                      isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
-                      canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
-                      menuOpen={openMenuId === listing.id}
-                      isStudent={isStudent}
-                      commentCount={commentCount}
-                      recommendationDisabled={
-                        String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
-                        !recommendationsLoaded ||
-                        pendingEngagement.has(`recommend:${listing.ownerId}`)
-                      }
-                      role={String(profile?.role ?? "").toUpperCase()}
-                      onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
-                      onClose={closeActionTray}
-                      onLike={async (id, liked) => {
-                        try {
-                          await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
-                            method: liked ? "POST" : "DELETE",
-                          });
-                          setListings((current) =>
-                            current.map((item) =>
-                              item.id === id
-                                ? {
+                    {/* Right: Vertical Interaction Rail */}
+                    <div className="pointer-events-auto flex flex-col items-center gap-3">
+                      <ListingActionTray
+                        listing={listing}
+                        isOpen={openActionTrayId === listing.id}
+                        isSaved={isSaved}
+                        currentUserId={profile?.id}
+                        onAvailabilityChange={() => setAvailabilityEditId(listing.id)}
+                        isRecommended={Boolean(listing.ownerId && recommendedProviderIds.includes(listing.ownerId))}
+                        canRecommend={Boolean(listing.ownerId && listing.ownerId !== profile?.id)}
+                        menuOpen={openMenuId === listing.id}
+                        isStudent={isStudent}
+                        commentCount={commentCount}
+                        recommendationDisabled={
+                          String(profile?.role ?? "").toUpperCase() !== "STUDENT" ||
+                          !recommendationsLoaded ||
+                          pendingEngagement.has(`recommend:${listing.ownerId}`)
+                        }
+                        role={String(profile?.role ?? "").toUpperCase()}
+                        onToggle={() => setOpenActionTrayId((current) => (current === listing.id ? null : listing.id))}
+                        onClose={closeActionTray}
+                        onLike={async (id, liked) => {
+                          try {
+                            await apiFetch(`/api/v1/listings/${encodeURIComponent(id)}/like`, {
+                              method: liked ? "POST" : "DELETE",
+                            });
+                            setListings((current) =>
+                              current.map((item) =>
+                                item.id === id
+                                  ? {
                                     ...item,
                                     likedByCurrentUser: liked,
                                     likeCount: Math.max(0, (item.likeCount ?? 0) + (liked ? 1 : -1)),
                                   }
-                                : item,
-                            ),
-                          );
-                          // Patch listing detail cache
-                          const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
-                          if (cachedDetail) {
-                            const updated = {
-                              ...cachedDetail,
-                              likedByCurrentUser: liked,
-                              likeCount: Math.max(0, (cachedDetail.likeCount ?? 0) + (liked ? 1 : -1)),
-                            };
-                            seedListingDetailCache(updated);
+                                  : item,
+                              ),
+                            );
+                            // Patch listing detail cache
+                            const cachedDetail = getCachedApi<CachedListingDetail>(`/api/v1/listings/${encodeURIComponent(id)}`);
+                            if (cachedDetail) {
+                              const updated = {
+                                ...cachedDetail,
+                                likedByCurrentUser: liked,
+                                likeCount: Math.max(0, (cachedDetail.likeCount ?? 0) + (liked ? 1 : -1)),
+                              };
+                              seedListingDetailCache(updated);
+                            }
+                            if (liked) notifySuccess("Liked! 👍");
+                          } catch (error) {
+                            const { key } = resolveNotificationKey(error, "like");
+                            const { message, action } = getNotificationMessage(key);
+                            notifyError(message, { action: action ? { label: action.label, onClick: () => { /* re-trigger via LikeButton */ } } : undefined });
+                            // Rollback handled by LikeButton's optimistic toggle
                           }
-                          if (liked) notifySuccess("Liked! 👍");
-                        } catch (error) {
-                          const { key } = resolveNotificationKey(error, "like");
-                          const { message, action } = getNotificationMessage(key);
-                          notifyError(message, { action: action ? { label: action.label, onClick: () => { /* re-trigger via LikeButton */ } } : undefined });
-                          // Rollback handled by LikeButton's optimistic toggle
-                        }
-                      }}
-                      onComment={() => toggleComments(listing.id)}
-                      onRecommend={async (providerId, recommended) => {
-                        await toggleRecommendation(providerId);
-                        void recommended;
-                      }}
-                      onSave={() => void toggleBookmark(listing.id)}
-                      onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
-                      onCloseMenu={() => setOpenMenuId(null)}
-                    />
+                        }}
+                        onComment={() => toggleComments(listing.id)}
+                        onRecommend={async (providerId, recommended) => {
+                          await toggleRecommendation(providerId);
+                          void recommended;
+                        }}
+                        onSave={() => void toggleBookmark(listing.id)}
+                        onMore={() => setOpenMenuId((current) => (current === listing.id ? null : listing.id))}
+                        onCloseMenu={() => setOpenMenuId(null)}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Comments modal drawer */}
-                {commentsOpen && (
-                  <ListingComments
-                    listingId={listing.id}
-                    ownerId={listing.ownerId}
-                    onClose={closeComments}
-                    onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [listing.id]: count }))}
-                  />
-                )}
-              </article>
-            );
-          })}
-</div>
+                  {/* Comments modal drawer */}
+                  {commentsOpen && (
+                    <ListingComments
+                      listingId={listing.id}
+                      ownerId={listing.ownerId}
+                      onClose={closeComments}
+                      onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [listing.id]: count }))}
+                    />
+                  )}
+                </article>
+              );
+            })}
+          </div>
         </div>
       </section>
       <RestrictedActionModal message={actionMessage} onClose={() => setActionMessage(null)} />
