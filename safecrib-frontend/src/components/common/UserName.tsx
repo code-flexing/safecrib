@@ -379,8 +379,8 @@ export function UserHandleOnly({
 
   return (
     <span className={`inline-flex items-center gap-1 ${className ?? ""}`}>
-      <span className={`${SIZE_CLASSES[size].name} ${handleClassName} shrink-0`}>@{handle}</span>
       {showBadge && stage && <VerificationBadgeWithPopover verification={stage} size={size} />}
+      <span className={`${SIZE_CLASSES[size].name} ${handleClassName} shrink-0`}>@{handle}</span>
     </span>
   );
 }
