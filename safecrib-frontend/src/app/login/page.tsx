@@ -8,12 +8,25 @@ import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { Button } from "@/components/ui/Button";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
-import { ApiError, clearSession, getCurrentUser, primeCurrentUserCache, refreshCachedApi, setPersistedVerification, setSessionTokens, unwrapData } from "@/lib/api";
+import { ApiError, clearSession, getCurrentUser, primeCurrentUserCache, refreshCachedApi, setSessionTokens, unwrapData } from "@/lib/api";
 
 const API_URL = "/api/auth/login";
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function getRoleFromAccessToken(accessToken: string) {
+  try {
+    const payload = accessToken.split(".")[1];
+    if (!payload) return null;
+
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="))) as { role?: unknown };
+    return typeof decoded.role === "string" ? decoded.role.toUpperCase() : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function LoginPage() {
@@ -106,46 +119,39 @@ export default function LoginPage() {
 
       setSessionTokens({ accessToken, refreshToken });
 
-      try {
-        const currentUser = await getCurrentUser<{ id?: string; role?: string; studentProfileStatus?: unknown; verification?: unknown }>();
-        primeCurrentUserCache(currentUser);
-        const role = String(currentUser?.role ?? "").toUpperCase();
-        const providerRole = ["AGENT", "LANDLORD"].includes(role);
-        const providerPageRequest = role === "ADMIN"
-          ? Promise.resolve(null)
-          : refreshCachedApi<unknown>("/api/v1/provider-pages/me")
-              .then((response) => unwrapData<{ id?: string; status?: string } | null>(response))
-              .catch((pageError: unknown) => {
-                if (pageError instanceof ApiError && pageError.status === 404) return null;
-                throw pageError;
-              });
-        const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role)
-          ? refreshCachedApi<unknown>("/api/v1/trust/me/verification-stage")
-          : Promise.resolve(null);
-        const studentStatusRequest = role === "STUDENT"
-          ? refreshCachedApi<unknown>("/api/v1/student-profiles/status")
-          : Promise.resolve(null);
-        if (!providerRole) void refreshCachedApi<unknown>("/api/v1/listings").catch(() => undefined);
-        const [providerPage, verificationStage] = await Promise.all([
-          providerPageRequest,
-          verificationRequest,
-          studentStatusRequest,
-        ]).then(([page, stage]) => [page, stage] as const);
-        if (verificationStage && currentUser.id) setPersistedVerification(currentUser.id, verificationStage);
-        if (providerRole && String(providerPage?.status ?? "").toUpperCase() === "VERIFIED") {
-          await refreshCachedApi("/api/v1/listings/my");
+      const tokenRole = getRoleFromAccessToken(accessToken);
+      const initialDestination = tokenRole && ["AGENT", "LANDLORD"].includes(tokenRole) ? "/page" : "/dashboard";
+      router.replace(initialDestination);
+
+      // Profile hydration and legacy provider-page detection must not hold up navigation.
+      void (async () => {
+        try {
+          const currentUser = await getCurrentUser<{ id?: string; role?: string; studentProfileStatus?: unknown; verification?: unknown }>();
+          primeCurrentUserCache(currentUser);
+          const role = String(currentUser?.role ?? tokenRole ?? "").toUpperCase();
+          const providerRole = ["AGENT", "LANDLORD"].includes(role);
+          const providerPage = !providerRole && role !== "ADMIN"
+            ? await refreshCachedApi<unknown>("/api/v1/provider-pages/me")
+                .then((response) => unwrapData<{ id?: string; status?: string } | null>(response))
+                .catch((pageError: unknown) => {
+                  if (pageError instanceof ApiError && pageError.status === 404) return null;
+                  throw pageError;
+                })
+            : null;
+          const resolvedDestination = providerRole || Boolean(providerPage && (providerPage.id || providerPage.status))
+            ? "/page"
+            : "/dashboard";
+
+          if (resolvedDestination !== initialDestination && window.location.pathname === initialDestination) {
+            router.replace(resolvedDestination);
+          }
+        } catch (profileError) {
+          if (profileError instanceof ApiError && profileError.status === 401) {
+            clearSession();
+            router.replace("/login?reason=session-expired");
+          }
         }
-        router.push(providerRole || Boolean(providerPage && (providerPage.id || providerPage.status)) ? "/page" : "/dashboard");
-      } catch (profileError) {
-        if (profileError instanceof ApiError && profileError.status === 401) {
-          clearSession();
-          setError("Your login session was not accepted. Please try again.");
-          return;
-        }
-        setError(profileError instanceof Error
-          ? `You’re signed in, but we could not finish loading your account details: ${profileError.message}`
-          : "You’re signed in, but we could not finish loading your account details. Please retry.");
-      }
+      })();
     } catch {
       setError("Network error. Please try again.");
     } finally {

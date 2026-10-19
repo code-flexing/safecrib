@@ -111,30 +111,31 @@ export class AuthService {
       },
     });
 
-    await this.notifications.enqueue(user.id, withSystemSender({
-      type: 'WELCOME',
-      title: 'Welcome to SafeCrib',
-      body: 'Your account is ready. Complete your profile to get started.',
-      href: '/profile',
-      dedupeKey: `welcome:${user.id}`,
-    }));
-    await this.notifications.enqueue(user.id, withSystemSender({
-      type: 'STUDENT_PROFILE_COMPLETION',
-      title: 'Complete your student profile',
-      body: 'Add your student details and submit them for verification.',
-      href: '/profile/complete',
-      dedupeKey: 'student-profile-completion',
-    }));
-
-    await this.enqueueEmail(
-      'welcome-email',
-      {
-        type: 'welcome',
-        to: email,
-        displayName: user.displayName,
-      },
-      `welcome email for ${email}`,
-    );
+    await Promise.all([
+      this.notifications.enqueue(user.id, withSystemSender({
+        type: 'WELCOME',
+        title: 'Welcome to SafeCrib',
+        body: 'Your account is ready. Complete your profile to get started.',
+        href: '/profile',
+        dedupeKey: `welcome:${user.id}`,
+      })),
+      this.notifications.enqueue(user.id, withSystemSender({
+        type: 'STUDENT_PROFILE_COMPLETION',
+        title: 'Complete your student profile',
+        body: 'Add your student details and submit them for verification.',
+        href: '/profile/complete',
+        dedupeKey: 'student-profile-completion',
+      })),
+      this.enqueueEmail(
+        'welcome-email',
+        {
+          type: 'welcome',
+          to: email,
+          displayName: user.displayName,
+        },
+        `welcome email for ${email}`,
+      ),
+    ]);
 
     return {
       message:

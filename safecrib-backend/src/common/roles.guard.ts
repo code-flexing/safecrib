@@ -23,6 +23,8 @@ export interface AuthenticatedRequest extends Request {
     role: Role;
     displayName?: string | null;
     profilePicture?: string | null;
+    studentProfileStatus?: string | null;
+    providerPageVerificationState?: string | null;
     verification?: {
       stage: string;
       badge: string;
@@ -93,11 +95,7 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
     if (requiresApprovedStudent && user.role === 'STUDENT') {
-      const profile = await this.prisma.studentProfile.findUnique({
-        where: { userId: user.id },
-        select: { status: true },
-      });
-      if (profile?.status !== 'APPROVED') {
+      if (user.studentProfileStatus !== 'APPROVED') {
         throw new ForbiddenException(
           'Your student profile must be approved before you can perform this action',
         );
@@ -110,16 +108,9 @@ export class RolesGuard implements CanActivate {
     );
     if (requiresVerifiedConsumer) {
       const isVerifiedStudent = user.role === 'STUDENT'
-        ? (await this.prisma.studentProfile.findUnique({
-            where: { userId: user.id },
-            select: { status: true },
-          }))?.status === 'APPROVED'
-        : false;
+        && user.studentProfileStatus === 'APPROVED';
       const isVerifiedProvider = user.role === 'AGENT' || user.role === 'LANDLORD'
-        ? (await this.prisma.providerPage.findUnique({
-            where: { ownerId: user.id },
-            select: { verificationState: true },
-          }))?.verificationState === 'VERIFIED'
+        ? user.providerPageVerificationState === 'VERIFIED'
         : false;
       if (!isVerifiedStudent && !isVerifiedProvider) {
         throw new ForbiddenException('A verified student or provider profile is required');

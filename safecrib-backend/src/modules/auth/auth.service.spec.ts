@@ -131,6 +131,29 @@ describe('AuthService', () => {
       expect(result.userId).toBeTruthy();
     });
 
+    it('should start the independent welcome enqueues concurrently', async () => {
+      let releaseQueues!: () => void;
+      const queueBarrier = new Promise<void>((resolve) => {
+        releaseQueues = resolve;
+      });
+      notifications.enqueue.mockImplementation(() => queueBarrier);
+      emailQueue.add.mockImplementation(() => queueBarrier);
+
+      const registration = authService.register({
+        email: 'newuser@example.com',
+        password: 'SuperSecure123!',
+        displayName: 'New User',
+      });
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const allEnqueuesStarted =
+        notifications.enqueue.mock.calls.length === 2 && emailQueue.add.mock.calls.length === 1;
+      releaseQueues();
+      await registration;
+
+      expect(allEnqueuesStarted).toBe(true);
+    });
+
     it('should reject duplicate email', async () => {
       prisma.user.findUnique.mockResolvedValueOnce({
         id: 'existing-user-id',

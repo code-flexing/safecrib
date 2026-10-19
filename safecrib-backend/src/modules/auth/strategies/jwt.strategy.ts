@@ -19,6 +19,8 @@ export type AuthenticatedUser = {
   displayName: string | null;
   username: string | null;
   profilePicture: string | null;
+  studentProfileStatus: string | null;
+  providerPageVerificationState: string | null;
   verification: {
     stage: string;
     badge: string;
@@ -86,6 +88,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         displayName: user.displayName ?? null,
         username: user.username ?? null,
         profilePicture: user.profilePicture ?? null,
+        studentProfileStatus: user.studentProfile?.status ?? null,
+        providerPageVerificationState: user.providerPage?.verificationState ?? null,
         verification: user.verification
         ? {
             stage: user.verification.stage,
