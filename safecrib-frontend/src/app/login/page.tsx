@@ -16,6 +16,19 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function getRoleFromAccessToken(accessToken: string) {
+  try {
+    const payload = accessToken.split(".")[1];
+    if (!payload) return null;
+
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="))) as { role?: unknown };
+    return typeof decoded.role === "string" ? decoded.role.toUpperCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<0 | 1>(0);
@@ -106,30 +119,39 @@ export default function LoginPage() {
 
       setSessionTokens({ accessToken, refreshToken });
 
-      try {
-        const currentUser = await getCurrentUser<{ id?: string; role?: string; studentProfileStatus?: unknown; verification?: unknown }>();
-        primeCurrentUserCache(currentUser);
-        const role = String(currentUser?.role ?? "").toUpperCase();
-        const providerRole = ["AGENT", "LANDLORD"].includes(role);
-        const providerPage = !providerRole && role !== "ADMIN"
-          ? await refreshCachedApi<unknown>("/api/v1/provider-pages/me")
-              .then((response) => unwrapData<{ id?: string; status?: string } | null>(response))
-              .catch((pageError: unknown) => {
-                if (pageError instanceof ApiError && pageError.status === 404) return null;
-                throw pageError;
-              })
-          : null;
-        router.push(providerRole || Boolean(providerPage && (providerPage.id || providerPage.status)) ? "/page" : "/dashboard");
-      } catch (profileError) {
-        if (profileError instanceof ApiError && profileError.status === 401) {
-          clearSession();
-          setError("Your login session was not accepted. Please try again.");
-          return;
+      const tokenRole = getRoleFromAccessToken(accessToken);
+      const initialDestination = tokenRole && ["AGENT", "LANDLORD"].includes(tokenRole) ? "/page" : "/dashboard";
+      router.replace(initialDestination);
+
+      // Profile hydration and legacy provider-page detection must not hold up navigation.
+      void (async () => {
+        try {
+          const currentUser = await getCurrentUser<{ id?: string; role?: string; studentProfileStatus?: unknown; verification?: unknown }>();
+          primeCurrentUserCache(currentUser);
+          const role = String(currentUser?.role ?? tokenRole ?? "").toUpperCase();
+          const providerRole = ["AGENT", "LANDLORD"].includes(role);
+          const providerPage = !providerRole && role !== "ADMIN"
+            ? await refreshCachedApi<unknown>("/api/v1/provider-pages/me")
+                .then((response) => unwrapData<{ id?: string; status?: string } | null>(response))
+                .catch((pageError: unknown) => {
+                  if (pageError instanceof ApiError && pageError.status === 404) return null;
+                  throw pageError;
+                })
+            : null;
+          const resolvedDestination = providerRole || Boolean(providerPage && (providerPage.id || providerPage.status))
+            ? "/page"
+            : "/dashboard";
+
+          if (resolvedDestination !== initialDestination && window.location.pathname === initialDestination) {
+            router.replace(resolvedDestination);
+          }
+        } catch (profileError) {
+          if (profileError instanceof ApiError && profileError.status === 401) {
+            clearSession();
+            router.replace("/login?reason=session-expired");
+          }
         }
-        setError(profileError instanceof Error
-          ? `You’re signed in, but we could not finish loading your account details: ${profileError.message}`
-          : "You’re signed in, but we could not finish loading your account details. Please retry.");
-      }
+      })();
     } catch {
       setError("Network error. Please try again.");
     } finally {
