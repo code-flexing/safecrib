@@ -41,7 +41,7 @@ async function forward(request: Request, path: string[]) {
     if (value) responseHeaders.set(header, value);
   }
 
-  const responseBody = response.status === 204 ? null : await response.text();
+  const responseBody = [204, 205, 304].includes(response.status) ? null : response.body;
   return new Response(responseBody, {
     status: response.status,
     headers: responseHeaders,

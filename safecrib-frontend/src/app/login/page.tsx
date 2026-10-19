@@ -8,7 +8,7 @@ import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { Button } from "@/components/ui/Button";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
-import { ApiError, clearSession, getCurrentUser, primeCurrentUserCache, refreshCachedApi, setPersistedVerification, setSessionTokens, unwrapData } from "@/lib/api";
+import { ApiError, clearSession, getCurrentUser, primeCurrentUserCache, refreshCachedApi, setSessionTokens, unwrapData } from "@/lib/api";
 
 const API_URL = "/api/auth/login";
 
@@ -111,30 +111,14 @@ export default function LoginPage() {
         primeCurrentUserCache(currentUser);
         const role = String(currentUser?.role ?? "").toUpperCase();
         const providerRole = ["AGENT", "LANDLORD"].includes(role);
-        const providerPageRequest = role === "ADMIN"
-          ? Promise.resolve(null)
-          : refreshCachedApi<unknown>("/api/v1/provider-pages/me")
+        const providerPage = !providerRole && role !== "ADMIN"
+          ? await refreshCachedApi<unknown>("/api/v1/provider-pages/me")
               .then((response) => unwrapData<{ id?: string; status?: string } | null>(response))
               .catch((pageError: unknown) => {
                 if (pageError instanceof ApiError && pageError.status === 404) return null;
                 throw pageError;
-              });
-        const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role)
-          ? refreshCachedApi<unknown>("/api/v1/trust/me/verification-stage")
-          : Promise.resolve(null);
-        const studentStatusRequest = role === "STUDENT"
-          ? refreshCachedApi<unknown>("/api/v1/student-profiles/status")
-          : Promise.resolve(null);
-        if (!providerRole) void refreshCachedApi<unknown>("/api/v1/listings").catch(() => undefined);
-        const [providerPage, verificationStage] = await Promise.all([
-          providerPageRequest,
-          verificationRequest,
-          studentStatusRequest,
-        ]).then(([page, stage]) => [page, stage] as const);
-        if (verificationStage && currentUser.id) setPersistedVerification(currentUser.id, verificationStage);
-        if (providerRole && String(providerPage?.status ?? "").toUpperCase() === "VERIFIED") {
-          await refreshCachedApi("/api/v1/listings/my");
-        }
+              })
+          : null;
         router.push(providerRole || Boolean(providerPage && (providerPage.id || providerPage.status)) ? "/page" : "/dashboard");
       } catch (profileError) {
         if (profileError instanceof ApiError && profileError.status === 401) {
