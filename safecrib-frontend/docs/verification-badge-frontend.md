@@ -1,4 +1,4 @@
-# Verification Badges and Account Settings: Frontend Implementation and Testing
+https://safecrib-zthw.onrender.com# Verification Badges and Account Settings: Frontend Implementation and Testing
 
 The signed-in customer settings page at `/profile` and the admin-only settings page at `/admin/settings` share account name and password controls. The customer page also renders verification tracking from the authenticated trust API. Admin routes remain protected by the admin layout and membership check. The browser never derives a badge from role or trust score. The live API docs are at [SafeCrib OpenAPI](https://safecrib-y7up.onrender.com/api/v1/docs#/).
 

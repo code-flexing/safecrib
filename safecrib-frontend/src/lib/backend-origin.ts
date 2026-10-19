@@ -4,7 +4,8 @@ export function getBackendOrigin(): string {
     || process.env.NEXT_PUBLIC_BACKEND_URL;
   const fallback = process.env.NODE_ENV === "development"
     ? "http://localhost:3001"
-    : "https://safecrib-y7up.onrender.com";
+    : "https://safecrib-zthw.onrender.com"
+    // : "https://safecrib-zthw.onrender.com";
 
   return (configured || fallback).replace(/\/+$/, "");
 }
