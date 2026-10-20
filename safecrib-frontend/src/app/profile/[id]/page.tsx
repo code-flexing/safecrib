@@ -87,6 +87,7 @@ export default function PublicProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarMissing, setAvatarMissing] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const [loadedProfileId, setLoadedProfileId] = useState<string | null>(null);
 
   const userFollow = useFollow({
     targetType: "user",
@@ -181,6 +182,8 @@ export default function PublicProfilePage() {
         const refreshedProfile = unwrapData<PublicProfile>(value);
         if (!refreshedProfile) return;
         setProfile(refreshedProfile);
+        setUnavailable(false);
+        setLoadedProfileId(profileId);
         resolveAvatar(refreshedProfile.profilePicture);
       }
     });
@@ -189,6 +192,8 @@ export default function PublicProfilePage() {
       .then((publicProfile) => {
         if (!active) return;
         setProfile(publicProfile);
+        setUnavailable(false);
+        setLoadedProfileId(profileId);
         resolveAvatar(publicProfile.profilePicture);
       })
       .catch((loadError: unknown) => {
@@ -199,6 +204,7 @@ export default function PublicProfilePage() {
         }
         if (active) {
           setUnavailable(true);
+          setLoadedProfileId(profileId);
         }
       });
 
@@ -242,7 +248,11 @@ export default function PublicProfilePage() {
       <DashboardNav onCreatePage={() => router.push("/page/new")} pageStatus="none" />
       <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         <BackHomeLink />
-        {unavailable || !profile ? (
+        {loadedProfileId !== profileId ? (
+          <div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-black/10 bg-white px-6 py-12 text-center">
+            <p className="text-sm text-black/55">Loading profile…</p>
+          </div>
+        ) : unavailable || !profile ? (
           <div className="mt-7 rounded-2xl border border-black/10 bg-white px-6 py-12 text-center">
             <h1 className="text-2xl font-semibold text-safecrib-black">This profile isn’t available</h1>
             <p className="mt-2 text-sm leading-6 text-black/55">Only verified profiles are visible to other people.</p>
