@@ -1525,32 +1525,43 @@ export default function DashboardPage() {
         <DashboardNav onCreatePage={openPage} pageStatus={pageStatus} canManagePage={canCreateProviderPage} supportCount={openSupportCount} />
         <section className="relative w-full min-h-[100dvh] flex items-center justify-center overflow-x-hidden" aria-label="Loading homes">
           <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[480px] overflow-hidden rounded-none bg-[var(--theme-bg)] md:h-[calc(100dvh-48px)] md:max-h-[calc(100dvh-48px)] md:rounded-2xl md:border md:border-white/10 md:shadow-2xl">
-            {/* Top bar skeleton */}
-            <div className="absolute inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-40 mx-auto flex h-11 max-w-xl items-center justify-between px-4">
-              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-              <div className="h-5 w-16 animate-pulse rounded-full bg-white/15" />
-              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+            {/* Full-bleed post media placeholder */}
+            <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-[var(--theme-surface-raised)]" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+
+            {/* Top bar: avatar | For You | search */}
+            <div className="pointer-events-none absolute inset-x-4 top-[calc(1rem+env(safe-area-inset-top))] z-40">
+              <div className="pointer-events-auto mx-auto flex h-11 max-w-full items-center justify-between gap-3">
+                <div className="h-9 w-9 shrink-0 animate-pulse rounded-full border-2 border-white/80 bg-white/10 shadow-lg" />
+                <div className="relative h-5 w-16 animate-pulse rounded-full bg-white/15">
+                  <div className="absolute -bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-white/35" />
+                </div>
+                <div className="h-9 w-9 shrink-0 animate-pulse rounded-full border border-white/10 bg-white/10" />
+              </div>
             </div>
 
-            {/* Bottom card + rail skeleton */}
-            <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-xl items-end gap-3 pl-2.5 pr-2 md:bottom-8">
-              <div className="min-w-0 flex-1 space-y-2.5 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-surface)] p-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                  <div className="h-4 w-28 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+            {/* Listing details and engagement rail match the loaded post layout */}
+            <div className="pointer-events-none absolute inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-auto z-30 flex max-w-full items-end gap-3 md:bottom-6 lg:bottom-8">
+              <div className="pointer-events-auto min-w-0 flex-1 rounded-xl p-3 text-left">
+                <div className="flex min-w-0 items-center justify-start gap-2">
+                  <div className="h-8 w-8 shrink-0 animate-pulse rounded-full border border-white/30 bg-white/20" />
+                  <div className="h-4 w-28 animate-pulse rounded-full bg-white/25" />
+                  <div className="h-5 w-5 animate-pulse rounded-full bg-white/20" />
                 </div>
-                <div className="h-4 w-3/4 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                <div className="h-3 w-2/3 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                <div className="flex items-center justify-between pt-2">
-                  <div className="h-7 w-28 animate-pulse rounded-lg bg-white/20" />
-                  <div className="h-9 w-24 animate-pulse rounded-md bg-emerald-500/50" />
+                <div className="mt-1.5 h-5 w-3/4 animate-pulse rounded-full bg-white/25" />
+                <div className="mt-1 h-5 w-2/3 animate-pulse rounded-full bg-white/20" />
+                <div className="mt-1.5 flex items-center justify-between gap-3">
+                  <div className="h-6 w-32 animate-pulse rounded-full bg-white/30" />
+                  <div className="h-6 w-24 animate-pulse rounded-full bg-white/25" />
                 </div>
               </div>
-              <div className="flex -translate-y-10 flex-col items-center gap-4">
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
-                <div className="h-9 w-9 animate-pulse rounded-full bg-[var(--theme-surface-raised)]" />
+              <div className="pointer-events-auto flex flex-col items-center gap-3">
+                {[0, 1, 2, 3, 4, 5].map((item) => (
+                  <div key={item} className="flex flex-col items-center gap-1">
+                    <div className="h-9 w-9 animate-pulse rounded-full border border-white/15 bg-white/15 shadow-lg" />
+                    <div className="h-3 w-5 animate-pulse rounded-full bg-white/25" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
