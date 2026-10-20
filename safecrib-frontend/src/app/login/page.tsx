@@ -9,6 +9,7 @@ import { InstallButton } from "@/components/pwa/InstallButton";
 import { Button } from "@/components/ui/Button";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { ApiError, clearSession, getCurrentUser, primeCurrentUserCache, refreshCachedApi, setSessionTokens, unwrapData } from "@/lib/api";
+import { logBackendRequest } from "@/lib/backend-origin";
 
 const API_URL = "/api/auth/login";
 
@@ -84,6 +85,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      logBackendRequest("POST", "/api/v1/auth/login");
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {

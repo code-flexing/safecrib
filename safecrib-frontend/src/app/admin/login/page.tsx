@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SafeCribLogo } from "@/components/branding/SafeCribLogo";
 import { Button } from "@/components/ui/Button";
 import { ApiError, clearSession, setSessionTokens, verifyAdminSession } from "@/lib/api";
+import { logBackendRequest } from "@/lib/backend-origin";
 
 function tokenFrom(value: unknown, key: "accessToken" | "refreshToken") {
   if (typeof value !== "object" || value === null) return null;
@@ -34,6 +35,7 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
+      logBackendRequest("POST", "/api/v1/auth/login");
       const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim(), password }) });
       const payload: unknown = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, "Invalid admin credentials.");

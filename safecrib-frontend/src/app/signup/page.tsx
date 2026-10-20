@@ -8,6 +8,7 @@ import { InstallButton } from "@/components/pwa/InstallButton";
 import { Button } from "@/components/ui/Button";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { readDraft, removeDraft, writeDraft } from "@/lib/drafts";
+import { logBackendRequest } from "@/lib/backend-origin";
 
 const API_URL = "/api/auth/register";
 
@@ -189,6 +190,7 @@ export default function SignUpPage() {
     setErrors((current) => ({ ...current, submit: undefined }));
 
     try {
+      logBackendRequest("POST", "/api/v1/auth/register");
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {

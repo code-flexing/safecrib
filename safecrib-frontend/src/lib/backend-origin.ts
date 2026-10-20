@@ -9,3 +9,11 @@ export function getBackendOrigin(): string {
 
   return (configured || fallback).replace(/\/+$/, "");
 }
+
+export function logBackendRequest(method: string, path: string): void {
+  if (typeof window === "undefined") return;
+
+  const target = new URL(path, `${getBackendOrigin()}/`);
+  // Query strings are intentionally omitted to keep tokens and sensitive values out of logs.
+  console.info(`[SafeCrib API] ${method.toUpperCase()} ${target.origin}${target.pathname}`);
+}

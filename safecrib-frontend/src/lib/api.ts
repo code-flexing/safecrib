@@ -1,3 +1,5 @@
+import { logBackendRequest } from "@/lib/backend-origin";
+
 export type AccountStatus = "approved" | "pending" | "rejected" | "not_submitted";
 export type PageStatus = "none" | "pending" | "approved" | "rejected";
 
@@ -465,6 +467,7 @@ let refreshPromise: Promise<void> | null = null;
 
 async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
+  logBackendRequest(method, path);
   const token = typeof window === "undefined" ? null : localStorage.getItem("safecrib_access_token");
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
