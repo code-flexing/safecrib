@@ -1135,6 +1135,12 @@ html[data-theme="dark"] .comment-highlight {
   position: relative;
 }
 
+.glass-dark-surface {
+  background: rgba(5, 10, 8, 0.86);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
 .glass::before,
 .glass-liquid::before {
   content: "";

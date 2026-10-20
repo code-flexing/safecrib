@@ -232,7 +232,7 @@ export default function Home() {
 
   return (
     <main id="top" className="min-h-screen bg-white text-safecrib-black">
-      <header className="fixed top-0 z-40 w-full">
+      <header className="fixed top-0 z-40 w-full border-b border-white/10 bg-[#050a08]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-7">
           <SafeCribLogo height={27} inverse />
           <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-medium text-white/85 md:flex">
@@ -361,7 +361,7 @@ export default function Home() {
       <section className="border-t border-black/10 bg-[#F1F7F3]">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-10 sm:px-7 md:flex-row md:items-center md:justify-between" data-reveal>
           <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-safecrib-green">Your next chapter starts here</p><h2 className="mt-2 font-display text-2xl font-semibold">Find your place with SafeCrib.</h2></div>
-          <div className="flex flex-wrap items-center gap-3"><InstallButton /><RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">{isAuthenticated ? "Open dashboard" : "Get started"}</RouteLink></div>
+          <div className="flex flex-wrap items-center gap-3"><InstallButton tone="light" /><RouteLink href={accountHref} className="glass-pill glass-green text-sm font-semibold">{isAuthenticated ? "Open dashboard" : "Get started"}</RouteLink></div>
         </div>
       </section>
 

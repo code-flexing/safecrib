@@ -191,7 +191,7 @@ export default function LoginPage() {
         <SafeCribLogo height={24} inverse />
       </div>
       <div className="relative z-10 mx-auto max-w-6xl w-full flex justify-start">
-        <div className="glass-card glass w-full max-w-md p-5 sm:p-8">
+        <div className="glass-card glass glass-dark-surface w-full max-w-md p-5 sm:p-8">
           <div className="flex justify-center lg:hidden">
             <SafeCribLogo height={24} inverse />
           </div>
