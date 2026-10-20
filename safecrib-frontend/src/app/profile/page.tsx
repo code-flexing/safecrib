@@ -115,7 +115,13 @@ function ProfileStat({ label, value }: { label: string; value: string | number }
   </div>;
 }
 
-function ListingGrid({ listings, own = false }: { listings: Listing[]; own?: boolean }) {
+function ListingGrid({ listings, own = false, loading = false }: { listings: Listing[]; own?: boolean; loading?: boolean }) {
+  if (loading) return <div role="status" className="mt-5 grid gap-4 sm:grid-cols-2" aria-label="Loading your homes" aria-busy="true">
+    {[0, 1].map((item) => <div key={item} aria-hidden="true" className="overflow-hidden rounded-xl border border-black/10 bg-white">
+      <div className="h-44 animate-pulse bg-black/[0.06]" />
+      <div className="space-y-3 p-4"><div className="h-4 w-2/3 animate-pulse rounded bg-black/[0.06]" /><div className="h-3 w-full animate-pulse rounded bg-black/[0.04]" /><div className="h-3 w-1/3 animate-pulse rounded bg-black/[0.04]" /></div>
+    </div>)}
+  </div>;
   if (listings.length === 0) return <p className="mt-5 rounded-xl border border-dashed border-black/15 bg-white px-5 py-8 text-center text-sm text-black/55">{own ? "Your homes and posts will appear here." : "There are no public posts to show yet."}</p>;
   return <div className="mt-5 grid gap-4 sm:grid-cols-2">
     {listings.map((listing) => {
@@ -149,6 +155,7 @@ export default function ProfilePage() {
   const [student, setStudent] = useState<StudentProfile>(null);
   const [provider, setProvider] = useState<ProviderPage>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
   const [studentEngagement, setStudentEngagement] = useState<StudentEngagement | null>(null);
   const [providerStats, setProviderStats] = useState<ProviderStats | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -214,6 +221,7 @@ export default function ProfilePage() {
     if (path === "/api/v1/listings/my") {
       const ownListings = unwrapData<Listing[]>(value);
       setListings(Array.isArray(ownListings) ? ownListings : []);
+      setListingsLoading(false);
       return;
     }
     if (path === "/api/v1/users/me/engagement-stats") {
@@ -227,6 +235,7 @@ export default function ProfilePage() {
       setStudent(null);
       setProvider(null);
       setListings([]);
+      setListingsLoading(false);
       setStudentEngagement(null);
       setProviderStats(null);
       setAvatarUrl(null);
@@ -246,6 +255,7 @@ export default function ProfilePage() {
     const cachedUser = getCachedCurrentUser<User>();
     if (cachedUser) {
       setUser(cachedUser);
+      setListingsLoading(["AGENT", "LANDLORD"].includes(String(cachedUser.role ?? "").toUpperCase()));
       if (cachedUser.id) {
         const cachedAvatar = getCachedUserAvatar(cachedUser.id);
         if (cachedAvatar) setAvatarUrl(cachedAvatar);
@@ -284,6 +294,27 @@ export default function ProfilePage() {
       });
       const isStudent = ["UNVERIFIED", "STUDENT"].includes(role);
       const isProvider = ["AGENT", "LANDLORD"].includes(role);
+      if (isProvider) {
+        setListingsLoading(true);
+      } else {
+        setListings([]);
+        setListingsLoading(false);
+      }
+      const ownListingsRequest = isProvider
+        ? cachedApiFetch<unknown>("/api/v1/listings/my")
+          .then((response) => {
+            const ownListings = unwrapData<Listing[]>(response);
+            if (active) {
+              setListings(Array.isArray(ownListings) ? ownListings : []);
+              setListingsLoading(false);
+            }
+            return ownListings;
+          })
+          .catch((loadError: unknown) => {
+            if (active) setListingsLoading(false);
+            throw loadError;
+          })
+        : Promise.resolve([]);
       const [studentProfile, providerPage, ownListings, studentStats, providerDiscovery] = await Promise.all([
         isStudent
           ? cachedApiFetch<unknown>("/api/v1/student-profiles/me").then(unwrapData<StudentProfile>)
@@ -291,9 +322,7 @@ export default function ProfilePage() {
         isProvider
           ? cachedApiFetch<unknown>("/api/v1/provider-pages/me").then(unwrapData<ProviderPage>)
           : Promise.resolve(null),
-        isProvider
-          ? cachedApiFetch<unknown>("/api/v1/listings/my").then(unwrapData<Listing[]>)
-          : Promise.resolve([]),
+        ownListingsRequest,
         role === "STUDENT"
           ? cachedApiFetch<unknown>("/api/v1/users/me/engagement-stats").then(unwrapData<StudentEngagement>).catch(() => null)
           : Promise.resolve(null),
@@ -413,7 +442,7 @@ export default function ProfilePage() {
                 <h2 id="posts-heading" className="font-display text-2xl font-bold tracking-tight text-safecrib-black">{["AGENT", "LANDLORD"].includes(role) ? "Your homes and posts" : "Your posts"}</h2>
               </div>
               {["AGENT", "LANDLORD"].includes(role)
-                ? <ListingGrid listings={listings} own />
+                ? <ListingGrid listings={listings} own loading={listingsLoading} />
                 : <div className="mt-5 border border-dashed border-black/15 bg-white px-5 py-10 text-center text-sm text-black/50">No activity yet.</div>}
             </section>
           </div>

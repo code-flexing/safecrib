@@ -982,7 +982,22 @@ export default function DashboardPage() {
       const cachedListingsRaw = getCachedApi<unknown>("/api/v1/listings");
       const homesRequest = cachedListingsRaw !== null
         ? Promise.resolve(null)
-        : cachedApiFetch<unknown>("/api/v1/listings").then(extractListings).catch(() => []);
+        : cachedApiFetch<unknown>("/api/v1/listings")
+          .then((response) => {
+            const homes = extractListings(response);
+            setListings(homes);
+            homes.forEach(seedListingDetailCache);
+            return homes;
+          })
+          .catch(() => {
+            setListings([]);
+            return [];
+          });
+      if (cachedListingsRaw !== null) {
+        setDashboardLoading(false);
+      } else {
+        void homesRequest.then(() => setDashboardLoading(false));
+      }
       const verificationRequest = ["STUDENT", "AGENT", "LANDLORD", "ADMIN"].includes(role) && !user.verification
         ? apiFetch<unknown>("/api/v1/trust/me/verification-stage")
           .then((response) => {
@@ -993,26 +1008,42 @@ export default function DashboardPage() {
           .catch(() => null)
         : Promise.resolve(null);
       void verificationRequest.then(() => undefined);
-      const [studentProfile, providerPage, homes, bookmarks, conversations, recommendations] = await Promise.all([
+      const bookmarksRequest = role === "STUDENT"
+        ? cachedApiFetch<Listing[]>("/api/v1/listings/bookmarks")
+          .then((bookmarks) => {
+            setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
+            return bookmarks;
+          })
+          .catch(() => [])
+        : Promise.resolve([]);
+      const conversationsRequest = cachedApiFetch<unknown[]>("/api/v1/support/conversations")
+        .then((conversations) => {
+          const conversationList = Array.isArray(conversations) ? conversations : [];
+          setOpenSupportCount(conversationList.filter((conversation) => typeof conversation === "object" && conversation !== null && "status" in conversation && String(conversation.status).toUpperCase() === "OPEN").length);
+          return conversations;
+        })
+        .catch(() => []);
+      const recommendationsRequest = role === "STUDENT"
+        ? cachedApiFetch<string[]>("/api/v1/trust/me/recommendations")
+          .then((recommendations) => {
+            setRecommendationsLoaded(true);
+            setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
+            return recommendations;
+          })
+          .catch((error: unknown) => {
+            setActionMessage(error instanceof Error ? error.message : "We could not load your recommendations.");
+            return [];
+          })
+        : Promise.resolve([]);
+      void bookmarksRequest;
+      void conversationsRequest;
+      void recommendationsRequest;
+      const [studentProfile, providerPage] = await Promise.all([
         studentMode ? cachedApiFetch<StudentProfile>("/api/v1/student-profiles/me").catch(() => null) : Promise.resolve(null),
         cachedApiFetch<ProviderPage>("/api/v1/provider-pages/me").catch(() => null),
-        homesRequest,
-        role === "STUDENT" ? cachedApiFetch<Listing[]>("/api/v1/listings/bookmarks").catch(() => []) : Promise.resolve([]),
-        cachedApiFetch<unknown>("/api/v1/support/conversations").catch(() => []),
-        role === "STUDENT"
-          ? cachedApiFetch<string[]>("/api/v1/trust/me/recommendations")
-            .then((value) => {
-              setRecommendationsLoaded(true);
-              return value;
-            })
-            .catch((error: unknown) => {
-              setActionMessage(error instanceof Error ? error.message : "We could not load your recommendations.");
-              return [];
-            })
-          : Promise.resolve([]),
       ]);
-      return { user, studentProfile, studentStatusRequest, providerPage, homes, bookmarks, conversations, recommendations };
-    }).then(({ user, studentProfile, studentStatusRequest, providerPage, homes, bookmarks, conversations, recommendations }) => {
+      return { user, studentProfile, studentStatusRequest, providerPage };
+    }).then(({ user, studentProfile, studentStatusRequest, providerPage }) => {
       setProfile({ ...user, displayName: displayName(user) || getAuthenticatedDisplayName() });
       const role = String(user.role ?? "").toUpperCase();
       const studentMode = ["STUDENT", "UNVERIFIED"].includes(role);
@@ -1050,15 +1081,6 @@ export default function DashboardPage() {
         }).catch(() => undefined);
       }
       setPageStatus(normalizePageStatus(providerPage?.status));
-      if (homes) {
-        const listings = extractListings(homes);
-        setListings(listings);
-        listings.forEach(seedListingDetailCache);
-      }
-      setBookmarkedIds(Array.isArray(bookmarks) ? bookmarks.map((listing) => listing.id) : []);
-      setRecommendedProviderIds(Array.isArray(recommendations) ? recommendations : []);
-      const conversationList = Array.isArray(conversations) ? conversations : [];
-      setOpenSupportCount(conversationList.filter((conversation) => typeof conversation === "object" && conversation !== null && "status" in conversation && String(conversation.status).toUpperCase() === "OPEN").length);
     }).catch((loadError: unknown) => {
       if (isUnauthorizedError(loadError)) {
         clearSession();
