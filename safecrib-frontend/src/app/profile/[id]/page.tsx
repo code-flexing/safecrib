@@ -6,6 +6,7 @@ import Image from "next/image";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { BackHomeLink } from "@/components/ui/BackHomeLink";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { UserName } from "@/components/common/UserName";
 import { useFollow } from "@/hooks/useFollow";
 import { apiFetch, cachedApiFetch, clearSession, getCachedCurrentUser, getCachedMediaUrl, isUnauthorizedError, resolveMediaUrl, subscribeClientCacheUpdates, unwrapData } from "@/lib/api";
@@ -249,8 +250,40 @@ export default function PublicProfilePage() {
       <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         <BackHomeLink />
         {loadedProfileId !== profileId ? (
-          <div role="status" aria-live="polite" className="mt-7 rounded-2xl border border-black/10 bg-white px-6 py-12 text-center">
-            <p className="text-sm text-black/55">Loading profile…</p>
+          <div role="status" aria-label="Loading profile" className="mt-6">
+            <span className="sr-only">Loading profile…</span>
+            <section className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+              <Skeleton className="h-28 w-full sm:h-36" rounded="none" />
+              <div className="flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-end sm:px-8">
+                <Skeleton className="-mt-14 h-32 w-32 shrink-0 border-4 border-white sm:-mt-16" rounded="full" />
+                <div className="min-w-0 flex-1 space-y-3 sm:pb-1">
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-9 w-56 max-w-full" />
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-full max-w-xl" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-24" rounded="full" />
+                  <Skeleton className="h-10 w-28" rounded="full" />
+                </div>
+              </div>
+            </section>
+            <section className="mt-7">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="mt-2 h-7 w-40" />
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {[0, 1].map((item) => (
+                  <div key={item} className="overflow-hidden rounded-xl border border-black/10 bg-white">
+                    <Skeleton className="h-44 w-full" rounded="none" />
+                    <div className="space-y-3 p-4">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         ) : unavailable || !profile ? (
           <div className="mt-7 rounded-2xl border border-black/10 bg-white px-6 py-12 text-center">
