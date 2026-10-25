@@ -17,21 +17,21 @@ describe('NotificationsService', () => {
 
     await service.enqueue('user-1', input);
 
-    expect(queue.add).toHaveBeenCalledWith(
-      'deliver',
-      {
-        ...input,
-        userId: 'user-1',
-        title: 'T'.repeat(160),
-        body: 'B'.repeat(500),
-        href: `/${'h'.repeat(499)}`,
-      },
-      expect.objectContaining({
-        jobId: expect.stringMatching(/^notification-[a-f0-9]{64}$/),
-        attempts: 8,
-        backoff: { type: 'exponential', delay: 1000 },
-      }),
-    );
+    const call = queue.add.mock.calls[0];
+    expect(call[0]).toBe('deliver');
+    expect(call[1]).toMatchObject({
+      ...input,
+      userId: 'user-1',
+      title: 'T'.repeat(160),
+      body: 'B'.repeat(500),
+      href: `/${'h'.repeat(499)}`,
+    });
+    expect(call[2]).toMatchObject({
+      attempts: 8,
+      backoff: { type: 'exponential', delay: 1000 },
+    });
+    expect(call[2].jobId).toMatch(/^notification-[a-f0-9]{64}$/);
+
   });
 
   it('logs queue failures without breaking the user action', async () => {

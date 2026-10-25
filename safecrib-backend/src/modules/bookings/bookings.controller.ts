@@ -106,6 +106,20 @@ export class BookingsController {
     return this.bookingsService.getMyBookings(user.id);
   }
 
+  @Post(':id/payment')
+  @Roles('STUDENT')
+  @RequireVerifiedConsumer()
+  async startPayment(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.bookingsService.startPayment(id, user.id);
+  }
+
+  @Get(':id/status')
+  @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
+  @RequireVerifiedConsumer()
+  async getStatus(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.bookingsService.getStatus(id, user.id);
+  }
+
   @Get(':id')
   @Roles('STUDENT', 'AGENT', 'LANDLORD')
   @RequireVerifiedConsumer()

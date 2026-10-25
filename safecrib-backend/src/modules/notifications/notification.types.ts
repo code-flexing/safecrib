@@ -27,8 +27,14 @@ export type NotificationInput = {
   href?: string;
   data?: Record<string, unknown>;
   dedupeKey: string;
+  source?: 'SYSTEM' | 'USER' | 'ADMIN';
+  actorId?: string | null;
+  actorSnapshot?: Record<string, unknown> | null;
 };
 
 export type NotificationQueuePayload = NotificationInput & {
   userId: string;
+  source?: "SYSTEM" | "USER" | "ADMIN";
+  actorId?: string | null;
+  actorSnapshot?: Record<string, unknown> | null;
 };

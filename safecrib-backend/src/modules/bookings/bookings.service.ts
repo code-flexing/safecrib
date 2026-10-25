@@ -19,6 +19,7 @@ import {
 type PrismaBookingStatus = Exclude<BookingStatus, 'AVAILABLE'>;
 import type { CreateBookingDto } from './dto/booking.dto.js';
 import { NotificationsService, withSystemSender } from '../notifications/notifications.service.js';
+import { PaystackService } from '../payments/paystack.service.js';
 
 export interface BookingResult {
   id: string;
@@ -44,6 +45,7 @@ export class BookingsService {
     @InjectJobQueue(TRUST_RECOMPUTE_QUEUE)
     private readonly trustRecomputeQueue: JobQueueClient,
     private readonly notifications: NotificationsService,
+    private readonly paystack: PaystackService,
   ) {}
 
   async createBooking(studentId: string, dto: CreateBookingDto): Promise<BookingResult> {
@@ -538,6 +540,97 @@ await this.notifications.enqueue(booking.studentId, withSystemSender({
       completedAt: booking.completedAt,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+    };
+  }
+
+  async startPayment(bookingId: string, userId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        listing: { select: { ownerId: true, title: true, address: true } },
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        student: { select: { id: true, email: true, displayName: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.studentId !== userId) throw new ConflictException('Not authorized');
+
+    const existing = booking.payments[0];
+    if (existing && (existing.status === 'SUCCESS' || existing.status === 'FAILED')) {
+      return { authorizationUrl: null, reference: existing.reference, reused: false, paymentStatus: existing.status };
+    }
+    if (existing && existing.status === 'INITIATED') {
+      return { authorizationUrl: null, reference: existing.reference, reused: true, paymentStatus: 'INITIATED' };
+    }
+
+    const amountMinor = booking.amountMinor ?? booking.depositAmount ?? 0;
+    if (!amountMinor || amountMinor <= 0) {
+      throw new BadRequestException('Booking has no deposit amount to charge');
+    }
+
+    const reference = 'sc_' + Date.now().toString(36) + '_' + bookingId.slice(0, 6);
+    const payment = await this.prisma.payment.create({
+      data: {
+        bookingId: booking.id,
+        userId: booking.studentId,
+        listingId: booking.listingId,
+        reference,
+        amountMinor,
+        currency: booking.currency || 'NGN',
+        status: 'INITIATED',
+      },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL_TESTING || process.env.FRONTEND_URL_PRODUCTION || 'http://localhost:3000';
+    const callbackUrl = `${frontendUrl}/dashboard/checkout/result?reference=${reference}&bookingId=${booking.id}`;
+
+    try {
+      const result = await this.paystack.initialize({
+        email: booking.student?.email || `${reference}@safecrib.local`,
+        amountMinor,
+        reference: payment.reference,
+        callbackUrl,
+        metadata: {
+          bookingId: booking.id,
+          listingId: booking.listingId,
+          listingTitle: booking.listing?.title ?? undefined,
+          studentId: booking.studentId,
+          studentName: booking.student?.displayName ?? undefined,
+        },
+      });
+      return {
+        authorizationUrl: result.authorizationUrl,
+        reference: result.reference,
+        reused: false,
+        paymentStatus: 'INITIATED',
+      };
+    } catch (error) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED', providerRawStatus: 'init_failed' },
+      });
+      throw new BadRequestException('Payment initialization failed');
+    }
+  }
+
+  async getStatus(bookingId: string, userId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { listing: { select: { ownerId: true } }, payments: { orderBy: { createdAt: 'desc' }, take: 1 }, receipts: { orderBy: { issuedAt: 'desc' }, take: 1 } },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    const allowed = booking.studentId === userId || booking.listing?.ownerId === userId; // need listing owner - fetch
+    if (!allowed) {
+      // recheck
+      const b2 = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { listing: { select: { ownerId: true } } } });
+      if (!b2 || (b2.studentId !== userId && b2.listing?.ownerId !== userId)) throw new ConflictException('Not authorized');
+    }
+    return {
+      bookingId: booking.id,
+      status: booking.status,
+      paymentStatus: booking.payments[0]?.status || null,
+      holdExpiresAt: booking.holdExpiresAt,
+      receiptId: booking.receipts[0]?.id || null,
     };
   }
 }

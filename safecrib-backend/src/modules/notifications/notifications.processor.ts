@@ -6,6 +6,7 @@ import { QueueService } from '../../infra/queue/queue.service.js';
 import { NotificationsGateway } from './notifications.gateway.js';
 import type { NotificationQueuePayload } from './notification.types.js';
 import { NotificationPushService } from './notification-push.service.js';
+import { serializeNotificationRow } from './notification-serializer.util.js';
 
 const notificationSelect = {
   id: true,
@@ -16,6 +17,9 @@ const notificationSelect = {
   data: true,
   readAt: true,
   createdAt: true,
+  source: true,
+  actorId: true,
+  actorSnapshot: true,
 } as const;
 
 @Injectable()
@@ -56,7 +60,10 @@ export class NotificationsProcessor implements OnModuleInit {
         href: payload.href,
         data: payload.data as object | undefined,
         dedupeKey: payload.dedupeKey,
-      }],
+        source: payload.source as any,
+        actorId: payload.actorId as any,
+        actorSnapshot: payload.actorSnapshot as any,
+      }] as any,
       skipDuplicates: true,
     });
     const notification = await this.prisma.notification.findUnique({
@@ -66,7 +73,7 @@ export class NotificationsProcessor implements OnModuleInit {
     if (!notification) {
       throw new Error(`Notification ${payload.dedupeKey} was inserted but could not be loaded`);
     }
-    if (created.count > 0) this.gateway.emitNotification(payload.userId, notification);
+    if (created.count > 0) this.gateway.emitNotification(payload.userId, serializeNotificationRow(notification));
     await this.push.deliverToUser(payload.userId, {
       title: notification.title,
       body: notification.body,

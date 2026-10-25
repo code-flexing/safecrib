@@ -21,10 +21,15 @@ import { EmailProcessor } from './infra/queue/email.processor.js';
 import { ImageHashProcessor } from './infra/queue/image-hash.processor.js';
 import { TrustRecomputeProcessor } from './infra/queue/trust-recompute.processor.js';
 import { BookingHoldExpiryProcessor } from './infra/queue/booking-hold-expiry.processor.js';
+import { PaymentReconcileProcessor } from './infra/queue/payment-reconcile.processor.js';
+import { EscrowJobsProcessor } from './infra/queue/escrow-jobs.processor.js';
 import { DuplicateSweepProcessor } from './infra/queue/duplicate-sweep.processor.js';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { SupportModule } from './modules/support/support.module.js';
+import { PaymentsModule } from './modules/payments/payments.module.js';
+import { ReceiptsModule } from './modules/receipts/receipts.module.js';
+import { EscrowsModule } from './modules/escrows/escrows.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { HealthController } from './health/health.controller.js';
 
@@ -64,6 +69,9 @@ import { HealthController } from './health/health.controller.js';
     UsersModule,
     ListingsModule,
     BookingsModule,
+    PaymentsModule,
+    ReceiptsModule,
+    EscrowsModule,
     TrustModule,
     FraudModule,
     AdminModule,
@@ -84,6 +92,8 @@ import { HealthController } from './health/health.controller.js';
     ImageHashProcessor,
     TrustRecomputeProcessor,
     BookingHoldExpiryProcessor,
+    PaymentReconcileProcessor,
+    EscrowJobsProcessor,
     DuplicateSweepProcessor,
   ],
 })
