@@ -29,7 +29,7 @@ const ADMIN_TYPES = new Set(["ADMIN_MESSAGE"]);
 function deriveSource(n: NotificationItem): "SYSTEM" | "USER" | "ADMIN" {
   if (n.type === "ADMIN_MESSAGE") return "ADMIN";
   const data = n.data as Record<string, unknown> | null;
-  if (data && typeof data.source === "string") return data.source as any;
+  if (data && typeof data.source === "string") return data.source as "SYSTEM" | "USER" | "ADMIN";
   if (USER_TYPES.has(n.type)) return "USER";
   if (SYSTEM_TYPES.has(n.type)) return "SYSTEM";
   return "SYSTEM";
@@ -40,30 +40,28 @@ export function getNotificationAvatar(n: NotificationItem): { src: string | null
   if (source === "SYSTEM") {
     return { src: BOT_AVATAR, isBot: true };
   }
+  const actor = (n as { actor?: { avatarUrl?: string; id?: string; displayName?: string; username?: string } }).actor;
+  const data = n.data as Record<string, unknown> | null;
   if (source === "ADMIN") {
-    const actor = (n as any).actor;
-    const data = n.data as any;
     return {
-      src: actor?.avatarUrl ?? data?.senderAvatarSnapshot ?? BOT_AVATAR,
+      src: actor?.avatarUrl ?? (data?.senderAvatarSnapshot as string | undefined) ?? BOT_AVATAR,
       isBot: false,
-      actorId: actor?.id ?? data?.senderAdminId ?? null,
+      actorId: actor?.id ?? (data?.senderAdminId as string | null | undefined) ?? null,
     };
   }
   // USER
-  const actor: any = (n as any).actor;
-  const data: any = n.data as any;
   return {
-    src: actor?.avatarUrl ?? data?.actorProfilePicture ?? null,
+    src: actor?.avatarUrl ?? (data?.actorProfilePicture as string | undefined) ?? null,
     isBot: false,
-    actorId: actor?.id ?? data?.actorId ?? null,
+    actorId: actor?.id ?? (data?.actorId as string | null | undefined) ?? null,
   };
 }
 
 export function getNotificationActorName(n: NotificationItem): string | null {
   const source = deriveSource(n);
-  const actor = (n as any).actor;
-  const data = n.data as any;
+  const actor = (n as { actor?: { avatarUrl?: string; id?: string; displayName?: string; username?: string } }).actor;
+  const data = n.data as Record<string, unknown> | null;
   if (source === "SYSTEM") return "CribBot";
-  if (source === "ADMIN") return actor?.displayName ?? data?.senderNameSnapshot ?? "SafeCribs Team";
-  return actor?.displayName ?? actor?.username ?? data?.actorName ?? data?.actorUsername ?? null;
+  if (source === "ADMIN") return actor?.displayName ?? (data?.senderNameSnapshot as string | undefined) ?? "SafeCribs Team";
+  return actor?.displayName ?? actor?.username ?? (data?.actorName as string | undefined) ?? (data?.actorUsername as string | undefined) ?? null;
 }

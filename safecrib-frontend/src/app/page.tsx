@@ -152,8 +152,6 @@ function CampusIllustration() {
         <circle cx="21" cy="41" r="7" fill="#263B32" /><circle cx="70" cy="41" r="7" fill="#263B32" />
         <path d="M10 29h73" stroke="#A9D8C3" strokeWidth="3" />
       </g>
-
-
     </svg>
   );
 }

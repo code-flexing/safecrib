@@ -149,10 +149,10 @@ function NotificationActor({ notification }: { notification: NotificationItem })
   const resolved = getNotificationAvatar(notification);
   const actorName = getNotificationActorName(notification);
   const [photo, setPhoto] = useState<string | null>(() => {
-    const src = (notification as Record<string, any>).actor?.avatarUrl ?? (notification.data as Record<string, any>)?.actorProfilePicture ?? (notification.data as Record<string, any>)?.systemSenderAvatar ?? resolved.src;
+    const src = (notification as Record<string, unknown>).actor?.avatarUrl ?? (notification.data as Record<string, unknown>)?.actorProfilePicture ?? (notification.data as Record<string, unknown>)?.systemSenderAvatar ?? resolved.src;
     return src ? getCachedMediaUrl(src) || src : resolved.src;
   });
-  const photoRef = (notification as Record<string, any>).actor?.avatarUrl ?? (notification.data as Record<string, any>)?.actorProfilePicture;
+  const photoRef = (notification as Record<string, unknown>).actor?.avatarUrl ?? (notification.data as Record<string, unknown>)?.actorProfilePicture;
   useEffect(() => {
     if (photoRef) {
       const cached = getCachedMediaUrl(photoRef);
@@ -170,7 +170,7 @@ function NotificationActor({ notification }: { notification: NotificationItem })
       <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "Notification avatar"} size="small" className="h-11 w-11" />
       {actorName && (
         <UserName
-          user={{ id: resolved.actorId || (notification as Record<string, any>).actor?.id, displayName: actorName }}
+          user={{ id: resolved.actorId || (notification as Record<string, unknown>).actor?.id, displayName: actorName }}
           size="sm"
           showHandle={false}
           fallback="SafeCrib member"

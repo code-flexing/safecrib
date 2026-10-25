@@ -12,7 +12,7 @@ export default function SecureCheckoutPage() {
   const { showToast } = useToast();
   const id = params?.id;
   const [loading, setLoading] = useState(true);
-  const [quote, setQuote] = useState<any>(null);
+  const [quote, setQuote] = useState<{ total?: number } | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [paying, setPaying] = useState(false);
 

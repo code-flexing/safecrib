@@ -35,14 +35,14 @@ export default function PaymentsPage() {
         <p className="mt-4 text-sm text-black/60">No payments yet.</p>
       ) : (
         <div className="mt-4 divide-y divide-black/5 rounded-xl border border-black/10">
-          {payments.map((p: any) => (
+          {payments.map((p) => (
             <div key={p.id} className="flex items-center justify-between p-4">
               <div>
-                <p className="text-sm font-medium">{String((p as any).listingTitle || "Home")}</p>
-                <p className="text-xs text-black/50">₦{((Number((p as any).amountMinor)||0)/100).toLocaleString()} • {String((p as any).status)}</p>
+                <p className="text-sm font-medium">{String(p.listingTitle || "Home")}</p>
+                <p className="text-xs text-black/50">₦{((Number(p.amountMinor)||0)/100).toLocaleString()} • {String(p.status)}</p>
               </div>
-              {Boolean((p as any).receiptId) && (
-                <Link href={`/dashboard/payments/${String((p as any).receiptId)}/receipt`} className="text-sm text-safecrib-green">View receipt</Link>
+              {Boolean(p.receiptId) && (
+                <Link href={`/dashboard/payments/${String(p.receiptId)}/receipt`} className="text-sm text-safecrib-green">View receipt</Link>
               )}
             </div>
           ))}
