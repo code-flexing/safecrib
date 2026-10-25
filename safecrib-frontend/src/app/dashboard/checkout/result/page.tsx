@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Link } from "next/link";
+import Link from "next/link";
 
 export default function CheckoutResultPage() {
   const params = useSearchParams();
@@ -28,7 +28,7 @@ export default function CheckoutResultPage() {
     let cancelled = false;
     async function verify() {
       try {
-        const res = await fetch(`/api/backend/payments/verify?reference=${encodeURIComponent(reference)}`, {
+        const res = await fetch(`/api/backend/payments/verify?reference=${encodeURIComponent(reference!)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => null);

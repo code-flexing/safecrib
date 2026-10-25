@@ -89,7 +89,7 @@ export default function SecureCheckoutPage() {
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Total</span>
-                  <span>₦{(quote.total / 100).toLocaleString()}</span>
+                  <span>₦{((quote.total ?? 0) / 100).toLocaleString()}</span>
                 </div>
               </div>
             )}

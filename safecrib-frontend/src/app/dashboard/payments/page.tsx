@@ -36,7 +36,7 @@ export default function PaymentsPage() {
       ) : (
         <div className="mt-4 divide-y divide-black/5 rounded-xl border border-black/10">
           {payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-4">
+            <div key={String(p.id)} className="flex items-center justify-between p-4">
               <div>
                 <p className="text-sm font-medium">{String(p.listingTitle || "Home")}</p>
                 <p className="text-xs text-black/50">₦{((Number(p.amountMinor)||0)/100).toLocaleString()} • {String(p.status)}</p>
