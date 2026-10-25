@@ -22,6 +22,7 @@ import type { Response } from 'express';
 import { Public } from '../../common/public.decorator.js';
 import { Roles } from '../../common/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import { RequireVerifiedConsumer } from '../../common/student-profile.decorator.js';
 import { UserService } from './users.service.js';
 import { UpdateUserDto, ChangePasswordDto, UserResponseDto } from './dto/user.dto.js';
 
@@ -129,5 +130,11 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Current password invalid' })
   changePassword(@CurrentUser() user: { id: string }, @Body() dto: ChangePasswordDto) {
     return this.userService.changePassword(user.id, dto);
+  }
+  @Get('me/payments')
+  @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
+  @RequireVerifiedConsumer()
+  async getMyPayments(@CurrentUser() user: { id: string }) {
+    return this.userService.getMyPayments(user.id);
   }
 }

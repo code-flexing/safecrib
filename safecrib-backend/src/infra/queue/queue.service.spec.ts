@@ -22,7 +22,7 @@ describe('QueueService pg-boss configuration', () => {
     const connectionString = 'postgresql://user:pass@db.pooler.supabase.com:5432/postgres';
     process.env.PGBOSS_DATABASE_URL = connectionString;
 
-    expect(service.validateConfiguration()).toBe(connectionString);
+    expect(service.validateConfiguration().connectionString).toBe(connectionString);
   });
 
   it('uses configured TLS options instead of URL ssl query parameters', () => {
@@ -30,7 +30,7 @@ describe('QueueService pg-boss configuration', () => {
       'postgresql://worker:password@db.pooler.supabase.com:5432/postgres?sslmode=require&application_name=worker';
 
     const validated = service.validateConfiguration();
-    const parsed = new URL(validated);
+    const parsed = new URL(validated.connectionString);
 
     expect(parsed.searchParams.has('sslmode')).toBe(false);
     expect(parsed.searchParams.get('application_name')).toBe('worker');
@@ -38,7 +38,6 @@ describe('QueueService pg-boss configuration', () => {
 
   it('fails clearly when the connection URL is missing', () => {
     delete process.env.PGBOSS_DATABASE_URL;
-
     expect(() => service.validateConfiguration()).toThrow(
       'PGBOSS_DATABASE_URL is required to start pg-boss workers',
     );

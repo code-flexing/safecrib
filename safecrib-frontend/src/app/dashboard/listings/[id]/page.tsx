@@ -590,7 +590,7 @@ export default function ListingDetailPage() {
             </section>
 
             {/* primary action + icon actions */}
-            <Button type="button" onClick={() => gate("secure this accommodation")} disabled={availabilityDisabled} className="mt-6 w-full">Secure accommodation</Button>
+            <Button type="button" onClick={() => { gate("secure this accommodation"); router.push(`/dashboard/listings/${id}/secure`); }} disabled={availabilityDisabled} className="mt-6 w-full">Secure accommodation</Button>
             {availabilityDisabled && listing?.availability ? (
               <p role="status" className="mt-3 text-sm text-black/55">{availabilityShortDescription[listing.availability as AvailabilityStatus]}</p>
             ) : null}

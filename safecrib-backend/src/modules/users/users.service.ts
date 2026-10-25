@@ -14,7 +14,7 @@ import type { Role } from '../../common/roles.decorator.js';
 import { normaliseDisplayName, isBlockedDisplayName } from '../../common/username.utils.js';
 import { getPublicVerification } from '../../common/verification/public-verification.js';
 
-@Injectable()
+
 export class UserService {
   private readonly logger = new Logger(UserService.name);
   constructor(private readonly prisma: PrismaService) {}
@@ -635,5 +635,29 @@ export class UserService {
         role: true,
       },
     });
+  }
+  async getMyPayments(userId: string) {
+    const payments = await this.prisma.payment.findMany({
+      where: { userId },
+      include: {
+        booking: { select: { id: true, listingId: true } },
+        listing: { select: { id: true, title: true } },
+        receipt: { select: { id: true, receiptNumber: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return payments.map((p) => ({
+      id: p.id,
+      bookingId: p.bookingId,
+      listingId: p.listingId,
+      listingTitle: p.listing?.title ?? null,
+      amountMinor: p.amountMinor,
+      currency: p.currency,
+      status: p.status,
+      createdAt: p.createdAt,
+      paidAt: p.paidAt,
+      receiptId: p.receipt?.id ?? null,
+      receiptNumber: p.receipt?.receiptNumber ?? null,
+    }));
   }
 }

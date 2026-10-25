@@ -48,6 +48,9 @@ export class NotificationsService {
       body: input.body.slice(0, MAX_BODY_LENGTH),
       href: input.href?.slice(0, MAX_HREF_LENGTH),
       dedupeKey: input.dedupeKey.slice(0, MAX_DEDUPE_KEY_LENGTH),
+      source: input.source,
+      actorId: input.actorId ?? null,
+      actorSnapshot: input.actorSnapshot ?? null,
     };
     const jobHash = createHash('sha256')
       .update(`${userId}\0${payload.dedupeKey}`)

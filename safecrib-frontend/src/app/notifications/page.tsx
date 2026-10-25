@@ -8,6 +8,7 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { Icon } from "@/components/ui/Icon";
 import { UserName } from "@/components/common/UserName";
 import { apiFetch, getCachedMediaUrl, resolveMediaUrl, unwrapData } from "@/lib/api";
+import { getNotificationAvatar, getNotificationActorName } from "@/lib/notification-avatar";
 import {
   connectNotificationSocket,
   disconnectNotificationSocket,
@@ -145,55 +146,31 @@ function AdminProfilePopover({
 }
 
 function NotificationActor({ notification }: { notification: NotificationItem }) {
-  const isSystem = isSystemNotification(notification);
-  const actorName = getActorName(notification);
-  const actorId = typeof notification.data?.actorId === "string"
-    ? notification.data.actorId
-    : null;
-  const photoReference = typeof notification.data?.actorProfilePicture === "string"
-    ? notification.data.actorProfilePicture
-    : null;
-  const [photo, setPhoto] = useState<string | null>(() =>
-    isSystem ? getSystemSender(notification).avatarRef : (photoReference ? getCachedMediaUrl(photoReference) : null)
-  );
-
+  const resolved = getNotificationAvatar(notification);
+  const actorName = getNotificationActorName(notification);
+  const [photo, setPhoto] = useState<string | null>(() => {
+    const src = (notification as Record<string, any>).actor?.avatarUrl ?? (notification.data as Record<string, any>)?.actorProfilePicture ?? (notification.data as Record<string, any>)?.systemSenderAvatar ?? resolved.src;
+    return src ? getCachedMediaUrl(src) || src : resolved.src;
+  });
+  const photoRef = (notification as Record<string, any>).actor?.avatarUrl ?? (notification.data as Record<string, any>)?.actorProfilePicture;
   useEffect(() => {
-    if (isSystem) {
-      setPhoto(getSystemSender(notification).avatarRef);
-      return;
-    }
-    if (!photoReference) {
+    if (photoRef) {
+      const cached = getCachedMediaUrl(photoRef);
+      if (cached) { setPhoto(cached); return; }
       setPhoto(null);
-      return;
+      let active = true;
+      void resolveMediaUrl(photoRef).then((url) => { if (active) setPhoto(url); }).catch(() => { if (active) setPhoto(null); });
+      return () => { active = false; };
+    } else {
+      setPhoto(resolved.src);
     }
-    const cached = getCachedMediaUrl(photoReference);
-    if (cached) {
-      setPhoto(cached);
-      return;
-    }
-    setPhoto(null);
-    let active = true;
-    void resolveMediaUrl(photoReference)
-      .then((url) => { if (active) setPhoto(url); })
-      .catch((error: unknown) => {
-        if (active) console.error("Could not load the notification sender's profile picture.", error);
-      });
-    return () => { active = false; };
-  }, [isSystem, photoReference]);
-
-  const displayName = isSystem ? getSystemSender(notification).name : actorName;
-  const displayId = isSystem ? undefined : actorId ?? undefined;
-
+  }, [photoRef, resolved.src]);
   return (
     <span className="flex shrink-0 flex-col items-center gap-1">
-      {isSystem ? (
-        <ProfileAvatar src={photo} alt="CribBot profile" size="small" className="h-11 w-11" />
-      ) : (
-        <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "SafeCrib notification"} size="small" className="h-11 w-11" />
-      )}
+      <ProfileAvatar src={photo} alt={actorName ? `${actorName} profile` : "Notification avatar"} size="small" className="h-11 w-11" />
       {actorName && (
         <UserName
-          user={{ id: displayId, displayName: actorName }}
+          user={{ id: resolved.actorId || (notification as Record<string, any>).actor?.id, displayName: actorName }}
           size="sm"
           showHandle={false}
           fallback="SafeCrib member"

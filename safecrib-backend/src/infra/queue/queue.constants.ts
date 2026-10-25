@@ -9,3 +9,4 @@ export const MEDIA_WEBHOOK_QUEUE = 'media-webhook';
 export const MEDIA_DELETION_QUEUE = 'media-deletion';
 export const MEDIA_CLEANUP_QUEUE = 'media-cleanup';
 export const NOTIFICATION_QUEUE = 'notifications';
+export const PAYMENT_RECONCILE_QUEUE = 'payment-reconcile';

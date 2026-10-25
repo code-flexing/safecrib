@@ -11,7 +11,7 @@ export const QUEUE_NAMES = [
   'media-webhook',
   'media-deletion',
   'media-cleanup',
-  'notifications',
+  'notifications', 'payment-reconcile',
 ] as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[number];
@@ -63,16 +63,11 @@ export class QueueService implements OnModuleDestroy {
   async start(): Promise<void> {
     if (this.started) return;
 
-    const connectionString = this.validateConfiguration();
+    const config = this.validateConfiguration();
+    const bossOptions = this.buildBossOptions(config.connectionString);
     let lastError: unknown;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const boss = new PgBoss({
-        connectionString,
-        max: 5,
-        ssl: { rejectUnauthorized: false },
-        schema: 'pgboss',
-        application_name: 'safecrib-pgboss',
-      });
+      const boss = new PgBoss(bossOptions);
       boss.on('error', (error: Error) => {
         this.logger.error(`pg-boss error: ${error.message}`, error.stack);
       });
@@ -112,7 +107,7 @@ export class QueueService implements OnModuleDestroy {
     );
   }
 
-  validateConfiguration(): string {
+  validateConfiguration(): { connectionString: string; useSsl: boolean } {
     const connectionString = process.env.PGBOSS_DATABASE_URL?.trim();
     if (!connectionString) {
       throw new Error('PGBOSS_DATABASE_URL is required to start pg-boss workers');
@@ -138,7 +133,24 @@ export class QueueService implements OnModuleDestroy {
     for (const option of ['sslmode', 'sslcert', 'sslkey', 'sslrootcert']) {
       parsed.searchParams.delete(option);
     }
-    return parsed.toString();
+
+    // pg-boss forces SSL by default. Local dev Postgres often runs without
+    // SSL, so we detect that and disable it only when the connection string
+    // points at a non-remote host without an explicit sslmode requirement.
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+    const useSsl = !isLocal;
+    return { connectionString: parsed.toString(), useSsl };
+  }
+
+  private buildBossOptions(connectionString: string): ConstructorParameters<typeof PgBoss>[0] {
+    const { useSsl } = this.validateConfiguration();
+    return {
+      connectionString,
+      max: 5,
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
+      schema: 'pgboss',
+      application_name: 'safecrib-pgboss',
+    };
   }
 
   async stop(timeoutMs = 30_000): Promise<void> {

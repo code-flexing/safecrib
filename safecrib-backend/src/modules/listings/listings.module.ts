@@ -4,12 +4,14 @@ import { ListingsService } from './listings.service.js';
 import { ProviderPagesModule } from '../provider-pages/provider-pages.module.js';
 import { MediaModule } from '../media/media.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
+import { BookingsModule } from '../bookings/bookings.module.js';
 
 @Module({
   imports: [
     ProviderPagesModule,
     MediaModule,
     NotificationsModule,
+    BookingsModule,
   ],
   controllers: [ListingsController],
   providers: [ListingsService],

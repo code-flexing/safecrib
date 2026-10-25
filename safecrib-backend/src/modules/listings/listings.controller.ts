@@ -23,18 +23,20 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../../common/roles.decorator.js';
 import { Public } from '../../common/public.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import { RequireVerifiedConsumer } from '../../common/student-profile.decorator.js';
 import { ListingsService } from './listings.service.js';
 import { CreateListingCommentDto, CreateListingDto } from './dto/listing.dto.js';
 import { UpdateListingDto } from './dto/listing.dto.js';
 import { UpdateListingAvailabilityDto } from './dto/listing.dto.js';
 import { SearchListingsDto } from './dto/listing.dto.js';
 import { AttachListingMediaDto } from './dto/listing.dto.js';
+import { SecureQuoteService } from '../bookings/secure-quote.service.js';
 
 @ApiTags('Listings')
 @ApiBearerAuth('access-token')
 @Controller('listings')
 export class ListingsController {
-  constructor(private readonly listingsService: ListingsService) {}
+  constructor(private readonly listingsService: ListingsService, private readonly secureQuoteService: SecureQuoteService) {}
 
   @Get()
   @Roles('STUDENT', 'AGENT', 'LANDLORD', 'ADMIN')
@@ -57,6 +59,15 @@ export class ListingsController {
   @Roles('ADMIN')
   @ApiOperation({ summary: 'List homes awaiting verification' })
   pendingReview() { return this.listingsService.listPendingReview(); }
+
+  @Get(':id/secure-quote')
+  @Roles('STUDENT')
+  @RequireVerifiedConsumer()
+  async getSecureQuote(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    const quote = await this.secureQuoteService.getSecureQuote(id, user.id);
+    return quote;
+  }
+
 
   @Get('admin/:id')
   @Roles('ADMIN')

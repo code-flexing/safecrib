@@ -16,6 +16,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { NotificationsService } from './notifications.service.js';
 import { NotificationPushService } from './notification-push.service.js';
 import { PushSubscriptionDto, RemovePushSubscriptionDto } from './dto/push-subscription.dto.js';
+import { serializeNotificationRow } from './notification-serializer.util.js';
 
 const DEFAULT_PAGE_SIZE = 30;
 const MAX_PAGE_SIZE = 50;
@@ -170,7 +171,10 @@ export class NotificationsController {
           data: true,
           readAt: true,
           createdAt: true,
-        },
+          source: true,
+          actorId: true,
+          actorSnapshot: true,
+        } as any,
       });
       const hasMore = rows.length > limit;
       const selectedRows = rows.slice(0, limit);
@@ -181,7 +185,7 @@ export class NotificationsController {
       const last = notifications.at(-1);
       const latest = notifications[0];
       return {
-        notifications,
+        notifications: notifications.map(serializeNotificationRow),
         unreadCount,
         nextCursor: !newerThan && hasMore && last ? encodeCursor(last.createdAt, last.id) : null,
         latestCursor: latest ? encodeCursor(latest.createdAt, latest.id) : null,

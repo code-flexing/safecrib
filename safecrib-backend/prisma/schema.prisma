@@ -55,6 +55,9 @@ model User {
   listingViews ListingView[]
   notifications Notification[]
   notificationPushSubscriptions NotificationPushSubscription[]
+  payments Payment[]
+  escrowsPayer Escrow[] @relation("EscrowPayer")
+  receiptsPayer Receipt[] @relation("ReceiptPayer")
 
   @@index([role])
   @@map("users")
@@ -258,6 +261,9 @@ model Listing {
   photos  ListingPhoto[]
   video   ListingVideo?
   bookings Booking[]
+  payments Payment[]
+  escrows Escrow[]
+  receipts Receipt[]
   fraudReports FraudReport[]
   bookmarks Bookmark[]
   likes ListingLike[]
@@ -553,6 +559,9 @@ model Booking {
   studentId     String         @map("student_id")
   status        BookingStatus  @default(HELD)
   depositAmount Int            @map("deposit_amount")
+  amountMinor   Int?           @map("amount_minor")
+  currency      String?        @default("NGN")
+  quoteSnapshot Json?          @map("quote_snapshot")
   holdExpiresAt DateTime?      @map("hold_expires_at")
   bookedAt      DateTime?      @map("booked_at")
   completedAt   DateTime?      @map("completed_at")
@@ -563,6 +572,9 @@ model Booking {
   listing  Listing @relation(fields: [listingId], references: [id])
   student  User    @relation("StudentBookings", fields: [studentId], references: [id])
   review   Review?
+  payments Payment[]
+  escrows  Escrow[]
+  receipts Receipt[]
 
   @@index([listingId])
   @@index([studentId])
@@ -572,10 +584,14 @@ model Booking {
 
 enum BookingStatus {
   HELD
+  PENDING_PAYMENT
+  CONFIRMED
   BOOKED
   CANCELLED
   COMPLETED
   DISPUTED
+  EXPIRED
+  PAID_AFTER_EXPIRY
 }
 
 model Review {
@@ -791,6 +807,9 @@ model Notification {
   dedupeKey String    @map("dedupe_key") @db.VarChar(200)
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
+  source    String?   @map("source")
+  actorId   String?   @map("actor_id")
+  actorSnapshot Json? @map("actor_snapshot")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -830,3 +849,106 @@ model MediaAccessLog {
 
 // Relation back-reference on User
 // (we need to extend the User model to include the media relation)
+
+model Payment {
+  id               String        @id @default(uuid())
+  bookingId        String        @map("booking_id")
+  userId           String        @map("user_id")
+  listingId        String        @map("listing_id")
+  reference        String        @unique
+  amountMinor      Int           @map("amount_minor")
+  currency         String        @default("NGN")
+  status           PaymentStatus @default(INITIATED)
+  providerRawStatus String?      @map("provider_raw_status")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  paidAt           DateTime?     @map("paid_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  listing Listing @relation(fields: [listingId], references: [id])
+  escrow   Escrow?
+  receipt  Receipt?
+
+  @@index([bookingId])
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  ABANDONED
+}
+
+model Escrow {
+  id          String      @id @default(uuid())
+  bookingId   String      @map("booking_id")
+  paymentId   String      @unique @map("payment_id")
+  payerId     String      @map("payer_id")
+  agentId     String?     @map("agent_id")
+  listingId   String      @map("listing_id")
+  amountMinor Int         @map("amount_minor")
+  currency    String      @default("NGN")
+  state       EscrowState @default(HELD)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+  payer   User    @relation("EscrowPayer", fields: [payerId], references: [id])
+  listing Listing @relation(fields: [listingId], references: [id])
+
+  @@unique([payerId, bookingId])
+  @@map("escrows")
+}
+
+enum EscrowState {
+  HELD
+}
+
+model LedgerEntry {
+  id            String         @id @default(uuid())
+  transactionId String         @map("transaction_id")
+  bookingId     String?        @map("booking_id")
+  paymentId     String?        @map("payment_id")
+  account       String
+  direction     LedgerDirection
+  amountMinor   Int            @map("amount_minor")
+  currency      String         @default("NGN")
+  memo          String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([transactionId])
+  @@index([bookingId])
+  @@map("ledger_entries")
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptNumber String   @unique @map("receipt_number")
+  paymentId     String   @unique @map("payment_id")
+  bookingId     String   @map("booking_id")
+  escrowId      String?  @map("escrow_id")
+  payerId       String   @map("payer_id")
+  agentId       String?  @map("agent_id")
+  listingId     String   @map("listing_id")
+  currency      String   @default("NGN")
+  totalMinor    Int      @map("total_minor")
+  status        String   @default("ISSUED")
+  issuedAt      DateTime @default(now()) @map("issued_at")
+  snapshot      Json
+  snapshotHash  String   @map("snapshot_hash")
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+  payer   User    @relation("ReceiptPayer", fields: [payerId], references: [id])
+  listing Listing @relation(fields: [listingId], references: [id])
+
+  @@map("receipts")
+}
